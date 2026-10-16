@@ -286,7 +286,9 @@ impl Call<ChatTurn> {
         self.map(|request| request.metadata = Some(metadata))
     }
 
-    /// Backend functions the agent may call during the turn.
+    /// Backend functions the agent may call during the turn. Their claim and
+    /// result requests carry this call's [`with_header`](Call::with_header)
+    /// values and [`with_client_request_id`](Call::with_client_request_id).
     pub fn functions(self, functions: Functions) -> Self {
         self.map(|request| request.functions = Some(functions))
     }
@@ -354,7 +356,9 @@ impl Call<Regenerate> {
         self.map(|request| request.metadata = Some(metadata))
     }
 
-    /// Backend functions the agent may call during the turn.
+    /// Backend functions the agent may call during the turn. Their claim and
+    /// result requests carry this call's [`with_header`](Call::with_header)
+    /// values and [`with_client_request_id`](Call::with_client_request_id).
     pub fn functions(self, functions: Functions) -> Self {
         self.map(|request| request.functions = Some(functions))
     }
@@ -400,6 +404,9 @@ pub struct ContinueChat {
 
 impl Call<ContinueChat> {
     /// Backend functions the agent may call during the rest of the turn.
+    /// Their claim and result requests carry this call's
+    /// [`with_header`](Call::with_header) values and
+    /// [`with_client_request_id`](Call::with_client_request_id).
     pub fn functions(self, functions: Functions) -> Self {
         self.map(|request| request.functions = Some(functions))
     }
@@ -457,6 +464,7 @@ impl ChatStream {
                 session_id.clone(),
                 functions,
                 meta.clone(),
+                raw.options,
             )
         });
         Ok(Self {

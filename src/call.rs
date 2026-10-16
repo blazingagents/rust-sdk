@@ -61,6 +61,13 @@ impl<R: Request> Call<R> {
         self
     }
 
+    /// Replaces the transport options, for a follow-up request that inherits
+    /// its parent call's `with_` settings.
+    pub(crate) fn with_options(mut self, options: RequestOptions) -> Self {
+        self.options = options;
+        self
+    }
+
     /// Edits the request state. Setters in resource modules use this.
     pub(crate) fn map(mut self, edit: impl FnOnce(&mut R)) -> Self {
         edit(&mut self.request);
@@ -329,6 +336,7 @@ pub struct Raw {
     pub(crate) sensitive: Vec<String>,
     pub(crate) operation_id: &'static str,
     pub(crate) handle: Handle,
+    pub(crate) options: RequestOptions,
 }
 
 /// Implements [`Request`] for an operation's request type.

@@ -97,6 +97,7 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
         request,
         options,
     } = call;
+    let raw_options = options.clone();
     let route = route.map_err(|InvalidSegment(name)| {
         Error::InvalidArgument(format!(
             "path parameter {name} must not be empty, `.` or `..`"
@@ -190,6 +191,7 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
         sensitive,
         operation_id: route.op_id,
         handle: handle.clone(),
+        options: raw_options,
     };
     let value = if R::STREAMING {
         R::decode(state, raw).await?
