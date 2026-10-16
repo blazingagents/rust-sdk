@@ -479,6 +479,7 @@ async fn run_messages_decodes_the_page_and_run_state() {
         ))
         .and(query_param_is_missing("cursor"))
         .and(query_param_is_missing("after"))
+        .and(query_param("limit", "20"))
         .respond_with(json(
             200,
             messages_page(vec![message("msg_1")], json!(null)),
@@ -489,6 +490,7 @@ async fn run_messages_decodes_the_page_and_run_state() {
     let page = client
         .tasks()
         .run_messages("tk_6Wq3Hn8ZpL2vRt5C", "tr_9Jd4Ks7NbV2xQm6P")
+        .limit(20)
         .await
         .unwrap();
 

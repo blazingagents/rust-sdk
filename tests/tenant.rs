@@ -89,6 +89,12 @@ async fn update_omits_unset_fields_and_sends_null_to_clear_quota() {
         .quota(QuotaInput::new(15).monthly_token_limit(5_000_000))
         .await
         .unwrap();
+    client
+        .tenant()
+        .update()
+        .quota(QuotaInput::new(15).monthly_request_limit(10_000))
+        .await
+        .unwrap();
 
     let sent = requests(&server).await;
     assert_eq!(json_body(&sent[0]), json!({ "name": "Acme II" }));
@@ -100,6 +106,16 @@ async fn update_omits_unset_fields_and_sends_null_to_clear_quota() {
             "quota": {
                 "monthlyTokenLimit": 5000000,
                 "monthlyRequestLimit": null,
+                "resetDay": 15
+            }
+        })
+    );
+    assert_eq!(
+        json_body(&sent[4]),
+        json!({
+            "quota": {
+                "monthlyTokenLimit": null,
+                "monthlyRequestLimit": 10000,
                 "resetDay": 15
             }
         })

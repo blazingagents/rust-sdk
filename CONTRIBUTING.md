@@ -6,7 +6,8 @@
 | --- | --- |
 | `cargo fmt --all --check` | Formatting |
 | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | Lints; warnings fail |
-| `cargo test --workspace` | Unit, integration and doc tests |
+| `cargo cov` | Unit and integration tests under coverage (an alias for `cargo llvm-cov` in `.cargo/config.toml`); fails under 99% of lines or of functions. Needs `cargo install cargo-llvm-cov` and `rustup component add llvm-tools-preview` |
+| `cargo test --workspace --doc` | Doc tests, which `cargo cov` does not run |
 | `cargo xtask spec --check` | Fails when `src/op.rs` or `src/error/code.rs` differ from what `spec/openapi.json` generates |
 | `cargo xtask spec` | Regenerates those two files |
 | `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps` | Rustdoc; broken links fail |
@@ -16,6 +17,11 @@
 
 CI runs all of these plus a grep that fails on `allow(dead_code)` or
 `expect(dead_code)` anywhere under `src/`.
+
+Coverage ignores only `xtask/`, the spec code generator, which runs at
+development time and is checked by `cargo xtask spec --check`. Generated
+`src/op.rs` stays measured: every variant being built by some test is the
+evidence that every operation has a tested method.
 
 To refresh the vendored spec, copy `../ba-platform/servers/api/openapi.json`
 over `spec/openapi.json` and run `cargo xtask spec`.

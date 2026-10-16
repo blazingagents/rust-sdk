@@ -136,6 +136,15 @@ async fn create_sends_only_the_set_fields() {
         )
         .await
         .unwrap();
+    client
+        .chat_connections()
+        .create(NewChatConnection::telegram(
+            "ag_4kP9sT2vXq7LmN3a",
+            "Announcements",
+            TelegramCredentials::new("7123456789:AAFtoken"),
+        ))
+        .await
+        .unwrap();
 
     let sent = requests(&server).await;
     assert_eq!(
@@ -158,6 +167,15 @@ async fn create_sends_only_the_set_fields() {
             "name": "Business bot",
             "enabled": false,
             "configuration": { "businessMode": true, "chatIds": ["-1001234"] },
+            "credentials": { "botToken": "7123456789:AAFtoken" }
+        })
+    );
+    assert_eq!(
+        json_body(&sent[2]),
+        json!({
+            "platform": "telegram",
+            "agentId": "ag_4kP9sT2vXq7LmN3a",
+            "name": "Announcements",
             "credentials": { "botToken": "7123456789:AAFtoken" }
         })
     );
@@ -184,6 +202,18 @@ async fn create_accepts_a_platform_variant_directly() {
         )
         .await
         .unwrap();
+    client
+        .chat_connections()
+        .create(
+            NewSlackConnection::new(
+                "ag_4kP9sT2vXq7LmN3a",
+                "Paused bot",
+                SlackCredentials::new("xoxb-token-value", "0123456789abcdef0123456789abcdef"),
+            )
+            .enabled(false),
+        )
+        .await
+        .unwrap();
 
     let sent = requests(&server).await;
     assert_eq!(
@@ -193,6 +223,19 @@ async fn create_accepts_a_platform_variant_directly() {
             "agentId": "ag_4kP9sT2vXq7LmN3a",
             "name": "Support bot",
             "configuration": { "channelIds": ["C0123ABC"] },
+            "credentials": {
+                "botToken": "xoxb-token-value",
+                "signingSecret": "0123456789abcdef0123456789abcdef"
+            }
+        })
+    );
+    assert_eq!(
+        json_body(&sent[1]),
+        json!({
+            "platform": "slack",
+            "agentId": "ag_4kP9sT2vXq7LmN3a",
+            "name": "Paused bot",
+            "enabled": false,
             "credentials": {
                 "botToken": "xoxb-token-value",
                 "signingSecret": "0123456789abcdef0123456789abcdef"
@@ -246,6 +289,36 @@ async fn a_slack_configuration_round_trips() {
     assert_eq!(
         serde_json::to_value(&connection.configuration).unwrap(),
         json!({ "platform": "slack", "channelIds": ["C0123ABC"] })
+    );
+}
+
+#[tokio::test]
+async fn a_telegram_configuration_round_trips() {
+    let (server, client) = mock().await;
+    let configuration =
+        json!({ "platform": "telegram", "businessMode": true, "chatIds": ["-1001234"] });
+    let mut body = chat_connection("cc_1");
+    body["platform"] = json!("telegram");
+    body["configuration"] = configuration.clone();
+    Mock::given(method("GET"))
+        .and(path("/v1/chat-connections/cc_1"))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+
+    let connection = client.chat_connections().get("cc_1").await.unwrap();
+
+    let ChatConfiguration::Telegram(telegram) = &connection.configuration else {
+        panic!(
+            "expected a Telegram configuration, got {:?}",
+            connection.configuration
+        );
+    };
+    assert!(telegram.business_mode);
+    assert_eq!(telegram.chat_ids, ["-1001234"]);
+    assert_eq!(
+        serde_json::to_value(&connection.configuration).unwrap(),
+        configuration
     );
 }
 
