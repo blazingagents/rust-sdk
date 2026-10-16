@@ -12,6 +12,7 @@
 | `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps` | Rustdoc; broken links fail |
 | `cargo +1.85 test --workspace --locked` | The MSRV build |
 | `cargo test -p blazing-agents --no-default-features --features native-tls,schemars` | The OpenSSL build |
+| `cargo package -p blazing-agents --locked` | Builds the crate exactly as crates.io would receive it |
 
 CI runs all of these plus a grep that fails on `allow(dead_code)` or
 `expect(dead_code)` anywhere under `src/`.
