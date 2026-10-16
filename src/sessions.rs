@@ -6,10 +6,11 @@
 use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 
+use crate::agents::{AgentStatus, ToolReference};
 use crate::call::{Call, Paginate, Payload, impl_request};
 use crate::client::{Client, Scope};
 use crate::error::Result;
-use crate::ids::{AgentId, ApprovalId, McpConnectionId, SessionId, TurnId};
+use crate::ids::{AgentId, ApprovalId, SessionId, TurnId};
 use crate::messages::UserMessage;
 use crate::op::Op;
 use crate::pagination::{Cursor, Page, Paginated};
@@ -534,80 +535,6 @@ pub struct ForkedFrom {
     pub session_id: SessionId,
     /// The last inherited message.
     pub message_id: String,
-}
-
-crate::open_enum! {
-    /// A built-in tool.
-    pub enum BuiltinTool {
-        /// `read`
-        Read = "read",
-        /// `write`
-        Write = "write",
-        /// `edit`
-        Edit = "edit",
-        /// `grep`
-        Grep = "grep",
-        /// `glob`
-        Glob = "glob",
-        /// `bash`
-        Bash = "bash",
-        /// `publish_artifacts`
-        PublishArtifacts = "publish_artifacts",
-        /// `write_todos`
-        WriteTodos = "write_todos",
-        /// `save_memory`
-        SaveMemory = "save_memory",
-        /// `get_memory`
-        GetMemory = "get_memory",
-        /// `search_memories`
-        SearchMemories = "search_memories",
-        /// `update_memory`
-        UpdateMemory = "update_memory",
-        /// `delete_memory`
-        DeleteMemory = "delete_memory",
-        /// `web_search`
-        WebSearch = "web_search",
-        /// `activate_skill`
-        ActivateSkill = "activate_skill",
-    }
-}
-
-/// The tool a tool approval refers to.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[non_exhaustive]
-#[serde(tag = "type", rename_all = "camelCase")]
-pub enum ToolReference {
-    /// A built-in tool.
-    Builtin {
-        /// The tool's name.
-        name: BuiltinTool,
-    },
-    /// A tool of an MCP connection.
-    Mcp {
-        /// The MCP connection.
-        #[serde(rename = "connectionId")]
-        connection_id: McpConnectionId,
-        /// The tool's name on that connection.
-        name: String,
-    },
-    /// A function a backend supplied for one chat request.
-    Function {
-        /// The function's name.
-        name: String,
-    },
-    /// A tool kind this SDK version does not know.
-    #[serde(other)]
-    Unrecognized,
-}
-
-crate::open_enum! {
-    /// Whether an agent accepts new turns.
-    pub enum AgentStatus {
-        /// `active`
-        Active = "active",
-        /// `disabled`
-        Disabled = "disabled",
-    }
 }
 
 /// A session in the latest-sessions list.

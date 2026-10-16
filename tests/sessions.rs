@@ -1,12 +1,12 @@
 mod support;
 
 use blazing_agents::Error;
+use blazing_agents::agents::{AgentStatus, AgentTool, ApprovalDecision, ToolReference};
 use blazing_agents::ids::TurnId;
 use blazing_agents::messages::{UserMessage, UserPart};
 use blazing_agents::pagination::Cursor;
 use blazing_agents::sessions::{
-    ActivityState, AgentStatus, BuiltinTool, ContinuationState, InputState, ToolApprovalDecision,
-    ToolReference,
+    ActivityState, ContinuationState, InputState, ToolApprovalDecision,
 };
 use blazing_agents::transcript::MessageRole;
 use futures_util::TryStreamExt;
@@ -200,11 +200,19 @@ async fn get_decodes_agent_config_and_provenance() {
 
     let fetched = client.sessions().get(AGENT, SESSION).await.unwrap();
 
-    // The full agentConfig JSON decodes; AgentConfig is filled later.
+    let config = &fetched.agent_config;
+    assert_eq!(config.name, "Support Agent");
+    assert_eq!(config.model.as_deref(), Some("openai/gpt-6-luna"));
     assert_eq!(
-        serde_json::to_value(&fetched.agent_config).unwrap(),
-        json!({})
+        config.tools,
+        [
+            AgentTool::Read,
+            AgentTool::Grep,
+            AgentTool::Glob,
+            AgentTool::WriteTodos
+        ]
     );
+    assert_eq!(config.approval_in_chat.default, ApprovalDecision::Manual);
     assert_eq!(fetched.id.as_str(), SESSION);
     assert_eq!(fetched.message_count, 4);
     assert_eq!(fetched.user_id, "customer_123");
@@ -258,10 +266,7 @@ async fn fork_posts_the_message_and_key() {
         .await
         .unwrap();
 
-    assert_eq!(
-        serde_json::to_value(&child.agent_config).unwrap(),
-        json!({})
-    );
+    assert_eq!(child.agent_config.name, "Support Agent");
     assert!(child.forked_from.is_none());
 
     let sent = requests(&server).await;
@@ -614,12 +619,10 @@ async fn tool_approvals_decodes_the_round() {
 
     let items = &approvals.data;
     assert_eq!(items.len(), 7);
-    assert_eq!(
-        items[0].tool,
-        Some(ToolReference::Builtin {
-            name: BuiltinTool::Bash
-        })
-    );
+    match &items[0].tool {
+        Some(ToolReference::Builtin { name, .. }) => assert_eq!(*name, AgentTool::Bash),
+        other => panic!("expected a builtin tool, got {other:?}"),
+    }
     assert_eq!(items[0].decision, ToolApprovalDecision::Pending);
     assert_eq!(items[0].approval_id.as_str(), "apr_1");
     assert_eq!(items[0].tool_call_id, "call_1");
@@ -635,6 +638,7 @@ async fn tool_approvals_decodes_the_round() {
         Some(ToolReference::Mcp {
             connection_id,
             name,
+            ..
         }) => {
             assert_eq!(connection_id.as_str(), "mcp_1Aa2Bb3Cc4Dd5Ee6");
             assert_eq!(name, "lookup_order");
@@ -642,29 +646,34 @@ async fn tool_approvals_decodes_the_round() {
         other => panic!("expected an MCP tool, got {other:?}"),
     }
     assert_eq!(items[1].decision, ToolApprovalDecision::Approved);
-    assert_eq!(
-        items[2].tool,
-        Some(ToolReference::Function {
-            name: "charge_card".to_owned()
-        })
-    );
+    match &items[2].tool {
+        Some(ToolReference::Function { name, .. }) => assert_eq!(name, "charge_card"),
+        other => panic!("expected a function tool, got {other:?}"),
+    }
     assert_eq!(items[2].decision, ToolApprovalDecision::Denied);
-    assert_eq!(items[3].tool, None);
+    assert!(items[3].tool.is_none());
     match &items[3].decision {
         ToolApprovalDecision::Unrecognized(value) => assert_eq!(value.as_str(), "escalated"),
         other => panic!("expected an unrecognized decision, got {other:?}"),
     }
     // Fields missing from the wire decode as None.
-    assert_eq!(items[4].tool, None);
+    assert!(items[4].tool.is_none());
     assert_eq!(items[4].assistant_message_id, None);
     assert_eq!(items[4].created_at, None);
-    // An unknown tool kind and an unknown builtin name decode as Unrecognized.
-    assert_eq!(items[5].tool, Some(ToolReference::Unrecognized));
+    // An unknown tool kind decodes as Unrecognized with its raw object, and an
+    // unknown builtin name as an unrecognized AgentTool.
+    match &items[5].tool {
+        Some(ToolReference::Unrecognized(value)) => {
+            assert_eq!(value["type"], "skill")
+        }
+        other => panic!("expected an unrecognized tool, got {other:?}"),
+    }
     match &items[6].tool {
-        Some(ToolReference::Builtin {
-            name: BuiltinTool::Unrecognized(name),
-        }) => assert_eq!(name.as_str(), "browse"),
-        other => panic!("expected an unrecognized builtin tool, got {other:?}"),
+        Some(ToolReference::Builtin { name, .. }) => {
+            assert_eq!(*name, AgentTool::from("browse"));
+            assert_eq!(name.as_str(), "browse");
+        }
+        other => panic!("expected a builtin tool, got {other:?}"),
     }
 
     let continuation = approvals.continuation.expect("an open continuation");
