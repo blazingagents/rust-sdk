@@ -1,5 +1,6 @@
 mod support;
 
+use blazing_agents::Error;
 use blazing_agents::agents::{
     AgentConfig, AgentStatus, AgentTool, ApprovalDecision, ApprovalPolicy, ToolReference,
     WorkspaceTier,
@@ -416,7 +417,7 @@ async fn disable_and_enable_post_to_their_paths() {
 }
 
 #[tokio::test]
-async fn upload_avatar_sends_a_multipart_file() {
+async fn upload_avatar_guesses_the_part_type_from_the_file_name() {
     let (server, client) = mock().await;
     Mock::given(method("POST"))
         .and(path("/v1/agents/ag_1/avatar"))
@@ -428,14 +429,23 @@ async fn upload_avatar_sends_a_multipart_file() {
         .agents()
         .upload_avatar(
             "ag_1",
-            Upload::bytes(b"png-bytes".as_slice())
-                .file_name("avatar.png")
-                .content_type("image/png"),
+            Upload::bytes(b"png-bytes".as_slice()).file_name("avatar.png"),
+        )
+        .await
+        .unwrap();
+    client
+        .agents()
+        .upload_avatar(
+            "ag_1",
+            Upload::bytes(b"jpg-bytes".as_slice())
+                .content_type("image/jpeg")
+                .file_name("a.png"),
         )
         .await
         .unwrap();
 
     let sent = requests(&server).await;
+    let first = String::from_utf8_lossy(&sent[0].body);
     assert!(
         sent[0]
             .headers
@@ -444,13 +454,53 @@ async fn upload_avatar_sends_a_multipart_file() {
             .unwrap()
             .starts_with("multipart/form-data; boundary=")
     );
+    assert!(
+        first.contains("name=\"file\"; filename=\"avatar.png\""),
+        "{first}"
+    );
+    assert!(first.contains("Content-Type: image/png"), "{first}");
+    assert!(first.contains("png-bytes"), "{first}");
+    let second = String::from_utf8_lossy(&sent[1].body);
+    assert!(
+        second.contains("name=\"file\"; filename=\"a.png\""),
+        "{second}"
+    );
+    assert!(second.contains("Content-Type: image/jpeg"), "{second}");
+    assert!(!second.contains("image/png"), "{second}");
+}
+
+#[tokio::test]
+async fn upload_avatar_guesses_the_type_of_a_file_on_disk() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/avatar"))
+        .respond_with(json(200, agent("ag_1")))
+        .mount(&server)
+        .await;
+
+    let dir = std::env::temp_dir().join(format!("ba-agents-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("logo.webp");
+    std::fs::write(&path, b"webp-bytes").unwrap();
+
+    client
+        .agents()
+        .upload_avatar("ag_1", Upload::file(&path).await.unwrap())
+        .await
+        .unwrap();
+    std::fs::remove_dir_all(&dir).unwrap();
+
+    let sent = requests(&server).await;
     let multipart = String::from_utf8_lossy(&sent[0].body);
     assert!(
-        multipart.contains("name=\"file\"; filename=\"avatar.png\""),
+        multipart.contains("name=\"file\"; filename=\"logo.webp\""),
         "{multipart}"
     );
-    assert!(multipart.contains("Content-Type: image/png"), "{multipart}");
-    assert!(multipart.contains("png-bytes"), "{multipart}");
+    assert!(
+        multipart.contains("Content-Type: image/webp"),
+        "{multipart}"
+    );
+    assert!(multipart.contains("webp-bytes"), "{multipart}");
 }
 
 #[tokio::test]
@@ -560,6 +610,28 @@ async fn spending_limits_get_and_clear() {
 
     let sent = requests(&server).await;
     assert_eq!(json_body(&sent[1]), json!({ "spendingLimit": null }));
+}
+
+#[tokio::test]
+async fn a_known_tool_type_with_a_bad_body_fails_to_decode() {
+    let (server, client) = mock().await;
+    let mut body = agent("ag_1");
+    body["approvalInChat"] = json!({
+        "default": "full",
+        "overrides": [{ "tool": { "type": "mcp", "name": "x" }, "decision": "auto" }]
+    });
+    Mock::given(method("GET"))
+        .and(path("/v1/agents/ag_1"))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+
+    let error = client.agents().get("ag_1").await.unwrap_err();
+
+    assert!(
+        matches!(error, Error::Decode { .. }),
+        "expected a decode error, got {error:?}"
+    );
 }
 
 #[tokio::test]

@@ -36,7 +36,9 @@ impl Upload {
         Self::new(UploadBody::Bytes(bytes.into()))
     }
 
-    /// Streams a file from disk. The file name and length come from the path.
+    /// Streams a file from disk. The file name and length come from the path,
+    /// and a multipart part's Content-Type is guessed from the file name's
+    /// extension unless [`content_type`](Self::content_type) is set.
     pub async fn file(path: impl AsRef<Path>) -> std::io::Result<Self> {
         let path = path.as_ref();
         let file = tokio::fs::File::open(path).await?;
@@ -61,14 +63,17 @@ impl Upload {
         })
     }
 
-    /// The file name sent in a multipart part. Defaults to `file`.
+    /// The file name sent in a multipart part; its extension sets the part's
+    /// Content-Type unless [`content_type`](Self::content_type) is set.
+    /// Defaults to `file`.
     #[must_use]
     pub fn file_name(mut self, name: impl Into<String>) -> Self {
         self.file_name = Some(name.into());
         self
     }
 
-    /// The MIME type sent in a multipart part.
+    /// The MIME type sent in a multipart part. Overrides the type guessed
+    /// from the file name's extension.
     #[must_use]
     pub fn content_type(mut self, mime: impl Into<String>) -> Self {
         self.content_type = Some(mime.into());
@@ -83,6 +88,13 @@ impl Upload {
         }
     }
 
+    pub(crate) fn default_file_name(mut self, name: impl Into<String>) -> Self {
+        if self.file_name.is_none() {
+            self.file_name = Some(name.into());
+        }
+        self
+    }
+
     pub(crate) fn into_part(self) -> Result<reqwest::multipart::Part> {
         let mut part = match self.body {
             UploadBody::Bytes(bytes) => reqwest::multipart::Part::bytes(bytes.to_vec()),
@@ -94,8 +106,13 @@ impl Upload {
                 }
             }
         };
+        let mime = self.content_type.or_else(|| {
+            self.file_name
+                .as_deref()
+                .map(|name| guess_content_type(name).to_owned())
+        });
         part = part.file_name(self.file_name.unwrap_or_else(|| "file".to_owned()));
-        if let Some(mime) = self.content_type {
+        if let Some(mime) = mime {
             part = part
                 .mime_str(&mime)
                 .map_err(|_| crate::Error::InvalidArgument(format!("invalid MIME type {mime}")))?;
@@ -117,6 +134,29 @@ impl fmt::Debug for Upload {
             .field("file_name", &self.file_name)
             .field("content_type", &self.content_type)
             .finish_non_exhaustive()
+    }
+}
+
+/// The part Content-Type a file name implies, by its extension.
+fn guess_content_type(file_name: &str) -> &'static str {
+    match Path::new(file_name)
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(str::to_lowercase)
+        .as_deref()
+    {
+        Some("png") => "image/png",
+        Some("jpg" | "jpeg") => "image/jpeg",
+        Some("webp") => "image/webp",
+        Some("gif") => "image/gif",
+        Some("zip") => "application/zip",
+        Some("tar") => "application/x-tar",
+        Some("gz" | "tgz") => "application/gzip",
+        Some("md") => "text/markdown",
+        Some("txt") => "text/plain",
+        Some("json") => "application/json",
+        Some("pdf") => "application/pdf",
+        _ => "application/octet-stream",
     }
 }
 

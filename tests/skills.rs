@@ -1,5 +1,6 @@
 mod support;
 
+use blazing_agents::Error;
 use blazing_agents::error::ErrorCode;
 use blazing_agents::files::Upload;
 use blazing_agents::skills::{ArchiveType, SkillCopyResult};
@@ -97,28 +98,47 @@ async fn upload_sends_a_multipart_archive() {
         .skills()
         .upload(
             ArchiveType::TarGz,
-            Upload::bytes(b"archive-bytes".as_slice()).file_name("skill.tar.gz"),
+            Upload::bytes(b"archive-bytes".as_slice()),
+        )
+        .await
+        .unwrap();
+    client
+        .agent("ag_1")
+        .skills()
+        .upload(
+            ArchiveType::Zip,
+            Upload::bytes(b"zip-bytes".as_slice()).file_name("my.zip"),
         )
         .await
         .unwrap();
 
     let sent = requests(&server).await;
+    for request in &sent {
+        assert!(
+            request
+                .headers
+                .get("content-type")
+                .and_then(|value| value.to_str().ok())
+                .unwrap()
+                .starts_with("multipart/form-data; boundary=")
+        );
+    }
+    let first = String::from_utf8_lossy(&sent[0].body);
+    assert!(first.contains("name=\"type\""), "{first}");
+    assert!(first.contains("tar.gz"), "{first}");
     assert!(
-        sent[0]
-            .headers
-            .get("content-type")
-            .and_then(|value| value.to_str().ok())
-            .unwrap()
-            .starts_with("multipart/form-data; boundary=")
+        first.contains("name=\"file\"; filename=\"skill.tar.gz\""),
+        "{first}"
     );
-    let multipart = String::from_utf8_lossy(&sent[0].body);
-    assert!(multipart.contains("name=\"type\""), "{multipart}");
-    assert!(multipart.contains("tar.gz"), "{multipart}");
+    assert!(first.contains("Content-Type: application/gzip"), "{first}");
+    assert!(first.contains("archive-bytes"), "{first}");
+    let second = String::from_utf8_lossy(&sent[1].body);
     assert!(
-        multipart.contains("name=\"file\"; filename=\"skill.tar.gz\""),
-        "{multipart}"
+        second.contains("name=\"file\"; filename=\"my.zip\""),
+        "{second}"
     );
-    assert!(multipart.contains("archive-bytes"), "{multipart}");
+    assert!(second.contains("Content-Type: application/zip"), "{second}");
+    assert!(!second.contains("skill.zip"), "{second}");
 }
 
 #[tokio::test]
@@ -370,4 +390,29 @@ async fn copy_decodes_each_result_in_order() {
         }
         other => panic!("expected an unrecognized result, got {other:?}"),
     }
+}
+
+#[tokio::test]
+async fn a_copy_result_with_a_known_status_but_bad_body_fails_to_decode() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/skills/skill_1/copies"))
+        .respond_with(json(
+            200,
+            json!([{ "agentId": "ag_9Xm3Fp7KdR2vHs5T", "status": "created" }]),
+        ))
+        .mount(&server)
+        .await;
+
+    let error = client
+        .agent("ag_1")
+        .skills()
+        .copy("skill_1", ["ag_9Xm3Fp7KdR2vHs5T"])
+        .await
+        .unwrap_err();
+
+    assert!(
+        matches!(error, Error::Decode { .. }),
+        "expected a decode error, got {error:?}"
+    );
 }

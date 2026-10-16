@@ -65,6 +65,8 @@ impl<S: Scope> Skills<'_, S> {
     }
 
     /// Creates a skill from an archive that contains `SKILL.md` at its root.
+    /// The file part's name defaults to `skill.<archive type>`, such as
+    /// `skill.tar.gz`; set [`Upload::file_name`] to send another.
     pub fn upload(&self, archive_type: ArchiveType, archive: Upload) -> Call<UploadSkill> {
         Call::new(
             self.client,
@@ -230,7 +232,12 @@ impl UploadSkill {
     fn into_payload(self) -> Result<Payload> {
         let form = reqwest::multipart::Form::new()
             .text("type", self.archive_type.as_str().to_owned())
-            .part("file", self.archive.into_part()?);
+            .part(
+                "file",
+                self.archive
+                    .default_file_name(format!("skill.{}", self.archive_type.as_str()))
+                    .into_part()?,
+            );
         Ok(Payload::default().multipart(form))
     }
 }
@@ -366,7 +373,7 @@ pub struct SkillFile {
 }
 
 /// The outcome of copying a skill to one destination agent.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize)]
 #[non_exhaustive]
 #[serde(tag = "status", rename_all = "lowercase")]
 pub enum SkillCopyResult {
@@ -392,6 +399,45 @@ pub enum SkillCopyResult {
     /// re-serialized unchanged.
     #[serde(untagged)]
     Unrecognized(serde_json::Value),
+}
+
+impl<'de> Deserialize<'de> for SkillCopyResult {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let Some(status) = value.get("status").and_then(serde_json::Value::as_str) else {
+            return Err(serde::de::Error::custom(
+                "a copy result is an object with a string `status`",
+            ));
+        };
+
+        /// The known wire shapes; a malformed one is a decode error, not
+        /// `Unrecognized`.
+        #[derive(Deserialize)]
+        #[serde(tag = "status", rename_all = "lowercase")]
+        enum Known {
+            Created {
+                #[serde(rename = "agentId")]
+                agent_id: AgentId,
+                skill: SkillDetail,
+            },
+            Failed {
+                #[serde(rename = "agentId")]
+                agent_id: AgentId,
+                error: SkillCopyError,
+            },
+        }
+
+        match status {
+            "created" | "failed" => {
+                let known = Known::deserialize(value).map_err(serde::de::Error::custom)?;
+                Ok(match known {
+                    Known::Created { agent_id, skill } => Self::Created { agent_id, skill },
+                    Known::Failed { agent_id, error } => Self::Failed { agent_id, error },
+                })
+            }
+            _ => Ok(Self::Unrecognized(value)),
+        }
+    }
 }
 
 /// Why copying a skill to one destination failed.

@@ -145,8 +145,9 @@ impl<S: Scope> Agents<'_, S> {
     }
 
     /// Sets the agent's avatar image: a PNG, JPEG or WebP of 512 KiB or less.
-    /// The file name's extension must match the image's type, so set
-    /// [`Upload::file_name`] when uploading bytes; its default is `file`.
+    /// The part's Content-Type comes from the file name's extension (or
+    /// [`Upload::content_type`]), so [`Upload::file`] works directly and
+    /// bytes need a [`file_name`](Upload::file_name) such as `avatar.png`.
     pub fn upload_avatar(
         &self,
         agent_id: impl Into<AgentId>,
@@ -773,7 +774,7 @@ impl ApprovalOverride {
 
 /// The tool an approval override refers to: a built-in tool by name, or one
 /// tool of an attached MCP connection.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize)]
 #[non_exhaustive]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum ToolReference {
@@ -810,6 +811,49 @@ impl ToolReference {
         Self::Mcp {
             connection_id: connection_id.into(),
             name: name.into(),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ToolReference {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let Some(kind) = value.get("type").and_then(serde_json::Value::as_str) else {
+            return Err(serde::de::Error::custom(
+                "a tool reference is an object with a string `type`",
+            ));
+        };
+
+        /// The known wire shapes; a malformed one is a decode error, not
+        /// `Unrecognized`.
+        #[derive(Deserialize)]
+        #[serde(tag = "type", rename_all = "lowercase")]
+        enum Known {
+            Builtin {
+                name: AgentTool,
+            },
+            Mcp {
+                #[serde(rename = "connectionId")]
+                connection_id: McpConnectionId,
+                name: String,
+            },
+        }
+
+        match kind {
+            "builtin" | "mcp" => {
+                let known = Known::deserialize(value).map_err(serde::de::Error::custom)?;
+                Ok(match known {
+                    Known::Builtin { name } => Self::Builtin { name },
+                    Known::Mcp {
+                        connection_id,
+                        name,
+                    } => Self::Mcp {
+                        connection_id,
+                        name,
+                    },
+                })
+            }
+            _ => Ok(Self::Unrecognized(value)),
         }
     }
 }
