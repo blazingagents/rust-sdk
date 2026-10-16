@@ -173,7 +173,6 @@ pub struct TenantDeletion {
 /// A monthly quota to set on the tenant. Every field is always sent; a limit
 /// you do not set goes out as `null`, which means unlimited.
 #[derive(Clone, Debug, Serialize)]
-#[non_exhaustive]
 #[serde(rename_all = "camelCase")]
 pub struct QuotaInput {
     monthly_token_limit: Option<u64>,

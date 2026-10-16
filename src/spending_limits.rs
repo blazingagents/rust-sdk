@@ -22,7 +22,6 @@ crate::open_enum! {
 
 /// A spending limit to set: a USD amount and a UTC reset schedule.
 #[derive(Clone, Debug, Serialize)]
-#[non_exhaustive]
 #[serde(rename_all = "camelCase")]
 pub struct SpendingLimitInput {
     amount_usd: f64,

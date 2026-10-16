@@ -205,3 +205,45 @@ async fn an_unknown_reset_interval_decodes_as_unrecognized() {
         other => panic!("expected an unrecognized reset interval, got {other:?}"),
     }
 }
+
+#[tokio::test]
+async fn agent_spending_limit_sends_null_or_the_limit() {
+    let (server, client) = mock().await;
+    Mock::given(method("PUT"))
+        .and(path("/v1/agents/ag_4kP9sT2vXq7LmN3a/spending-limit"))
+        .respond_with(json(200, spending_limit_status()))
+        .mount(&server)
+        .await;
+
+    let status = client
+        .agents()
+        .update_spending_limit(
+            "ag_4kP9sT2vXq7LmN3a",
+            Some(SpendingLimitInput::new(
+                10.0,
+                "2026-10-01",
+                ResetInterval::Monthly,
+            )),
+        )
+        .await
+        .unwrap();
+    client
+        .agents()
+        .update_spending_limit("ag_4kP9sT2vXq7LmN3a", None)
+        .await
+        .unwrap();
+
+    let sent = requests(&server).await;
+    assert_eq!(
+        json_body(&sent[0]),
+        json!({
+            "spendingLimit": {
+                "amountUsd": 10.0,
+                "resetStartDate": "2026-10-01",
+                "resetInterval": "monthly"
+            }
+        })
+    );
+    assert_eq!(json_body(&sent[1]), json!({ "spendingLimit": null }));
+    assert_eq!(status.spending_limit.unwrap().amount_usd, 10.0);
+}
