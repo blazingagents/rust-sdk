@@ -14,7 +14,7 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const SESSION: &str = "ss_0123456789abcdef";
-const TURN: &str = "tr_0123456789abcdef";
+const TURN: &str = "turn_0123456789abcdef";
 const CALL: &str = "fc_0123456789abcdef";
 
 fn call_path(action: &str) -> String {

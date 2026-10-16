@@ -14,7 +14,7 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
 const SESSION: &str = "ss_0123456789abcdef";
-const TURN: &str = "tr_0123456789abcdef";
+const TURN: &str = "turn_0123456789abcdef";
 
 fn sse(status: u16, events: &[&str]) -> ResponseTemplate {
     let body: String = events
@@ -106,6 +106,12 @@ async fn missing_or_malformed_handshake_headers_fail_before_the_body() {
             ResponseTemplate::new(201)
                 .insert_header("location", format!("/sessions/{SESSION}").as_str()),
             StreamErrorKind::MissingTurnId,
+        ),
+        (
+            ResponseTemplate::new(201)
+                .insert_header("location", format!("/sessions/{SESSION}").as_str())
+                .insert_header("x-ba-turn-id", "tr_0123456789abcdef"),
+            StreamErrorKind::MalformedTurnId,
         ),
     ];
     for (response, kind) in cases {

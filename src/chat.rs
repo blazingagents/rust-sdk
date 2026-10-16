@@ -541,7 +541,7 @@ fn turn_id_from_header(meta: &ResponseMeta) -> Result<TurnId> {
         .get("x-ba-turn-id")
         .and_then(|value| value.to_str().ok())
         .ok_or_else(|| stream_error(StreamErrorKind::MissingTurnId, meta))?;
-    if !is_platform_id(turn_id, "tr_") {
+    if !is_platform_id(turn_id, "turn_") {
         return Err(stream_error(StreamErrorKind::MalformedTurnId, meta));
     }
     Ok(TurnId::from(turn_id))
