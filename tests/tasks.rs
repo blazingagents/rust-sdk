@@ -114,7 +114,6 @@ async fn create_sends_the_body_and_decodes_the_task() {
                 .stagger_ms(30000),
         )
         .enabled(true)
-        .submit(true)
         .user_id("customer_123")
         .metadata(Metadata::new().insert("team", "support"))
         .await
@@ -137,7 +136,6 @@ async fn create_sends_the_body_and_decodes_the_task() {
                 }
             },
             "enabled": true,
-            "submit": true,
             "userId": "customer_123",
             "metadata": { "team": "support" }
         })
@@ -166,7 +164,6 @@ async fn create_sends_the_body_and_decodes_the_task() {
     assert_eq!(created_task.deleted_at, None);
     assert_eq!(created_task.created_at.to_string(), "2026-07-10T10:00:00Z");
     assert_eq!(created_task.updated_at.to_string(), "2026-07-10T10:00:00Z");
-    assert!(created_task.latest_run.is_none());
     assert_eq!(created.run_id, None);
 }
 
@@ -277,7 +274,6 @@ async fn get_ignores_unknown_response_fields() {
         fetched.prompt,
         "Summarize yesterday's open support cases and flag any that are overdue."
     );
-    assert!(fetched.latest_run.is_none());
 }
 
 #[tokio::test]
@@ -302,7 +298,7 @@ async fn unknown_enums_decode_as_unrecognized() {
 
     let fetched = client.tasks().get("tk_6Wq3Hn8ZpL2vRt5C").await.unwrap();
     match fetched.schedule {
-        Some(Schedule::Unrecognized(kind)) => assert_eq!(kind.as_str(), "weekly"),
+        Some(Schedule::Unrecognized(schedule)) => assert_eq!(schedule.kind(), "weekly"),
         other => panic!("expected an unrecognized schedule kind, got {other:?}"),
     }
 
@@ -316,6 +312,37 @@ async fn unknown_enums_decode_as_unrecognized() {
         other => panic!("expected an unrecognized status, got {other:?}"),
     }
     assert_eq!(run.status.as_str(), "paused");
+}
+
+#[tokio::test]
+async fn update_sends_back_an_unknown_schedule_unchanged() {
+    let (server, client) = mock().await;
+    let mut body = task("tk_6Wq3Hn8ZpL2vRt5C");
+    body["schedule"] = json!({ "kind": "weekly", "config": { "day": "mon" }, "extra": 1 });
+    Mock::given(method("GET"))
+        .and(path("/v1/tasks/tk_6Wq3Hn8ZpL2vRt5C"))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+    Mock::given(method("PATCH"))
+        .and(path("/v1/tasks/tk_6Wq3Hn8ZpL2vRt5C"))
+        .respond_with(json(200, task("tk_6Wq3Hn8ZpL2vRt5C")))
+        .mount(&server)
+        .await;
+
+    let fetched = client.tasks().get("tk_6Wq3Hn8ZpL2vRt5C").await.unwrap();
+    client
+        .tasks()
+        .update("tk_6Wq3Hn8ZpL2vRt5C")
+        .schedule(fetched.schedule.unwrap())
+        .await
+        .unwrap();
+
+    let sent = requests(&server).await;
+    assert_eq!(
+        json_body(&sent[1]),
+        json!({ "schedule": { "kind": "weekly", "config": { "day": "mon" }, "extra": 1 } })
+    );
 }
 
 #[tokio::test]
@@ -714,6 +741,31 @@ fn schedule_decodes_each_kind() {
         }))
         .unwrap(),
         Schedule::cron("0 9 * * 1-5").timezone("Europe/London")
+    );
+}
+
+#[test]
+fn unrecognized_schedule_round_trips() {
+    let raw = json!({ "kind": "weekly", "config": { "day": "mon" }, "extra": 1 });
+    let schedule = serde_json::from_value::<Schedule>(raw.clone()).unwrap();
+
+    let Schedule::Unrecognized(inner) = &schedule else {
+        panic!("expected an unrecognized schedule, got {schedule:?}");
+    };
+    assert_eq!(inner.kind(), "weekly");
+    assert_eq!(inner.as_json()["extra"], json!(1));
+    assert_eq!(serde_json::to_value(&schedule).unwrap(), raw);
+}
+
+#[test]
+fn schedule_rejects_malformed_known_kinds() {
+    assert!(serde_json::from_value::<Schedule>(json!({ "kind": "once" })).is_err());
+    assert!(serde_json::from_value::<Schedule>(json!({ "kind": "cron", "config": {} })).is_err());
+    assert!(
+        serde_json::from_value::<Schedule>(
+            json!({ "kind": "interval", "config": { "everyMs": "x" } })
+        )
+        .is_err()
     );
 }
 

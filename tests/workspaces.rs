@@ -1,5 +1,6 @@
 mod support;
 
+use blazing_agents::Error;
 use blazing_agents::ids::{TenantId, WorkspaceId};
 use blazing_agents::types::Metadata;
 use blazing_agents::workspaces::{NetworkPolicy, WorkspaceTier};
@@ -164,9 +165,64 @@ async fn unknown_modes_decode_as_unrecognized() {
     }
     assert_eq!(fetched.tier.as_str(), "ultra");
     match &fetched.network_policy {
-        NetworkPolicy::Unrecognized(mode) => assert_eq!(mode.as_str(), "vpn"),
+        NetworkPolicy::Unrecognized(policy) => assert_eq!(policy.mode(), "vpn"),
         other => panic!("expected an unrecognized mode, got {other:?}"),
     }
+}
+
+#[tokio::test]
+async fn get_rejects_a_malformed_allowlist() {
+    let (server, client) = mock().await;
+    let mut body = workspace("ws_3Vb8Ny6HpU1cGf4M");
+    body["networkPolicy"] = json!({ "mode": "allowlist" });
+    Mock::given(method("GET"))
+        .and(path("/v1/workspaces/ws_3Vb8Ny6HpU1cGf4M"))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+
+    let error = client
+        .workspaces()
+        .get("ws_3Vb8Ny6HpU1cGf4M")
+        .await
+        .unwrap_err();
+
+    assert!(matches!(error, Error::Decode { .. }), "got {error:?}");
+}
+
+#[tokio::test]
+async fn update_sends_back_an_unknown_policy_unchanged() {
+    let (server, client) = mock().await;
+    let mut body = workspace("ws_3Vb8Ny6HpU1cGf4M");
+    body["networkPolicy"] = json!({ "mode": "vpn", "gateway": "10.0.0.1" });
+    Mock::given(method("GET"))
+        .and(path("/v1/workspaces/ws_3Vb8Ny6HpU1cGf4M"))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path("/v1/workspaces/ws_3Vb8Ny6HpU1cGf4M"))
+        .respond_with(json(200, workspace("ws_3Vb8Ny6HpU1cGf4M")))
+        .mount(&server)
+        .await;
+
+    let fetched = client
+        .workspaces()
+        .get("ws_3Vb8Ny6HpU1cGf4M")
+        .await
+        .unwrap();
+    client
+        .workspaces()
+        .update("ws_3Vb8Ny6HpU1cGf4M")
+        .network_policy(fetched.network_policy)
+        .await
+        .unwrap();
+
+    let sent = requests(&server).await;
+    assert_eq!(
+        json_body(&sent[1]),
+        json!({ "networkPolicy": { "mode": "vpn", "gateway": "10.0.0.1" } })
+    );
 }
 
 #[tokio::test]
@@ -302,5 +358,29 @@ fn network_policy_decodes_each_mode() {
     assert_eq!(
         serde_json::from_value::<NetworkPolicy>(json!({ "mode": "offline" })).unwrap(),
         NetworkPolicy::Offline
+    );
+}
+
+#[test]
+fn unrecognized_network_policy_round_trips() {
+    let raw = json!({ "mode": "vpn", "gateway": "10.0.0.1" });
+    let policy = serde_json::from_value::<NetworkPolicy>(raw.clone()).unwrap();
+
+    let NetworkPolicy::Unrecognized(inner) = &policy else {
+        panic!("expected an unrecognized policy, got {policy:?}");
+    };
+    assert_eq!(inner.mode(), "vpn");
+    assert_eq!(inner.as_json()["gateway"], json!("10.0.0.1"));
+    assert_eq!(serde_json::to_value(&policy).unwrap(), raw);
+}
+
+#[test]
+fn network_policy_rejects_a_malformed_allowlist() {
+    assert!(serde_json::from_value::<NetworkPolicy>(json!({ "mode": "allowlist" })).is_err());
+    assert!(
+        serde_json::from_value::<NetworkPolicy>(
+            json!({ "mode": "allowlist", "allowedHosts": "registry.npmjs.org" })
+        )
+        .is_err()
     );
 }

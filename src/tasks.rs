@@ -14,7 +14,7 @@ use crate::op::Op;
 use crate::pagination::{Cursor, Page, Paginated};
 use crate::patch::Patch;
 use crate::transcript::UiMessage;
-use crate::types::{Metadata, Timestamp, Unrecognized};
+use crate::types::{Metadata, Timestamp};
 
 /// Task operations. Returned by [`Client::tasks`].
 #[derive(Clone, Copy, Debug)]
@@ -31,7 +31,8 @@ impl<S: Scope> Client<S> {
 
 impl<S: Scope> Tasks<'_, S> {
     /// Lists tasks, most recently updated first. Each task's
-    /// [`latest_run`](Task::latest_run) carries its most recent run's status.
+    /// [`latest_run`](TaskListItem::latest_run) carries its most recent run's
+    /// status.
     pub fn list(&self) -> Call<ListTasks> {
         Call::new(self.client, Op::ListTasks, ListTasks::default())
     }
@@ -221,7 +222,7 @@ pub struct ListTasks {
     #[serde(skip_serializing_if = "Option::is_none")]
     limit: Option<u8>,
 }
-impl_request!(ListTasks => Page<Task>; encode = query; decode = json; paginate);
+impl_request!(ListTasks => Page<TaskListItem>; encode = query; decode = json; paginate);
 
 impl Call<ListTasks> {
     /// Only tasks for this agent.
@@ -271,7 +272,9 @@ impl Call<CreateTask> {
         self.map(|request| request.idempotency_key = Some(idempotency_key.into()))
     }
 
-    /// When the task runs by itself. Omit it for an on-demand task.
+    /// When the task runs by itself. Omit it for an on-demand task: on create
+    /// the API treats a missing `schedule` and `null` the same, which is why
+    /// there is no `clear_schedule` here.
     pub fn schedule(self, schedule: Schedule) -> Self {
         self.map(|request| request.schedule = Some(schedule))
     }
@@ -511,8 +514,9 @@ pub enum Schedule {
         /// own fixed delay within it.
         stagger_ms: Option<u64>,
     },
-    /// A kind this version of the SDK does not know. Holds the raw kind string.
-    Unrecognized(Unrecognized),
+    /// A kind this version of the SDK does not know, kept exactly as the
+    /// server sent it.
+    Unrecognized(UnrecognizedSchedule),
 }
 
 impl Schedule {
@@ -565,13 +569,34 @@ impl Schedule {
     }
 }
 
-/// The `kind`-tagged wire shape of [`Schedule`]. Unknown kinds decode instead
-/// of failing, `config` is per kind, and fields it does not define are
-/// ignored.
-#[derive(Serialize, Deserialize)]
+/// A schedule kind this version of the SDK does not know, kept exactly as the
+/// server sent it so sending it back — for example in [`Tasks::update`] —
+/// round-trips it unchanged.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UnrecognizedSchedule {
+    raw: serde_json::Map<String, serde_json::Value>,
+}
+
+impl UnrecognizedSchedule {
+    /// The `kind` string the server sent.
+    pub fn kind(&self) -> &str {
+        self.raw
+            .get("kind")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default()
+    }
+
+    /// The whole schedule object as received.
+    pub fn as_json(&self) -> &serde_json::Map<String, serde_json::Value> {
+        &self.raw
+    }
+}
+
+/// The `kind`-tagged wire shape of a known [`Schedule`].
+#[derive(Serialize)]
 struct ScheduleWire {
     kind: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     config: Option<serde_json::Value>,
 }
 
@@ -630,36 +655,44 @@ impl Serialize for Schedule {
                     .map_err(serde::ser::Error::custom)?,
                 ),
             },
-            Self::Unrecognized(other) => ScheduleWire {
-                kind: other.as_str().to_owned(),
-                config: None,
-            },
+            Self::Unrecognized(other) => return other.raw.serialize(serializer),
         };
         wire.serialize(serializer)
     }
 }
 
+/// The `config` of a known schedule kind, required on the wire.
+fn schedule_config<E: serde::de::Error>(
+    raw: &serde_json::Map<String, serde_json::Value>,
+) -> Result<serde_json::Value, E> {
+    raw.get("config")
+        .cloned()
+        .ok_or_else(|| E::missing_field("config"))
+}
+
 impl<'de> Deserialize<'de> for Schedule {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let wire = ScheduleWire::deserialize(deserializer)?;
-        let config = wire.config.unwrap_or_default();
-        match wire.kind.as_str() {
-            "once" => serde_json::from_value::<OnceConfig>(config)
+        let raw = serde_json::Map::<String, serde_json::Value>::deserialize(deserializer)?;
+        let Some(kind) = raw.get("kind").and_then(serde_json::Value::as_str) else {
+            return Err(serde::de::Error::custom("\"kind\" must be a string"));
+        };
+        match kind {
+            "once" => serde_json::from_value::<OnceConfig>(schedule_config(&raw)?)
                 .map(|config| Self::Once { at: config.at })
                 .map_err(serde::de::Error::custom),
-            "interval" => serde_json::from_value::<IntervalConfig>(config)
+            "interval" => serde_json::from_value::<IntervalConfig>(schedule_config(&raw)?)
                 .map(|config| Self::Interval {
                     every_ms: config.every_ms,
                 })
                 .map_err(serde::de::Error::custom),
-            "cron" => serde_json::from_value::<CronConfig>(config)
+            "cron" => serde_json::from_value::<CronConfig>(schedule_config(&raw)?)
                 .map(|config| Self::Cron {
                     expression: config.expression,
                     timezone: config.timezone,
                     stagger_ms: config.stagger_ms,
                 })
                 .map_err(serde::de::Error::custom),
-            other => Ok(Self::Unrecognized(Unrecognized::new(other))),
+            _ => Ok(Self::Unrecognized(UnrecognizedSchedule { raw })),
         }
     }
 }
@@ -701,9 +734,47 @@ pub struct Task {
     /// When the schedule next starts a run, or `None` when nothing is
     /// scheduled.
     pub next_fire_at: Option<Timestamp>,
-    /// The status of the most recent run. Only list results carry it: it is
-    /// `None` from get, create and update, and for a task that never ran.
-    #[serde(default)]
+}
+
+/// A task in a [`Tasks::list`] page: the task plus the status of its most
+/// recent run.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
+#[serde(rename_all = "camelCase")]
+pub struct TaskListItem {
+    /// The task's ID.
+    pub id: TaskId,
+    /// The tenant that owns the task.
+    pub tenant_id: TenantId,
+    /// The agent that runs the task.
+    pub agent_id: AgentId,
+    /// The display name.
+    pub name: String,
+    /// The prompt the agent receives on every run.
+    pub prompt: String,
+    /// When the task runs by itself, or `None` for on demand only.
+    pub schedule: Option<Schedule>,
+    /// Whether the schedule fires. A disabled task can still be started on
+    /// demand.
+    pub enabled: bool,
+    /// The run in progress, if any.
+    pub active_run_id: Option<TaskRunId>,
+    /// The most recent run, if any.
+    pub latest_run_id: Option<TaskRunId>,
+    /// The end user, or an empty string for a tenant-level task.
+    pub user_id: String,
+    /// Your own data.
+    pub metadata: Metadata,
+    /// When the task was deleted, if it was.
+    pub deleted_at: Option<Timestamp>,
+    /// When the task was created.
+    pub created_at: Timestamp,
+    /// When the task last changed.
+    pub updated_at: Timestamp,
+    /// When the schedule next starts a run, or `None` when nothing is
+    /// scheduled.
+    pub next_fire_at: Option<Timestamp>,
+    /// The most recent run, or `None` if the task never ran.
     pub latest_run: Option<LatestRun>,
 }
 

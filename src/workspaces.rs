@@ -11,7 +11,7 @@ use crate::ids::{TenantId, WorkspaceId};
 use crate::op::Op;
 use crate::pagination::{Cursor, Page};
 use crate::patch::Patch;
-use crate::types::{Metadata, Timestamp, Unrecognized};
+use crate::types::{Metadata, Timestamp};
 
 /// Workspace operations. Returned by [`Client::workspaces`].
 #[derive(Clone, Copy, Debug)]
@@ -241,8 +241,9 @@ pub enum NetworkPolicy {
     },
     /// No host is reachable (`{"mode": "offline"}`).
     Offline,
-    /// A mode this version of the SDK does not know. Holds the raw mode string.
-    Unrecognized(Unrecognized),
+    /// A mode this version of the SDK does not know, kept exactly as the
+    /// server sent it.
+    Unrecognized(UnrecognizedNetworkPolicy),
 }
 
 impl NetworkPolicy {
@@ -255,13 +256,35 @@ impl NetworkPolicy {
     }
 }
 
-/// The `mode`-tagged wire shape of [`NetworkPolicy`]. Unknown modes decode
-/// instead of failing, and fields a mode does not define are ignored.
-#[derive(Serialize, Deserialize)]
+/// A network policy mode this version of the SDK does not know, kept exactly
+/// as the server sent it so sending it back — for example in
+/// [`Workspaces::update`] — round-trips it unchanged.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UnrecognizedNetworkPolicy {
+    raw: serde_json::Map<String, serde_json::Value>,
+}
+
+impl UnrecognizedNetworkPolicy {
+    /// The `mode` string the server sent.
+    pub fn mode(&self) -> &str {
+        self.raw
+            .get("mode")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default()
+    }
+
+    /// The whole network policy object as received.
+    pub fn as_json(&self) -> &serde_json::Map<String, serde_json::Value> {
+        &self.raw
+    }
+}
+
+/// The `mode`-tagged wire shape of a known [`NetworkPolicy`].
+#[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct NetworkPolicyWire {
     mode: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     allowed_hosts: Option<Vec<String>>,
 }
 
@@ -271,7 +294,7 @@ impl Serialize for NetworkPolicy {
             Self::Unrestricted => ("unrestricted", None),
             Self::Allowlist { allowed_hosts } => ("allowlist", Some(allowed_hosts.clone())),
             Self::Offline => ("offline", None),
-            Self::Unrecognized(other) => (other.as_str(), None),
+            Self::Unrecognized(other) => return other.raw.serialize(serializer),
         };
         NetworkPolicyWire {
             mode: mode.to_owned(),
@@ -283,15 +306,24 @@ impl Serialize for NetworkPolicy {
 
 impl<'de> Deserialize<'de> for NetworkPolicy {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let wire = NetworkPolicyWire::deserialize(deserializer)?;
-        Ok(match wire.mode.as_str() {
-            "unrestricted" => Self::Unrestricted,
-            "allowlist" => Self::Allowlist {
-                allowed_hosts: wire.allowed_hosts.unwrap_or_default(),
-            },
-            "offline" => Self::Offline,
-            other => Self::Unrecognized(Unrecognized::new(other)),
-        })
+        let raw = serde_json::Map::<String, serde_json::Value>::deserialize(deserializer)?;
+        let Some(mode) = raw.get("mode").and_then(serde_json::Value::as_str) else {
+            return Err(serde::de::Error::custom("\"mode\" must be a string"));
+        };
+        match mode {
+            "unrestricted" => Ok(Self::Unrestricted),
+            "offline" => Ok(Self::Offline),
+            "allowlist" => {
+                let hosts = raw
+                    .get("allowedHosts")
+                    .ok_or_else(|| serde::de::Error::missing_field("allowedHosts"))?
+                    .clone();
+                serde_json::from_value::<Vec<String>>(hosts)
+                    .map(|allowed_hosts| Self::Allowlist { allowed_hosts })
+                    .map_err(serde::de::Error::custom)
+            }
+            _ => Ok(Self::Unrecognized(UnrecognizedNetworkPolicy { raw })),
+        }
     }
 }
 
