@@ -422,8 +422,8 @@ enum BodyState {
     Reading(Body),
     /// The body ended and every byte was decoded.
     Complete,
-    /// A read error or a truncated character was already yielded.
-    Failed,
+    /// An error of this kind was already yielded.
+    Failed(StreamErrorKind),
 }
 
 /// A response body decoded as UTF-8 text deltas, with every delta kept for
@@ -493,7 +493,7 @@ impl TextDeltas {
     }
 
     fn fail(&mut self, kind: StreamErrorKind, source: Option<reqwest::Error>) -> crate::Error {
-        self.state = BodyState::Failed;
+        self.state = BodyState::Failed(kind);
         StreamError {
             kind,
             meta: self.meta.clone(),
@@ -537,9 +537,8 @@ impl TextDeltas {
         }
         match self.state {
             BodyState::Complete => Ok(self.text),
-            BodyState::Failed | BodyState::Reading(_) => {
-                Err(self.fail(StreamErrorKind::Incomplete, None))
-            }
+            BodyState::Failed(kind) => Err(self.fail(kind, None)),
+            BodyState::Reading(_) => Err(self.fail(StreamErrorKind::Incomplete, None)),
         }
     }
 }
@@ -714,6 +713,22 @@ mod tests {
         let mut deltas = deltas(vec![Ok(Bytes::from_static(b"a\xffb"))]);
 
         assert_eq!(deltas.next().await.unwrap().unwrap(), "a\u{FFFD}b");
+    }
+
+    #[tokio::test]
+    async fn a_read_error_is_reported_again_by_finish() {
+        let failing = reqwest::get("http://[::1]:1/").await.unwrap_err();
+        let mut deltas = deltas(vec![Ok(Bytes::from_static(b"partial")), Err(failing)]);
+
+        assert_eq!(deltas.next().await.unwrap().unwrap(), "partial");
+        let Err(Error::Stream(first)) = deltas.next().await.unwrap() else {
+            panic!("expected a read error");
+        };
+        assert_eq!(first.kind(), StreamErrorKind::Read);
+        let Err(Error::Stream(again)) = deltas.finish().await else {
+            panic!("expected the read error again");
+        };
+        assert_eq!(again.kind(), StreamErrorKind::Read);
     }
 
     #[tokio::test]

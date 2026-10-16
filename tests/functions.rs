@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
+use blazing_agents::error::StreamErrorKind;
 use blazing_agents::functions::{Functions, FunctionsBuilder, FunctionsError};
 use blazing_agents::messages::UserMessage;
 use futures_util::TryStreamExt;
@@ -20,25 +21,21 @@ fn call_path(action: &str) -> String {
     format!("/v1/agents/ag_1/sessions/{SESSION}/function-calls/{CALL}/{action}")
 }
 
-fn call_event(name: &str, input: serde_json::Value) -> String {
+fn call_event(name: &str, input: serde_json::Value, deadline_at: &str) -> String {
     json!({
         "type": "data-ba-function-call",
-        "data": { "id": CALL, "name": name, "input": input, "deadlineAt": "2099-01-01T00:00:00Z" },
+        "data": { "id": CALL, "name": name, "input": input, "deadlineAt": deadline_at },
         "transient": true
     })
     .to_string()
 }
 
-/// A new-session chat response whose body is `start`, one function call, `finish`.
-fn chat_with_call(name: &str, input: serde_json::Value) -> ResponseTemplate {
-    let body = [
-        r#"{"type":"start"}"#.to_owned(),
-        call_event(name, input),
-        r#"{"type":"finish"}"#.to_owned(),
-    ]
-    .iter()
-    .map(|event| format!("data: {event}\n\n"))
-    .collect::<String>();
+/// A new-session chat response whose body is `start`, `call`, `finish`.
+fn chat_with(call: &str) -> ResponseTemplate {
+    let body = [r#"{"type":"start"}"#, call, r#"{"type":"finish"}"#]
+        .iter()
+        .map(|event| format!("data: {event}\n\n"))
+        .collect::<String>();
     ResponseTemplate::new(201)
         .set_body_raw(body.into_bytes(), "text/event-stream")
         .insert_header("x-ba-turn-id", TURN)
@@ -48,12 +45,42 @@ fn chat_with_call(name: &str, input: serde_json::Value) -> ResponseTemplate {
         )
 }
 
-async fn mount_chat(server: &MockServer, name: &str, input: serde_json::Value) {
+async fn mount_chat_with(server: &MockServer, call: &str) {
     Mock::given(method("POST"))
         .and(path("/v1/agents/ag_1/sessions"))
-        .respond_with(chat_with_call(name, input))
+        .respond_with(chat_with(call))
         .mount(server)
         .await;
+}
+
+async fn mount_chat(server: &MockServer, name: &str, input: serde_json::Value) {
+    mount_chat_with(server, &call_event(name, input, "2099-01-01T00:00:00Z")).await;
+}
+
+/// An RFC 3339 instant `from_now` in the future.
+fn deadline_in(from_now: Duration) -> String {
+    let unix = (std::time::SystemTime::now() + from_now)
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap();
+    let seconds = unix.as_secs();
+    let (days, rest) = (seconds / 86_400, seconds % 86_400);
+    // Civil date from days since the epoch (Howard Hinnant's algorithm).
+    let z = days as i64 + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z",
+        rest / 3_600,
+        rest % 3_600 / 60,
+        rest % 60,
+        unix.subsec_millis()
+    )
 }
 
 async fn mount_claim(server: &MockServer) {
@@ -278,27 +305,182 @@ async fn a_claim_is_retried_after_a_503_and_the_result_is_then_posted() {
 }
 
 #[tokio::test]
-async fn retry_after_sets_the_delay_of_a_429() {
+async fn retry_after_sets_the_delay_of_a_429_with_a_250ms_floor() {
+    for (retry_after, at_least, at_most) in [
+        ("1", Duration::from_secs(1), Duration::from_secs(2)),
+        ("0", Duration::from_millis(250), Duration::from_secs(1)),
+    ] {
+        let server = MockServer::start().await;
+        mount_chat(&server, "lookup_order", json!({})).await;
+        Mock::given(method("POST"))
+            .and(path(call_path("claim")))
+            .respond_with(
+                api_error(429, "rate_limited", "Slow down.")
+                    .insert_header("retry-after", retry_after),
+            )
+            .up_to_n_times(1)
+            .mount(&server)
+            .await;
+        mount_claim(&server).await;
+        mount_result(&server).await;
+        let started = tokio::time::Instant::now();
+
+        result_outcome(&server, echo_functions()).await;
+
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed >= at_least && elapsed < at_most,
+            "Retry-After: {retry_after} waited {elapsed:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn claims_stop_retrying_at_the_deadline() {
     let server = MockServer::start().await;
-    mount_chat(&server, "lookup_order", json!({})).await;
+    mount_chat_with(
+        &server,
+        &call_event(
+            "lookup_order",
+            json!({}),
+            &deadline_in(Duration::from_secs(1)),
+        ),
+    )
+    .await;
     Mock::given(method("POST"))
         .and(path(call_path("claim")))
-        .respond_with(
-            api_error(429, "rate_limited", "Slow down.").insert_header("retry-after", "0"),
-        )
-        .up_to_n_times(1)
+        .respond_with(api_error(503, "unavailable", "Try again."))
         .mount(&server)
         .await;
-    mount_claim(&server).await;
-    mount_result(&server).await;
-    let started = tokio::time::Instant::now();
+    let (_, client) = mock_at(&server).await;
 
-    result_outcome(&server, echo_functions()).await;
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(echo_functions())
+        .await
+        .unwrap();
+    while stream.try_next().await.unwrap().is_some() {}
+    tokio::time::sleep(Duration::from_millis(1_500)).await;
+    let claims = requests(&server).await.len() - 1;
+    tokio::time::sleep(Duration::from_millis(500)).await;
 
     assert!(
-        started.elapsed() < Duration::from_millis(200),
-        "Retry-After: 0 must win over the 250 ms backoff"
+        (2..=4).contains(&claims),
+        "{claims} claims within a 1 s budget"
     );
+    assert_eq!(
+        requests(&server).await.len() - 1,
+        claims,
+        "no claim after the deadline"
+    );
+    assert!(
+        stream.try_next().await.unwrap().is_none(),
+        "an expired claim is not an error"
+    );
+}
+
+#[tokio::test]
+async fn a_handler_still_running_at_the_deadline_is_cancelled_and_posts_nothing() {
+    let server = MockServer::start().await;
+    mount_chat_with(
+        &server,
+        &call_event(
+            "lookup_order",
+            json!({}),
+            &deadline_in(Duration::from_secs(1)),
+        ),
+    )
+    .await;
+    mount_claim(&server).await;
+    mount_result(&server).await;
+    let (cancelled_tx, cancelled_rx) = tokio::sync::oneshot::channel::<bool>();
+    let cancelled_tx = std::sync::Mutex::new(Some(cancelled_tx));
+    let functions = Functions::builder()
+        .function_json(
+            "lookup_order",
+            "d",
+            json!({ "type": "object" }),
+            move |_, context| {
+                let report = cancelled_tx.lock().unwrap().take();
+                async move {
+                    let _guard = ReportCancelled(report, context.clone());
+                    std::future::pending::<()>().await;
+                    Ok::<_, std::convert::Infallible>(json!(null))
+                }
+            },
+        )
+        .build()
+        .unwrap();
+    let (_, client) = mock_at(&server).await;
+
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(functions)
+        .await
+        .unwrap();
+    while stream.try_next().await.unwrap().is_some() {}
+    let saw_cancel = tokio::time::timeout(Duration::from_secs(5), cancelled_rx)
+        .await
+        .expect("the handler was dropped at the deadline")
+        .unwrap();
+
+    assert!(
+        saw_cancel,
+        "the context was cancelled before the handler was dropped"
+    );
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert!(
+        requests(&server)
+            .await
+            .iter()
+            .all(|request| request.url.path() != call_path("result")),
+        "no result is posted after the deadline"
+    );
+    assert!(stream.try_next().await.unwrap().is_none());
+}
+
+/// Reports, when dropped, whether the handler's context was cancelled by then.
+struct ReportCancelled(
+    Option<tokio::sync::oneshot::Sender<bool>>,
+    blazing_agents::functions::FunctionContext,
+);
+
+impl Drop for ReportCancelled {
+    fn drop(&mut self) {
+        if let Some(sender) = self.0.take() {
+            let _ = sender.send(self.1.is_cancelled());
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_malformed_private_event_fails_the_stream() {
+    for frame in [
+        r#"{"type":"data-ba-function-call","data":{"id":"fc_0123456789abcdef","name":"lookup_order","in"#,
+        r#"{"type":"data-ba-function-call","data":{"id":"nope","name":"lookup_order","input":{},"deadlineAt":"2099-01-01T00:00:00Z"},"transient":true}"#,
+        r#"{"type":"data-ba-function-call","data":{"id":"fc_0123456789abcdef","name":"web_search","input":{},"deadlineAt":"2099-01-01T00:00:00Z"},"transient":true}"#,
+    ] {
+        let server = MockServer::start().await;
+        mount_chat_with(&server, frame).await;
+        let (_, client) = mock_at(&server).await;
+
+        let mut stream = client
+            .chat("ag_1", UserMessage::text("hi"))
+            .functions(echo_functions())
+            .await
+            .unwrap();
+        stream.try_next().await.unwrap().unwrap();
+        let error = stream.try_next().await.unwrap_err();
+
+        let blazing_agents::Error::Stream(error) = error else {
+            panic!("expected a stream error for {frame}, got {error:?}");
+        };
+        assert_eq!(
+            error.kind(),
+            StreamErrorKind::MalformedFunctionCall,
+            "{frame}"
+        );
+    }
 }
 
 #[tokio::test]
@@ -487,6 +669,24 @@ async fn typed_handlers_reject_invalid_input_without_running() {
         outcome,
         json!({ "kind": "error", "message": "Invalid function input." })
     );
+
+    server.reset().await;
+    mount_chat(&server, "lookup_order", json!({ "order_id": "o-1" })).await;
+    mount_claim(&server).await;
+    mount_result(&server).await;
+    let tuple_keys = Functions::builder()
+        .function::<Lookup, _, _, _, std::convert::Infallible>("lookup_order", "d", |_, _| async {
+            Ok(std::collections::HashMap::from([((1, 2), "pair")]))
+        })
+        .build()
+        .unwrap();
+
+    let outcome = result_outcome(&server, tuple_keys).await;
+
+    assert_eq!(
+        outcome,
+        json!({ "kind": "error", "message": "Function returned an invalid result." })
+    );
 }
 
 #[tokio::test]
@@ -496,17 +696,9 @@ async fn dropping_the_stream_cancels_running_handlers() {
     mount_claim(&server).await;
     mount_result(&server).await;
     let (started_tx, started_rx) = tokio::sync::oneshot::channel::<()>();
-    let (dropped_tx, dropped_rx) = tokio::sync::oneshot::channel::<()>();
+    let (dropped_tx, dropped_rx) = tokio::sync::oneshot::channel::<bool>();
     let started_tx = std::sync::Mutex::new(Some(started_tx));
     let dropped_tx = std::sync::Mutex::new(Some(dropped_tx));
-    struct OnDrop(Option<tokio::sync::oneshot::Sender<()>>);
-    impl Drop for OnDrop {
-        fn drop(&mut self) {
-            if let Some(sender) = self.0.take() {
-                let _ = sender.send(());
-            }
-        }
-    }
     let functions = Functions::builder()
         .function_json(
             "lookup_order",
@@ -516,7 +708,7 @@ async fn dropping_the_stream_cancels_running_handlers() {
                 let started = started_tx.lock().unwrap().take();
                 let dropped = dropped_tx.lock().unwrap().take();
                 async move {
-                    let _guard = OnDrop(dropped);
+                    let _guard = ReportCancelled(dropped, context.clone());
                     if let Some(started) = started {
                         let _ = started.send(());
                     }
@@ -544,10 +736,14 @@ async fn dropping_the_stream_cancels_running_handlers() {
         .unwrap();
     drop(stream);
 
-    tokio::time::timeout(Duration::from_secs(5), dropped_rx)
+    let saw_cancel = tokio::time::timeout(Duration::from_secs(5), dropped_rx)
         .await
         .expect("the handler was dropped after the stream")
         .unwrap();
+    assert!(
+        saw_cancel,
+        "the context was cancelled before the handler was dropped"
+    );
     tokio::time::sleep(Duration::from_millis(50)).await;
     assert!(
         requests(&server)

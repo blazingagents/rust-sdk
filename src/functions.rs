@@ -8,12 +8,13 @@ use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 use std::future::Future;
 use std::panic::AssertUnwindSafe;
-use std::pin::Pin;
+use std::pin::{Pin, pin};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::{Duration, SystemTime};
 
 use futures_util::FutureExt;
+use futures_util::future::{Either, select};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize, Serializer};
 use tokio::task::JoinSet;
@@ -171,7 +172,7 @@ impl FunctionsBuilder {
                         let output = handler(input, context);
                         Box::pin(async move {
                             let output = output.await.map_err(|_| HandlerFailure::Execution)?;
-                            serde_json::to_value(output).map_err(|_| HandlerFailure::InvalidResult)
+                            plain_json(&output)
                         })
                     }
                 }
@@ -260,6 +261,14 @@ impl FunctionsBuilder {
         }
         Ok(functions)
     }
+}
+
+/// `output` as JSON text parsed back into a value, so only what can be sent
+/// on the wire is accepted. Non-finite floats still become `null`: serde_json
+/// writes them that way and offers no strict mode.
+fn plain_json(output: &impl Serialize) -> std::result::Result<serde_json::Value, HandlerFailure> {
+    let bytes = serde_json::to_vec(output).map_err(|_| HandlerFailure::InvalidResult)?;
+    serde_json::from_slice(&bytes).map_err(|_| HandlerFailure::InvalidResult)
 }
 
 /// `^[A-Za-z][A-Za-z0-9_-]{0,63}$`
@@ -454,23 +463,21 @@ impl Runner {
         if !data.contains(EVENT_TYPE) {
             return Ok(false);
         }
-        let value: serde_json::Value = match serde_json::from_str(&data) {
-            Ok(value) => value,
-            Err(_) => return Ok(false),
+        let malformed = || {
+            Error::from(StreamError {
+                kind: StreamErrorKind::MalformedFunctionCall,
+                meta: self.meta.clone(),
+                source: None,
+            })
         };
+        let value: serde_json::Value = serde_json::from_str(&data).map_err(|_| malformed())?;
         if value.get("type").and_then(serde_json::Value::as_str) != Some(EVENT_TYPE) {
             return Ok(false);
         }
         let event = serde_json::from_value::<FunctionCallEvent>(value)
             .ok()
             .filter(|event| event.transient && event.data.is_well_formed())
-            .ok_or_else(|| {
-                Error::from(StreamError {
-                    kind: StreamErrorKind::MalformedFunctionCall,
-                    meta: self.meta.clone(),
-                    source: None,
-                })
-            })?;
+            .ok_or_else(malformed)?;
         if !self.seen.insert(event.data.id.clone()) {
             return Ok(true);
         }
@@ -511,7 +518,7 @@ impl Drop for Runner {
 
 /// The joined `data:` lines of one SSE event.
 fn event_data(frame: &[u8]) -> Option<String> {
-    let text = std::str::from_utf8(frame).ok()?;
+    let text = String::from_utf8_lossy(frame);
     let lines: Vec<&str> = text
         .lines()
         .filter_map(|line| line.strip_prefix("data:"))
@@ -546,7 +553,7 @@ fn retry_delay(error: &Error, attempt: u32) -> Option<Duration> {
                 return None;
             }
             if let Some(retry_after) = api.retry_after() {
-                return Some(retry_after);
+                return Some(retry_after.max(FIRST_RETRY_DELAY));
             }
         }
         Error::Connection(_) | Error::Timeout | Error::Stream(_) => {}
@@ -645,9 +652,13 @@ async fn run_call(
                 .duration_since(SystemTime::now())
                 .unwrap_or_default();
             let run = AssertUnwindSafe(handler.call(input, context)).catch_unwind();
-            let Ok(finished) = tokio::time::timeout(remaining, run).await else {
-                cancel.cancel();
-                return Ok(());
+            let finished = match select(pin!(run), pin!(tokio::time::sleep(remaining))).await {
+                Either::Left((finished, _)) => finished,
+                Either::Right(_) => {
+                    // The handler is dropped when `run` goes out of scope, after the cancel.
+                    cancel.cancel();
+                    return Ok(());
+                }
             };
             match finished.unwrap_or(Err(HandlerFailure::Execution)) {
                 Ok(value) => output_outcome(&name, &id, value),

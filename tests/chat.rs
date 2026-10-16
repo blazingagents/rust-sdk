@@ -276,3 +276,25 @@ async fn a_body_ending_inside_an_event_is_incomplete() {
     assert_eq!(error.kind(), StreamErrorKind::Incomplete);
     assert!(stream.try_next().await.unwrap().is_none());
 }
+
+#[tokio::test]
+async fn trailing_whitespace_after_the_last_event_ends_the_stream_normally() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .respond_with(new_session(&[]).set_body_raw(
+            b"data: {\"type\":\"start\"}\n\n\r\n \n".to_vec(),
+            "text/event-stream",
+        ))
+        .mount(&server)
+        .await;
+
+    let frames: Vec<_> = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .await
+        .unwrap()
+        .try_collect()
+        .await
+        .unwrap();
+
+    assert_eq!(frames, ["data: {\"type\":\"start\"}\n\n".as_bytes()]);
+}

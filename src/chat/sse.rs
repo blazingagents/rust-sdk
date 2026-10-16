@@ -1,6 +1,7 @@
 //! Splits a `text/event-stream` body into complete events, keeping each event's
 //! exact bytes including its blank-line delimiter. Bytes after the last
-//! delimiter are an event the server never finished, and fail the stream.
+//! delimiter are an event the server never finished, and fail the stream,
+//! unless they are only whitespace.
 
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
@@ -76,7 +77,8 @@ impl Stream for Frames {
                 }
                 None => {
                     self.body = None;
-                    if self.buffer.is_empty() {
+                    if self.buffer.iter().all(u8::is_ascii_whitespace) {
+                        self.buffer.clear();
                         return Poll::Ready(None);
                     }
                     self.buffer.clear();
