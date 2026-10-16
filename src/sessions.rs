@@ -76,7 +76,8 @@ impl<S: Scope> Sessions<'_, S> {
     /// reply: one [`UiMessage::branchable`] in the transcript. The idle child
     /// copies the conversation up to and including that message and inherits
     /// the source's configuration, user label and metadata. Reuse
-    /// `idempotency_key` when retrying: a replay returns the same child.
+    /// `idempotency_key` when retrying: a replay returns the same child. The
+    /// key is 1 to 200 characters.
     pub fn fork(
         &self,
         agent_id: impl Into<AgentId>,
@@ -101,7 +102,10 @@ impl<S: Scope> Sessions<'_, S> {
 
     /// Lists a session's messages: without a position, the newest page in
     /// chronological order. Pass [`next_cursor`](MessagesPage::next_cursor) to
-    /// [`.cursor()`](Call::cursor) to walk further back.
+    /// [`.cursor()`](Call::cursor) to walk further back. `.cursor(c)` after
+    /// [`.after(_)`](Call::after) sends `after=c`: the forward direction is
+    /// kept, so [`.items()`](Call::items) resumed from a saved forward cursor
+    /// keeps polling forward.
     ///
     /// ```no_run
     /// # async fn example(client: blazing_agents::Client) -> blazing_agents::Result<()> {
@@ -109,13 +113,21 @@ impl<S: Scope> Sessions<'_, S> {
     ///     .sessions()
     ///     .messages("ag_4kP9sT2vXq7LmN3a", "ss_6Rt2Mw8KqZ4Nc1Hp")
     ///     .await?;
-    /// if let Some(latest) = page.latest_cursor {
+    /// let mut saved = page.latest_cursor;
+    /// if let Some(cursor) = saved.clone() {
     ///     let newer = client
     ///         .sessions()
     ///         .messages("ag_4kP9sT2vXq7LmN3a", "ss_6Rt2Mw8KqZ4Nc1Hp")
-    ///         .after(latest)
+    ///         .after(cursor)
     ///         .await?;
     ///     println!("{} new messages", newer.data.len());
+    ///     // `None` means nothing new to anchor on: keep the previous cursor.
+    ///     if let Some(latest) = newer.latest_cursor {
+    ///         saved = Some(latest);
+    ///     }
+    /// }
+    /// if saved.is_none() {
+    ///     println!("no new messages yet");
     /// }
     /// # Ok(())
     /// # }
@@ -309,7 +321,7 @@ impl Call<ListLatestSessions> {
 /// Request state of [`Sessions::get`].
 #[derive(Clone, Debug)]
 pub struct GetSession;
-impl_request!(GetSession => Session; encode = none; decode = json);
+impl_request!(GetSession => SessionDetail; encode = none; decode = json);
 
 /// Request state of [`Sessions::fork`].
 #[derive(Clone, Debug, Serialize)]
@@ -322,6 +334,11 @@ pub struct ForkSession {
 
 impl ForkSession {
     fn into_payload(self) -> Result<Payload> {
+        if self.idempotency_key.is_empty() {
+            return Err(crate::Error::InvalidArgument(
+                "idempotency key must not be empty".to_owned(),
+            ));
+        }
         let key = HeaderValue::from_str(&self.idempotency_key).map_err(|_| {
             crate::Error::InvalidArgument("idempotency key is not a valid header value".to_owned())
         })?;
@@ -330,7 +347,7 @@ impl ForkSession {
             .json(&self)
     }
 }
-impl_request!(ForkSession => Session; encode = (Self::into_payload); decode = json);
+impl_request!(ForkSession => SessionDetail; encode = (Self::into_payload); decode = json);
 
 /// Request state of [`Sessions::messages`].
 #[derive(Clone, Debug, Default)]
@@ -458,7 +475,8 @@ pub struct StopSessionTurn {
 }
 impl_request!(StopSessionTurn => StoppedTurn; encode = json; decode = json);
 
-/// A session.
+/// A session in an agent's session list. [`Sessions::get`] and
+/// [`Sessions::fork`] return a [`SessionDetail`].
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[non_exhaustive]
 #[serde(rename_all = "camelCase")]
@@ -477,13 +495,33 @@ pub struct Session {
     pub created_at: Timestamp,
     /// When the session last changed.
     pub updated_at: Timestamp,
-    /// The agent configuration saved for the session's first turn: `Some`
-    /// from [`Sessions::get`] and [`Sessions::fork`], `None` on list items.
-    #[serde(default)]
-    pub agent_config: Option<crate::agents::AgentConfig>,
-    /// The source of a forked session: `None` for ordinary sessions and on
-    /// list items.
-    #[serde(default)]
+}
+
+/// A session with its saved agent configuration, returned by
+/// [`Sessions::get`] and [`Sessions::fork`].
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
+#[serde(rename_all = "camelCase")]
+pub struct SessionDetail {
+    /// The session's ID.
+    pub id: SessionId,
+    /// The number of stored messages.
+    pub message_count: u64,
+    /// A short preview of the last message, or `None` when there is none.
+    pub last_message_preview: Option<String>,
+    /// The end user, or an empty string for a tenant-level session.
+    pub user_id: String,
+    /// Your own data.
+    pub metadata: Metadata,
+    /// When the session was created.
+    pub created_at: Timestamp,
+    /// When the session last changed.
+    pub updated_at: Timestamp,
+    /// The agent configuration saved for the session's first turn. Later
+    /// agent edits do not change it.
+    pub agent_config: crate::agents::AgentConfig,
+    /// The source session and message of a fork, `None` for an ordinary
+    /// session.
     pub forked_from: Option<ForkedFrom>,
 }
 
@@ -603,7 +641,7 @@ pub struct LatestSession {
 }
 
 /// A page of a session's transcript.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[non_exhaustive]
 #[serde(rename_all = "camelCase")]
 pub struct MessagesPage {
@@ -612,7 +650,8 @@ pub struct MessagesPage {
     /// The cursor of the next page, or `None` on the last page.
     pub next_cursor: Option<Cursor>,
     /// Save it and pass it to [`.after()`](Call::after) to poll for messages
-    /// added later.
+    /// added later. `None` means there is nothing new to anchor on: keep the
+    /// cursor you saved before.
     pub latest_cursor: Option<Cursor>,
 }
 
@@ -800,7 +839,7 @@ pub struct SubmittedInput {
 }
 
 /// A page of a session's queued inputs.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[non_exhaustive]
 #[serde(rename_all = "camelCase")]
 pub struct InputsPage {

@@ -120,8 +120,6 @@ async fn list_sends_filters_and_decodes_compact_items() {
         Some("Open Settings, choose Security, and select Reset password.")
     );
     assert_eq!(page.data[0].user_id, "customer_123");
-    assert!(page.data[0].agent_config.is_none());
-    assert!(page.data[0].forked_from.is_none());
     assert_eq!(page.data[0].created_at.to_string(), "2026-07-10T10:00:00Z");
     assert_eq!(page.next_cursor.as_ref().map(Cursor::as_str), Some("c2"));
 }
@@ -202,7 +200,11 @@ async fn get_decodes_agent_config_and_provenance() {
 
     let fetched = client.sessions().get(AGENT, SESSION).await.unwrap();
 
-    assert!(fetched.agent_config.is_some());
+    // The full agentConfig JSON decodes; AgentConfig is filled later.
+    assert_eq!(
+        serde_json::to_value(&fetched.agent_config).unwrap(),
+        json!({})
+    );
     assert_eq!(fetched.id.as_str(), SESSION);
     assert_eq!(fetched.message_count, 4);
     assert_eq!(fetched.user_id, "customer_123");
@@ -214,11 +216,27 @@ async fn get_decodes_agent_config_and_provenance() {
 }
 
 #[tokio::test]
+async fn get_fails_without_agent_config() {
+    let (server, client) = mock().await;
+    let mut body = session(SESSION);
+    body["forkedFrom"] = json!(null);
+    Mock::given(method("GET"))
+        .and(path(format!("/v1/agents/{AGENT}/sessions/{SESSION}")))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+
+    let error = client.sessions().get(AGENT, SESSION).await.unwrap_err();
+
+    assert!(matches!(error, Error::Decode { .. }));
+}
+
+#[tokio::test]
 async fn fork_posts_the_message_and_key() {
     let (server, client) = mock().await;
     let mut created = session("ss_3New4Child5XyZaB");
     created["agentConfig"] = agent_config();
-    created["forkedFrom"] = json!({ "sessionId": SESSION, "messageId": "m-42" });
+    created["forkedFrom"] = json!(null);
     Mock::given(method("POST"))
         .and(path(format!("/v1/agents/{AGENT}/sessions/{SESSION}/fork")))
         .respond_with(json(201, created))
@@ -240,8 +258,11 @@ async fn fork_posts_the_message_and_key() {
         .await
         .unwrap();
 
-    assert!(child.agent_config.is_some());
-    assert_eq!(child.forked_from.unwrap().session_id.as_str(), SESSION);
+    assert_eq!(
+        serde_json::to_value(&child.agent_config).unwrap(),
+        json!({})
+    );
+    assert!(child.forked_from.is_none());
 
     let sent = requests(&server).await;
     assert_eq!(json_body(&sent[0]), json!({ "messageId": "m-42" }));
@@ -273,17 +294,26 @@ async fn fork_rejects_an_invalid_key_without_a_request() {
         .fork(AGENT, SESSION, "m-42", "key\n")
         .await
         .unwrap_err();
+    let empty = client
+        .sessions()
+        .fork(AGENT, SESSION, "m-42", "")
+        .await
+        .unwrap_err();
 
     assert!(matches!(error, Error::InvalidArgument(_)));
+    assert!(matches!(empty, Error::InvalidArgument(_)));
     assert!(requests(&server).await.is_empty());
 }
 
 #[tokio::test]
 async fn fork_replays_decode_the_same_shape() {
     let (server, client) = mock().await;
+    let mut replayed = session("ss_3New4Child5XyZaB");
+    replayed["agentConfig"] = agent_config();
+    replayed["forkedFrom"] = json!(null);
     Mock::given(method("POST"))
         .and(path(format!("/v1/agents/{AGENT}/sessions/{SESSION}/fork")))
-        .respond_with(json(200, session("ss_3New4Child5XyZaB")))
+        .respond_with(json(200, replayed))
         .mount(&server)
         .await;
 
@@ -303,6 +333,7 @@ async fn messages_reads_the_newest_page() {
     system["parts"] = json!([{"type": "step-start"}]);
     let mut unknown = ui_message("m-3", "tool");
     unknown["metadata"] = json!({ "trace": "t-1" });
+    unknown["addedNextYear"] = json!(1);
     Mock::given(method("GET"))
         .and(path(format!(
             "/v1/agents/{AGENT}/sessions/{SESSION}/messages"
@@ -336,6 +367,13 @@ async fn messages_reads_the_newest_page() {
         other => panic!("expected an unrecognized role, got {other:?}"),
     }
     assert_eq!(page.data[2].metadata, Some(json!({ "trace": "t-1" })));
+    // Unknown top-level fields land in `extra`; known fields do not.
+    assert_eq!(page.data[2].extra.get("addedNextYear"), Some(&json!(1)));
+    assert!(!page.data[2].extra.contains_key("id"));
+    assert_eq!(
+        serde_json::to_value(&page).unwrap()["latestCursor"],
+        json!("lc1")
+    );
 }
 
 #[tokio::test]
@@ -799,6 +837,7 @@ async fn inputs_sends_filters_and_decodes_activity() {
     assert_eq!(page.data[0].state, InputState::Accepted);
     assert_eq!(page.activity.state, ActivityState::Approval);
     assert_eq!(page.activity.turn_id, Some(TurnId::from(TURN)));
+    assert!(serde_json::to_value(&page).unwrap()["activity"].is_object());
 }
 
 #[tokio::test]
@@ -903,9 +942,12 @@ async fn stop_decodes_an_unknown_activity() {
 #[tokio::test]
 async fn user_scope_sends_the_user_header() {
     let (server, client) = mock().await;
+    let mut body = session(SESSION);
+    body["agentConfig"] = agent_config();
+    body["forkedFrom"] = json!(null);
     Mock::given(method("GET"))
         .and(path(format!("/v1/agents/{AGENT}/sessions/{SESSION}")))
-        .respond_with(json(200, session(SESSION)))
+        .respond_with(json(200, body))
         .mount(&server)
         .await;
 

@@ -34,6 +34,9 @@ pub struct UiMessage {
     /// Data stored with the message, if any.
     #[serde(default)]
     pub metadata: Option<serde_json::Value>,
+    /// Fields this SDK version does not model, kept as JSON.
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 /// One part of a stored message.
