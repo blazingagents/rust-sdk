@@ -294,6 +294,169 @@ crate::open_enum! {
 }
 
 crate::open_enum! {
+    /// Describes a built-in tool in [`AGENT_TOOLS`]. A tag never enables a
+    /// tool.
+    pub enum AgentToolTag {
+        /// `files` — group: file operations in the workspace.
+        Files = "files",
+        /// `planning` — group: task planning.
+        Planning = "planning",
+        /// `memory` — group: the agent's durable notes.
+        Memory = "memory",
+        /// `web` — group: the public web.
+        Web = "web",
+        /// `file_read` — never changes workspace files. An agent whose file
+        /// tools are all `file_read` is read-only.
+        FileRead = "file_read",
+        /// `file_write` — changes workspace files.
+        FileWrite = "file_write",
+        /// `execute` — runs arbitrary commands, which can change files and
+        /// more.
+        Execute = "execute",
+    }
+}
+
+/// A group of built-in tools, keyed by its group tag, as display code shows
+/// it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct AgentToolGroup {
+    /// The group tag every tool in the group has first.
+    pub tag: AgentToolTag,
+    /// Display name.
+    pub name: &'static str,
+    /// Display description.
+    pub description: &'static str,
+}
+
+/// The groups of [`AGENT_TOOLS`], in display order.
+pub const AGENT_TOOL_GROUPS: &[AgentToolGroup] = &[
+    AgentToolGroup {
+        tag: AgentToolTag::Files,
+        name: "File operations",
+        description: "Read, write, edit, search, and run shell commands in the attached Workspace.",
+    },
+    AgentToolGroup {
+        tag: AgentToolTag::Planning,
+        name: "Task planning",
+        description: "Create and manage a structured todo list to plan and track multi-step work.",
+    },
+    AgentToolGroup {
+        tag: AgentToolTag::Memory,
+        name: "Memory",
+        description: "Save, recall, search, update, and delete durable notes owned by this Agent.",
+    },
+    AgentToolGroup {
+        tag: AgentToolTag::Web,
+        name: "Web",
+        description: "Search the public web for current information.",
+    },
+];
+
+/// A built-in tool an agent can enable through `tools`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct AgentToolDefinition {
+    /// The tool.
+    pub name: AgentTool,
+    /// What the tool does.
+    pub description: &'static str,
+    /// The tool runs in the agent's attached workspace.
+    pub requires_workspace: bool,
+    /// The group tag first; a file operation tool adds one of `file_read`,
+    /// `file_write` or `execute`.
+    pub tags: &'static [AgentToolTag],
+}
+
+/// Every built-in tool an agent can enable through `tools`, in display order.
+pub const AGENT_TOOLS: &[AgentToolDefinition] = &[
+    AgentToolDefinition {
+        name: AgentTool::Read,
+        description: "Read a file from the Workspace.",
+        requires_workspace: true,
+        tags: &[AgentToolTag::Files, AgentToolTag::FileRead],
+    },
+    AgentToolDefinition {
+        name: AgentTool::Write,
+        description: "Create or overwrite a file in the Workspace.",
+        requires_workspace: true,
+        tags: &[AgentToolTag::Files, AgentToolTag::FileWrite],
+    },
+    AgentToolDefinition {
+        name: AgentTool::Edit,
+        description: "Replace exact text in a Workspace file.",
+        requires_workspace: true,
+        tags: &[AgentToolTag::Files, AgentToolTag::FileWrite],
+    },
+    AgentToolDefinition {
+        name: AgentTool::Grep,
+        description: "Search Workspace file contents with a regular expression.",
+        requires_workspace: true,
+        tags: &[AgentToolTag::Files, AgentToolTag::FileRead],
+    },
+    AgentToolDefinition {
+        name: AgentTool::Glob,
+        description: "Find Workspace files by path pattern.",
+        requires_workspace: true,
+        tags: &[AgentToolTag::Files, AgentToolTag::FileRead],
+    },
+    AgentToolDefinition {
+        name: AgentTool::Bash,
+        description: "Run shell commands in the Workspace.",
+        requires_workspace: true,
+        tags: &[AgentToolTag::Files, AgentToolTag::Execute],
+    },
+    AgentToolDefinition {
+        name: AgentTool::PublishArtifacts,
+        description: "Publish Workspace files as downloadable Artifacts.",
+        requires_workspace: true,
+        tags: &[AgentToolTag::Files],
+    },
+    AgentToolDefinition {
+        name: AgentTool::WriteTodos,
+        description: "Plan and track multi-step work with a todo list.",
+        requires_workspace: false,
+        tags: &[AgentToolTag::Planning],
+    },
+    AgentToolDefinition {
+        name: AgentTool::SaveMemory,
+        description: "Save a durable note.",
+        requires_workspace: false,
+        tags: &[AgentToolTag::Memory],
+    },
+    AgentToolDefinition {
+        name: AgentTool::GetMemory,
+        description: "Read one saved note.",
+        requires_workspace: false,
+        tags: &[AgentToolTag::Memory],
+    },
+    AgentToolDefinition {
+        name: AgentTool::SearchMemories,
+        description: "Search saved notes.",
+        requires_workspace: false,
+        tags: &[AgentToolTag::Memory],
+    },
+    AgentToolDefinition {
+        name: AgentTool::UpdateMemory,
+        description: "Update a saved note.",
+        requires_workspace: false,
+        tags: &[AgentToolTag::Memory],
+    },
+    AgentToolDefinition {
+        name: AgentTool::DeleteMemory,
+        description: "Delete a saved note.",
+        requires_workspace: false,
+        tags: &[AgentToolTag::Memory],
+    },
+    AgentToolDefinition {
+        name: AgentTool::WebSearch,
+        description: "Search the public web for current results. Each search consumes Usage credit.",
+        requires_workspace: false,
+        tags: &[AgentToolTag::Web],
+    },
+];
+
+crate::open_enum! {
     /// What happens to a tool call under an [`ApprovalPolicy`].
     pub enum ApprovalDecision {
         /// `full` — the call runs without approval.
