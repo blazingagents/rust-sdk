@@ -1,13 +1,19 @@
-//! Relays a browser's chat requests to an agent: a demo sign-in check, one
-//! `POST /api/chat` endpoint, and an SSE response the AI SDK `useChat` hook
-//! reads.
+//! Relays a browser's `useChat` requests to an agent: a demo sign-in check,
+//! one `POST /api/chat` endpoint that accepts the default `DefaultChatTransport`
+//! body, and an SSE response the AI SDK reads.
+//!
+//! The browser needs nothing extra: wire `useChat` with
+//! `DefaultChatTransport({ api: "/api/chat", headers: { Authorization: "Bearer <token>" } })`
+//! and the relay maps its chat `id` to a session. Tool approval rounds are not
+//! handled here; use [`Client::continue_chat`](blazing_agents::Client::continue_chat).
 //!
 //! ```sh
 //! BLAZING_AGENTS_API_KEY=... BLAZING_AGENTS_AGENT_ID=ag_... DEMO_USER_TOKEN=demo-token \
 //!   cargo run --example chat_relay
 //! ```
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use axum::body::Body;
 use axum::extract::State;
@@ -16,26 +22,38 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use axum::{Json, Router};
 use blazing_agents::Client;
+use blazing_agents::ids::SessionId;
 use blazing_agents::messages::UserMessage;
 use serde::Deserialize;
 
+/// The body `DefaultChatTransport` POSTs: the chat id and the whole history.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ChatRequest {
-    message: UserMessage,
+    id: String,
+    messages: Vec<serde_json::Value>,
+    #[serde(default = "submit_message")]
+    trigger: String,
     #[serde(default)]
-    session_id: Option<String>,
+    message_id: Option<String>,
+}
+
+fn submit_message() -> String {
+    "submit-message".to_owned()
 }
 
 struct AppState {
     client: Client,
     agent_id: String,
     demo_token: String,
+    /// useChat's chat `id` to the session it continues, per user. A real app
+    /// persists this in its database.
+    sessions: Mutex<HashMap<(String, String), SessionId>>,
 }
 
 enum RelayError {
     Unauthorized,
-    InvalidUserId,
+    BadRequest(&'static str),
     Agent(blazing_agents::Error),
 }
 
@@ -49,13 +67,27 @@ impl IntoResponse for RelayError {
     fn into_response(self) -> Response {
         match self {
             Self::Unauthorized => Self::json(StatusCode::UNAUTHORIZED, "unauthorized"),
-            Self::InvalidUserId => Self::json(StatusCode::BAD_REQUEST, "invalid user ID"),
+            Self::BadRequest(message) => Self::json(StatusCode::BAD_REQUEST, message),
             Self::Agent(error) => {
                 eprintln!("agent call failed: {error}");
                 Self::json(StatusCode::BAD_GATEWAY, "the agent call failed")
             }
         }
     }
+}
+
+/// The last user message, which is the one `useChat` just submitted.
+fn latest_user_message(body: &ChatRequest) -> Result<UserMessage, RelayError> {
+    body.messages
+        .iter()
+        .rev()
+        .find(|message| message.get("role") == Some(&serde_json::json!("user")))
+        .cloned()
+        .ok_or(RelayError::BadRequest("no user message in the history"))
+        .and_then(|message| {
+            serde_json::from_value::<UserMessage>(message)
+                .map_err(|_| RelayError::BadRequest("the last user message is invalid"))
+        })
 }
 
 async fn chat(
@@ -74,16 +106,45 @@ async fn chat(
     }
     let user_id = "user-1";
 
+    let message = latest_user_message(&body)?;
     let user = state
         .client
         .for_user(user_id)
-        .map_err(|_| RelayError::InvalidUserId)?;
-    let call = user.chat(&state.agent_id, body.message);
-    let call = match body.session_id {
-        Some(session_id) => call.session(session_id),
-        None => call,
+        .map_err(|_| RelayError::BadRequest("invalid user ID"))?;
+    let key = (user_id.to_owned(), body.id.clone());
+    let stored = state.sessions.lock().unwrap().get(&key).cloned();
+    let stream = match (body.trigger.as_str(), stored) {
+        ("submit-message", Some(session_id)) => user
+            .chat(&state.agent_id, message)
+            .session(session_id)
+            .await
+            .map_err(RelayError::Agent)?,
+        ("submit-message", None) => user
+            .chat(&state.agent_id, message)
+            .await
+            .map_err(RelayError::Agent)?,
+        ("regenerate-message", Some(session_id)) => {
+            let call = user.regenerate(&state.agent_id, session_id, message);
+            match body.message_id {
+                Some(message_id) => call.message_id(message_id),
+                None => call,
+            }
+            .await
+            .map_err(RelayError::Agent)?
+        }
+        ("regenerate-message", None) => {
+            return Err(RelayError::BadRequest("unknown chat id"));
+        }
+        _ => return Err(RelayError::BadRequest("unknown trigger")),
     };
-    let stream = call.await.map_err(RelayError::Agent)?;
+
+    if body.trigger == "submit-message" {
+        state
+            .sessions
+            .lock()
+            .unwrap()
+            .insert(key, stream.session_id().clone());
+    }
 
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -109,6 +170,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         client: Client::from_env()?,
         agent_id: std::env::var("BLAZING_AGENTS_AGENT_ID")?,
         demo_token: std::env::var("DEMO_USER_TOKEN")?,
+        sessions: Mutex::new(HashMap::new()),
     });
     let app = Router::new()
         .route("/api/chat", post(chat))

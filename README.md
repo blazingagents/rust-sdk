@@ -66,6 +66,8 @@ Replace `ag_...` with an agent ID from the dashboard. See
 [`examples/`](examples) — `quickstart`, `chat_relay` and `structured_output` —
 and run any of them with
 `BLAZING_AGENTS_API_KEY=... BLAZING_AGENTS_AGENT_ID=ag_... cargo run --example quickstart`.
+`chat_relay` also needs `DEMO_USER_TOKEN`, the bearer token the demo accepts:
+`BLAZING_AGENTS_API_KEY=... BLAZING_AGENTS_AGENT_ID=ag_... DEMO_USER_TOKEN=... cargo run --example chat_relay`.
 
 ## User scope
 
