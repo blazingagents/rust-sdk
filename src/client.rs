@@ -210,22 +210,22 @@ impl ClientBuilder {
     /// `X-Request-Id` and `X-BA-User-Id` are owned by the SDK and ignored here.
     /// An invalid name or value fails [`build`](Self::build).
     #[must_use]
-    pub fn default_header(mut self, name: impl AsRef<str>, value: impl AsRef<str>) -> Self {
-        if self.default_headers.is_err() {
+    pub fn default_header(self, name: impl AsRef<str>, value: impl AsRef<str>) -> Self {
+        self.default_header_str(name.as_ref(), value.as_ref())
+    }
+
+    fn default_header_str(mut self, name: &str, value: &str) -> Self {
+        let Ok(headers) = &mut self.default_headers else {
             return self;
-        }
-        let parsed = HeaderName::from_bytes(name.as_ref().as_bytes())
-            .ok()
-            .zip(HeaderValue::from_str(value.as_ref()).ok());
-        match parsed {
-            Some((name, value)) => {
-                if let Ok(headers) = &mut self.default_headers {
-                    headers.append(name, value);
-                }
+        };
+        match (
+            HeaderName::from_bytes(name.as_bytes()),
+            HeaderValue::from_str(value),
+        ) {
+            (Ok(name), Ok(value)) => {
+                headers.append(name, value);
             }
-            None => {
-                self.default_headers = Err(ConfigError::InvalidHeader(name.as_ref().to_owned()))
-            }
+            _ => self.default_headers = Err(ConfigError::InvalidHeader(name.to_owned())),
         }
         self
     }
@@ -248,27 +248,29 @@ impl ClientBuilder {
             .or_else(|| std::env::var(API_KEY_ENV).ok())
             .filter(|key| !key.is_empty())
             .ok_or(ConfigError::MissingApiKey)?;
-        reqwest::header::HeaderValue::from_str(&format!("Bearer {api_key}"))
+        let mut authorization = HeaderValue::from_str(&format!("Bearer {api_key}"))
             .map_err(|_| ConfigError::InvalidApiKey)?;
+        authorization.set_sensitive(true);
         let base_url = self.base_url.trim_end_matches('/').to_owned();
         let parsed = reqwest::Url::parse(&base_url)
             .map_err(|_| ConfigError::InvalidBaseUrl(self.base_url.clone()))?;
-        if !matches!(parsed.scheme(), "http" | "https") || parsed.host().is_none() {
+        if !matches!(parsed.scheme(), "http" | "https") {
             return Err(ConfigError::InvalidBaseUrl(self.base_url));
         }
         let mut http = reqwest::Client::builder().redirect(reqwest::redirect::Policy::none());
         if let Some(timeout) = self.connect_timeout {
             http = http.connect_timeout(timeout);
         }
-        let http = http
-            .build()
-            .map_err(|error| ConfigError::HttpClient(error.without_url().to_string()))?;
+        let http = match http.build() {
+            Ok(http) => http,
+            Err(error) => return Err(ConfigError::HttpClient(error.without_url().to_string())),
+        };
         Ok(Client {
             handle: Handle {
                 inner: Arc::new(Inner {
                     http,
                     base_url,
-                    api_key,
+                    authorization,
                     default_headers: self.default_headers?,
                     timeout: self.timeout,
                     on_response: self.on_response,

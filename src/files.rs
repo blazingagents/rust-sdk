@@ -229,3 +229,33 @@ impl fmt::Debug for Download {
             .finish_non_exhaustive()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::guess_content_type;
+
+    #[test]
+    fn content_type_is_guessed_from_the_extension() {
+        let cases = [
+            ("a.png", "image/png"),
+            ("a.jpg", "image/jpeg"),
+            ("a.jpeg", "image/jpeg"),
+            ("a.webp", "image/webp"),
+            ("a.gif", "image/gif"),
+            ("a.zip", "application/zip"),
+            ("a.tar", "application/x-tar"),
+            ("a.gz", "application/gzip"),
+            ("a.tgz", "application/gzip"),
+            ("a.md", "text/markdown"),
+            ("a.txt", "text/plain"),
+            ("a.json", "application/json"),
+            ("a.pdf", "application/pdf"),
+            ("PHOTO.JPG", "image/jpeg"),
+            ("a.weird", "application/octet-stream"),
+            ("no-extension", "application/octet-stream"),
+        ];
+        for (name, expected) in cases {
+            assert_eq!(guess_content_type(name), expected, "{name}");
+        }
+    }
+}

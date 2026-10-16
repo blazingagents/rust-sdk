@@ -12,7 +12,9 @@ use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, PercentEncode, utf8_percent_e
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
-use crate::call::{Body, Call, InvalidSegment, Raw, Request, ResponseMeta, Route, WithMeta};
+use crate::call::{
+    Body, Call, InvalidSegment, Payload, Raw, Request, ResponseMeta, Route, WithMeta,
+};
 use crate::client::ResponseObservation;
 use crate::error::{ApiError, Error, ErrorCode, Result, StreamError, StreamErrorKind};
 use crate::files::Download;
@@ -56,7 +58,7 @@ pub(crate) type Observer = dyn Fn(&ResponseObservation) + Send + Sync;
 pub(crate) struct Inner {
     pub(crate) http: reqwest::Client,
     pub(crate) base_url: String,
-    pub(crate) api_key: String,
+    pub(crate) authorization: HeaderValue,
     pub(crate) default_headers: HeaderMap,
     pub(crate) timeout: Option<Duration>,
     pub(crate) on_response: Option<Box<Observer>>,
@@ -106,7 +108,42 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
     let inner = &handle.inner;
     let sensitive = request.sensitive();
     let (payload, state) = request.encode()?;
+    let timeout = options.timeout.unwrap_or(inner.timeout);
+    let (builder, client_request_id) = request_builder(&handle, &route, payload, options)?;
 
+    let deadline = timeout.map(|timeout| tokio::time::Instant::now() + timeout);
+    let (response, meta) = exchange(
+        inner,
+        &route,
+        client_request_id,
+        builder,
+        deadline,
+        &sensitive,
+    )
+    .await?;
+
+    let raw = Raw {
+        response,
+        meta: meta.clone(),
+        sensitive,
+        operation_id: route.op_id,
+        handle: handle.clone(),
+        options: raw_options,
+    };
+    let deadline = if R::STREAMING { None } else { deadline };
+    let value = with_deadline(deadline, R::decode(state, raw)).await??;
+    Ok(WithMeta { value, meta })
+}
+
+/// The headers, URL and body of the request, from the client, the route and the
+/// encoded payload. Returns the `X-Client-Request-Id` actually sent.
+fn request_builder(
+    handle: &Handle,
+    route: &Route,
+    payload: Payload,
+    options: RequestOptions,
+) -> Result<(reqwest::RequestBuilder, Option<String>)> {
+    let inner = &handle.inner;
     let mut headers = HeaderMap::new();
     headers.insert(USER_AGENT, HeaderValue::from_static(USER_AGENT_VALUE));
     headers.extend(inner.default_headers.clone());
@@ -115,21 +152,15 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
     headers.remove(X_REQUEST_ID);
     headers.remove(X_BA_USER_ID);
     headers.remove(CONTENT_TYPE);
-    let mut authorization =
-        HeaderValue::from_str(&format!("Bearer {}", inner.api_key)).map_err(|_| {
-            Error::Config(crate::error::ConfigError::HttpClient(
-                "the API key is not a valid header value".to_owned(),
-            ))
-        })?;
-    authorization.set_sensitive(true);
-    headers.insert(AUTHORIZATION, authorization);
+    headers.insert(AUTHORIZATION, inner.authorization.clone());
     if let Some(id) = options
         .client_request_id
-        .or_else(|| handle.client_request_id.clone())
+        .as_deref()
+        .or(handle.client_request_id.as_deref())
     {
         headers.insert(
             X_CLIENT_REQUEST_ID,
-            HeaderValue::from_str(&id).map_err(|_| {
+            HeaderValue::from_str(id).map_err(|_| {
                 Error::InvalidArgument("client request ID is not a valid header value".to_owned())
             })?,
         );
@@ -145,7 +176,7 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
     let client_request_id = header_string(&headers, &X_CLIENT_REQUEST_ID);
 
     let mut url = reqwest::Url::parse(&format!("{}{}", inner.base_url, route.path))
-        .map_err(|error| Error::InvalidArgument(format!("invalid request URL: {error}")))?;
+        .expect("a validated base URL followed by an encoded path always parses");
     if !payload.query.is_empty() {
         url.query_pairs_mut().extend_pairs(payload.query);
     }
@@ -165,10 +196,20 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
             )
             .body(body),
     };
+    Ok((builder, client_request_id))
+}
 
-    let timeout = options.timeout.unwrap_or(inner.timeout);
+/// Sends the built request under the deadline, observes the response, and turns
+/// a non-2xx into the API error or a body read failure.
+async fn exchange(
+    inner: &Inner,
+    route: &Route,
+    client_request_id: Option<String>,
+    builder: reqwest::RequestBuilder,
+    deadline: Option<tokio::time::Instant>,
+    sensitive: &[String],
+) -> Result<(reqwest::Response, ResponseMeta)> {
     let started = Instant::now();
-    let deadline = timeout.map(|timeout| tokio::time::Instant::now() + timeout);
     let response = with_deadline(deadline, builder.send())
         .await?
         .map_err(connection_error)?;
@@ -177,29 +218,16 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
         headers: response.headers().clone(),
         request_id: header_string(response.headers(), &X_REQUEST_ID),
     };
-    observe(inner, &route, &meta, started.elapsed(), client_request_id);
+    observe(inner, route, &meta, started.elapsed(), client_request_id);
 
     if !response.status().is_success() {
         let body = with_deadline(deadline, response.bytes()).await?;
         return Err(match body {
-            Ok(body) => api_error(meta, &body, &sensitive).into(),
+            Ok(body) => api_error(meta, &body, sensitive).into(),
             Err(error) => read_error(meta, error),
         });
     }
-    let raw = Raw {
-        response,
-        meta: meta.clone(),
-        sensitive,
-        operation_id: route.op_id,
-        handle: handle.clone(),
-        options: raw_options,
-    };
-    let value = if R::STREAMING {
-        R::decode(state, raw).await?
-    } else {
-        with_deadline(deadline, R::decode(state, raw)).await??
-    };
-    Ok(WithMeta { value, meta })
+    Ok((response, meta))
 }
 
 const USER_AGENT_VALUE: &str = concat!("blazing-agents-rust/", env!("CARGO_PKG_VERSION"));
@@ -240,12 +268,13 @@ fn observe(
     duration: Duration,
     client_request_id: Option<String>,
 ) {
+    let elapsed_ms = duration.as_secs_f64() * 1_000.0;
     tracing::debug!(
         operation = route.op_id,
         method = route.method,
         path = %route.path,
         status = meta.status,
-        elapsed_ms = duration.as_secs_f64() * 1_000.0,
+        elapsed_ms,
         request_id = ?meta.request_id,
         "HTTP response"
     );
