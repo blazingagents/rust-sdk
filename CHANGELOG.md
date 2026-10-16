@@ -16,6 +16,11 @@
   round's `chat::ToolApprovalDecision` values, and
   `sessions().tool_approvals()` reports each one's
   `sessions::ToolApprovalStatus`.
+- `workspaces().delete()` returns a `WorkspaceDeletion`: `Completed` once the
+  workspace is gone, or `Pending` while cleanup continues in the background.
+- `UserPart` text and file parts keep fields the SDK does not model, such as
+  `filename` and `providerMetadata`, and send them back unchanged, so relaying
+  a browser message loses nothing.
 - `completion`/`completion_stream` and `object`/`object_stream` generate text
   and structured objects, buffered or streamed; `ObjectSchema::derive()`
   builds the schema with schemars.
