@@ -46,6 +46,12 @@ async fn create_sends_the_body_and_decodes_the_prompt() {
         .metadata(Metadata::new().insert("team", "support"))
         .await
         .unwrap();
+    client
+        .prompts()
+        .create("Refund reply", "Hi {{name}}")
+        .user_id("customer_123")
+        .await
+        .unwrap();
 
     let sent = requests(&server).await;
     assert_eq!(
@@ -55,6 +61,14 @@ async fn create_sends_the_body_and_decodes_the_prompt() {
             "template": "Reply to {{customerName}} about {{orderId}}.",
             "agentId": "ag_4kP9sT2vXq7LmN3a",
             "metadata": { "team": "support" }
+        })
+    );
+    assert_eq!(
+        json_body(&sent[1]),
+        json!({
+            "name": "Refund reply",
+            "template": "Hi {{name}}",
+            "userId": "customer_123"
         })
     );
     assert_eq!(created.id, PromptId::from("prompt_5Wn3Hc7TbK2xQv9F"));
@@ -142,6 +156,12 @@ async fn update_omits_unset_fields_and_sends_null_to_clear() {
         .template("New {{x}}")
         .await
         .unwrap();
+    client
+        .prompts()
+        .update("prompt_1")
+        .metadata(Metadata::new().insert("team", "billing"))
+        .await
+        .unwrap();
 
     let sent = requests(&server).await;
     assert_eq!(json_body(&sent[0]), json!({ "name": "Renamed" }));
@@ -149,6 +169,10 @@ async fn update_omits_unset_fields_and_sends_null_to_clear() {
     assert_eq!(
         json_body(&sent[2]),
         json!({ "agentId": "ag_4kP9sT2vXq7LmN3a", "template": "New {{x}}" })
+    );
+    assert_eq!(
+        json_body(&sent[3]),
+        json!({ "metadata": { "team": "billing" } })
     );
 }
 

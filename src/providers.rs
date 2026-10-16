@@ -306,3 +306,23 @@ pub struct ProviderThinkingLevels {
     /// The supported levels.
     pub levels: Vec<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{CreateProvider, ProviderType};
+
+    #[test]
+    fn create_provider_debug_redacts_the_api_key() {
+        let provider = CreateProvider {
+            name: "Custom".to_owned(),
+            provider_type: ProviderType::Custom,
+            api_key: "sk-or-v1-3b7e9f2c".to_owned(),
+            base_url: Some("https://models.example.com/v1".to_owned()),
+        };
+
+        assert_eq!(
+            format!("{provider:?}"),
+            r#"CreateProvider { name: "Custom", provider_type: Custom, api_key: "[redacted]", base_url: Some("https://models.example.com/v1") }"#
+        );
+    }
+}

@@ -7,6 +7,7 @@ use blazing_agents::agents::{
 use blazing_agents::error::ErrorCode;
 use blazing_agents::files::Upload;
 use blazing_agents::ids::{AgentId, McpConnectionId, ProviderId, WorkspaceId};
+use blazing_agents::spending_limits::{ResetInterval, SpendingLimitInput};
 use blazing_agents::types::Metadata;
 use blazing_agents::workspaces::WorkspaceTier;
 use futures_util::TryStreamExt;
@@ -371,6 +372,71 @@ async fn update_resends_an_unrecognized_tool_reference_unchanged() {
 }
 
 #[tokio::test]
+async fn update_sends_every_field() {
+    let (server, client) = mock().await;
+    Mock::given(method("PUT"))
+        .and(path("/v1/agents/ag_1"))
+        .respond_with(json(200, agent("ag_1")))
+        .mount(&server)
+        .await;
+
+    client
+        .agents()
+        .update("ag_1")
+        .thinking_level("medium")
+        .workspace_id("ws_9Lm2Np6Qr4Xt7Jv3")
+        .auto_compaction(false)
+        .compaction_reserve_tokens(4096)
+        .memory_injection_enabled(true)
+        .tools([AgentTool::Bash, AgentTool::WriteTodos])
+        .approval_in_chat(ApprovalPolicy::new(ApprovalDecision::Auto))
+        .approval_in_tasks(ApprovalPolicy::new(ApprovalDecision::Manual).with_override(
+            ToolReference::builtin(AgentTool::Bash),
+            ApprovalDecision::Deny,
+        ))
+        .instructions("Be terse.")
+        .metadata(Metadata::new().insert("team", "billing"))
+        .mcp_connection_ids(["mcp_2Qw8Er5Ty9Ui3Ok6", "mcp_7Yu1Io4Pa8Sd2Fg5"])
+        .await
+        .unwrap();
+    client
+        .agents()
+        .update("ag_1")
+        .tools([])
+        .mcp_connection_ids(Vec::<McpConnectionId>::new())
+        .await
+        .unwrap();
+
+    let sent = requests(&server).await;
+    assert_eq!(
+        json_body(&sent[0]),
+        json!({
+            "thinkingLevel": "medium",
+            "workspaceId": "ws_9Lm2Np6Qr4Xt7Jv3",
+            "autoCompaction": false,
+            "compactionReserveTokens": 4096,
+            "memoryInjectionEnabled": true,
+            "tools": ["bash", "write_todos"],
+            "approvalInChat": { "default": "auto", "overrides": [] },
+            "approvalInTasks": {
+                "default": "manual",
+                "overrides": [
+                    { "tool": { "type": "builtin", "name": "bash" }, "decision": "deny" }
+                ]
+            },
+            "instructions": "Be terse.",
+            "metadata": { "team": "billing" },
+            "mcpConnectionIds": ["mcp_2Qw8Er5Ty9Ui3Ok6", "mcp_7Yu1Io4Pa8Sd2Fg5"]
+        })
+    );
+    // Empty lists are sent to replace, not omitted.
+    assert_eq!(
+        json_body(&sent[1]),
+        json!({ "tools": [], "mcpConnectionIds": [] })
+    );
+}
+
+#[tokio::test]
 async fn delete_sends_include_artifacts_and_returns_unit() {
     let (server, client) = mock().await;
     Mock::given(method("DELETE"))
@@ -573,7 +639,7 @@ async fn list_and_update_mcp_attachments() {
 }
 
 #[tokio::test]
-async fn spending_limits_get_and_clear() {
+async fn spending_limits_get_set_and_clear() {
     let (server, client) = mock().await;
     let status = json!({
         "spendingLimit": {
@@ -601,15 +667,47 @@ async fn spending_limits_get_and_clear() {
         .mount(&server)
         .await;
 
-    client.agents().get_spending_limit("ag_1").await.unwrap();
+    let status = client.agents().get_spending_limit("ag_1").await.unwrap();
+    client
+        .agents()
+        .update_spending_limit(
+            "ag_1",
+            Some(SpendingLimitInput::new(
+                25.0,
+                "2026-10-01",
+                ResetInterval::Monthly,
+            )),
+        )
+        .await
+        .unwrap();
     client
         .agents()
         .update_spending_limit("ag_1", None)
         .await
         .unwrap();
 
+    let limit = status.spending_limit.unwrap();
+    assert_eq!(limit.amount_usd, 25.0);
+    assert_eq!(limit.reset_start_date, "2026-10-01");
+    assert_eq!(limit.reset_interval, ResetInterval::Monthly);
+    let period = status.period.unwrap();
+    assert_eq!(period.available_usd, 20.33);
+    assert_eq!(
+        status.next_reset_at.map(|at| at.to_string()),
+        Some("2026-11-01T00:00:00Z".to_owned())
+    );
     let sent = requests(&server).await;
-    assert_eq!(json_body(&sent[1]), json!({ "spendingLimit": null }));
+    assert_eq!(
+        json_body(&sent[1]),
+        json!({
+            "spendingLimit": {
+                "amountUsd": 25.0,
+                "resetStartDate": "2026-10-01",
+                "resetInterval": "monthly"
+            }
+        })
+    );
+    assert_eq!(json_body(&sent[2]), json!({ "spendingLimit": null }));
 }
 
 #[tokio::test]
