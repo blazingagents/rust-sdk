@@ -375,6 +375,12 @@ fn unrecognized_network_policy_round_trips() {
 }
 
 #[test]
+fn network_policy_rejects_a_missing_or_non_string_mode() {
+    assert!(serde_json::from_value::<NetworkPolicy>(json!({ "allowedHosts": [] })).is_err());
+    assert!(serde_json::from_value::<NetworkPolicy>(json!({ "mode": 7 })).is_err());
+}
+
+#[test]
 fn network_policy_rejects_a_malformed_allowlist() {
     assert!(serde_json::from_value::<NetworkPolicy>(json!({ "mode": "allowlist" })).is_err());
     assert!(

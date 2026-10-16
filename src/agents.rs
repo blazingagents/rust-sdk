@@ -815,13 +815,6 @@ impl ToolReference {
 
 impl<'de> Deserialize<'de> for ToolReference {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = serde_json::Value::deserialize(deserializer)?;
-        let Some(kind) = value.get("type").and_then(serde_json::Value::as_str) else {
-            return Err(serde::de::Error::custom(
-                "a tool reference is an object with a string `type`",
-            ));
-        };
-
         /// The known wire shapes; a malformed one is a decode error, not
         /// `Unrecognized`.
         #[derive(Deserialize)]
@@ -840,23 +833,27 @@ impl<'de> Deserialize<'de> for ToolReference {
             },
         }
 
-        match kind {
-            "builtin" | "mcp" | "function" => {
-                let known = Known::deserialize(value).map_err(serde::de::Error::custom)?;
-                Ok(match known {
-                    Known::Builtin { name } => Self::Builtin { name },
-                    Known::Mcp {
-                        connection_id,
-                        name,
-                    } => Self::Mcp {
-                        connection_id,
-                        name,
-                    },
-                    Known::Function { name } => Self::Function { name },
+        crate::types::decode_tagged(
+            deserializer,
+            "type",
+            &["builtin", "mcp", "function"],
+            |_, raw| {
+                serde_json::from_value::<Known>(serde_json::Value::Object(raw)).map(|known| {
+                    match known {
+                        Known::Builtin { name } => Self::Builtin { name },
+                        Known::Mcp {
+                            connection_id,
+                            name,
+                        } => Self::Mcp {
+                            connection_id,
+                            name,
+                        },
+                        Known::Function { name } => Self::Function { name },
+                    }
                 })
-            }
-            _ => Ok(Self::Unrecognized(value)),
-        }
+            },
+            |raw| Self::Unrecognized(serde_json::Value::Object(raw)),
+        )
     }
 }
 

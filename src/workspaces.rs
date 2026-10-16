@@ -306,24 +306,25 @@ impl Serialize for NetworkPolicy {
 
 impl<'de> Deserialize<'de> for NetworkPolicy {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let raw = serde_json::Map::<String, serde_json::Value>::deserialize(deserializer)?;
-        let Some(mode) = raw.get("mode").and_then(serde_json::Value::as_str) else {
-            return Err(serde::de::Error::custom("\"mode\" must be a string"));
-        };
-        match mode {
-            "unrestricted" => Ok(Self::Unrestricted),
-            "offline" => Ok(Self::Offline),
-            "allowlist" => {
-                let hosts = raw
-                    .get("allowedHosts")
-                    .ok_or_else(|| serde::de::Error::missing_field("allowedHosts"))?
-                    .clone();
-                serde_json::from_value::<Vec<String>>(hosts)
-                    .map(|allowed_hosts| Self::Allowlist { allowed_hosts })
-                    .map_err(serde::de::Error::custom)
-            }
-            _ => Ok(Self::Unrecognized(UnrecognizedNetworkPolicy { raw })),
-        }
+        crate::types::decode_tagged(
+            deserializer,
+            "mode",
+            &["unrestricted", "allowlist", "offline"],
+            |mode, raw| match mode {
+                "unrestricted" => Ok(Self::Unrestricted),
+                "offline" => Ok(Self::Offline),
+                "allowlist" => {
+                    let hosts = raw
+                        .get("allowedHosts")
+                        .ok_or_else(|| serde::de::Error::missing_field("allowedHosts"))?
+                        .clone();
+                    serde_json::from_value::<Vec<String>>(hosts)
+                        .map(|allowed_hosts| Self::Allowlist { allowed_hosts })
+                }
+                _ => unreachable!("`known` names every tag this closure sees"),
+            },
+            |raw| Self::Unrecognized(UnrecognizedNetworkPolicy { raw }),
+        )
     }
 }
 

@@ -104,11 +104,25 @@ enum KnownPart {
     },
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 #[serde(untagged)]
 enum WirePart {
     Known(KnownPart),
     Other(serde_json::Value),
+}
+
+impl<'de> Deserialize<'de> for WirePart {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        crate::types::decode_tagged(
+            deserializer,
+            "type",
+            &["text", "file"],
+            |_, raw| {
+                serde_json::from_value::<KnownPart>(serde_json::Value::Object(raw)).map(Self::Known)
+            },
+            |raw| Self::Other(serde_json::Value::Object(raw)),
+        )
+    }
 }
 
 impl From<UserPart> for WirePart {

@@ -403,13 +403,6 @@ pub enum SkillCopyResult {
 
 impl<'de> Deserialize<'de> for SkillCopyResult {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = serde_json::Value::deserialize(deserializer)?;
-        let Some(status) = value.get("status").and_then(serde_json::Value::as_str) else {
-            return Err(serde::de::Error::custom(
-                "a copy result is an object with a string `status`",
-            ));
-        };
-
         /// The known wire shapes; a malformed one is a decode error, not
         /// `Unrecognized`.
         #[derive(Deserialize)]
@@ -427,16 +420,20 @@ impl<'de> Deserialize<'de> for SkillCopyResult {
             },
         }
 
-        match status {
-            "created" | "failed" => {
-                let known = Known::deserialize(value).map_err(serde::de::Error::custom)?;
-                Ok(match known {
-                    Known::Created { agent_id, skill } => Self::Created { agent_id, skill },
-                    Known::Failed { agent_id, error } => Self::Failed { agent_id, error },
+        crate::types::decode_tagged(
+            deserializer,
+            "status",
+            &["created", "failed"],
+            |_, raw| {
+                serde_json::from_value::<Known>(serde_json::Value::Object(raw)).map(|known| {
+                    match known {
+                        Known::Created { agent_id, skill } => Self::Created { agent_id, skill },
+                        Known::Failed { agent_id, error } => Self::Failed { agent_id, error },
+                    }
                 })
-            }
-            _ => Ok(Self::Unrecognized(value)),
-        }
+            },
+            |raw| Self::Unrecognized(serde_json::Value::Object(raw)),
+        )
     }
 }
 

@@ -672,28 +672,32 @@ fn schedule_config<E: serde::de::Error>(
 
 impl<'de> Deserialize<'de> for Schedule {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let raw = serde_json::Map::<String, serde_json::Value>::deserialize(deserializer)?;
-        let Some(kind) = raw.get("kind").and_then(serde_json::Value::as_str) else {
-            return Err(serde::de::Error::custom("\"kind\" must be a string"));
-        };
-        match kind {
-            "once" => serde_json::from_value::<OnceConfig>(schedule_config(&raw)?)
-                .map(|config| Self::Once { at: config.at })
-                .map_err(serde::de::Error::custom),
-            "interval" => serde_json::from_value::<IntervalConfig>(schedule_config(&raw)?)
-                .map(|config| Self::Interval {
-                    every_ms: config.every_ms,
-                })
-                .map_err(serde::de::Error::custom),
-            "cron" => serde_json::from_value::<CronConfig>(schedule_config(&raw)?)
-                .map(|config| Self::Cron {
-                    expression: config.expression,
-                    timezone: config.timezone,
-                    stagger_ms: config.stagger_ms,
-                })
-                .map_err(serde::de::Error::custom),
-            _ => Ok(Self::Unrecognized(UnrecognizedSchedule { raw })),
-        }
+        crate::types::decode_tagged(
+            deserializer,
+            "kind",
+            &["once", "interval", "cron"],
+            |kind, raw| {
+                let config = schedule_config(&raw)?;
+                match kind {
+                    "once" => serde_json::from_value::<OnceConfig>(config)
+                        .map(|config| Self::Once { at: config.at }),
+                    "interval" => serde_json::from_value::<IntervalConfig>(config).map(|config| {
+                        Self::Interval {
+                            every_ms: config.every_ms,
+                        }
+                    }),
+                    "cron" => {
+                        serde_json::from_value::<CronConfig>(config).map(|config| Self::Cron {
+                            expression: config.expression,
+                            timezone: config.timezone,
+                            stagger_ms: config.stagger_ms,
+                        })
+                    }
+                    _ => unreachable!("`known` names every tag this closure sees"),
+                }
+            },
+            |raw| Self::Unrecognized(UnrecognizedSchedule { raw }),
+        )
     }
 }
 
