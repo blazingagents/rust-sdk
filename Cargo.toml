@@ -1,0 +1,50 @@
+[workspace]
+members = [".", "xtask"]
+resolver = "3"
+
+[package]
+name = "blazing-agents"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Official Rust SDK for the Blazing Agents API"
+repository = "https://github.com/blazingagents/rust-sdk"
+homepage = "https://docs.blazingagents.com"
+documentation = "https://docs.blazingagents.com"
+readme = "README.md"
+keywords = ["blazing-agents", "agents", "ai", "sdk", "api"]
+categories = ["api-bindings", "web-programming::http-client"]
+exclude = ["/.github", "/xtask", "/spec"]
+
+[lib]
+name = "blazing_agents"
+
+[features]
+default = ["rustls", "schemars"]
+rustls = ["reqwest/rustls"]
+native-tls = ["reqwest/native-tls"]
+schemars = ["dep:schemars"]
+
+[dependencies]
+bytes = "1.12"
+futures-core = "0.3.34"
+futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
+http = "1.5"
+httpdate = "1.0"
+jiff = { version = "0.2", default-features = false, features = ["std"] }
+percent-encoding = "2.3"
+pin-project-lite = "0.2"
+reqwest = { version = "0.13", default-features = false, features = ["http2", "multipart", "stream", "system-proxy"] }
+schemars = { version = "1.2", optional = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.53", features = ["fs", "rt", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["io", "rt"] }
+tracing = { version = "0.1", default-features = false, features = ["std"] }
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tokio = { version = "1.53", features = ["macros", "rt-multi-thread"] }
+wiremock = "0.6"
