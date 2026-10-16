@@ -14,6 +14,7 @@ use crate::pagination::{Cursor, Page};
 use crate::patch::Patch;
 use crate::spending_limits::{SpendingLimitInput, SpendingLimitStatus};
 use crate::types::{Metadata, Timestamp};
+use crate::workspaces::WorkspaceTier;
 
 /// Agent operations. Returned by [`Client::agents`].
 #[derive(Clone, Copy, Debug)]
@@ -304,17 +305,6 @@ crate::open_enum! {
         /// `auto` — the agent's model allows the call, denies it, or asks a
         /// person; if the review fails, the call is blocked.
         Auto = "auto",
-    }
-}
-
-crate::open_enum! {
-    /// The tier of a workspace created for an agent. It cannot change later.
-    pub enum WorkspaceTier {
-        /// `core` — the default; the workspace's files are lost when the
-        /// workspace stops.
-        Core = "core",
-        /// `plus` — keeps the workspace's files when it stops while idle.
-        Plus = "plus",
     }
 }
 
