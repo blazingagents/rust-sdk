@@ -18,7 +18,12 @@ const METHODS: [&str; 5] = ["get", "post", "put", "patch", "delete"];
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let result = match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
+    let result = match args
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .as_slice()
+    {
         ["spec"] => spec(false),
         ["spec", "--check"] => spec(true),
         _ => Err("usage: cargo xtask spec [--check]".into()),
@@ -152,7 +157,7 @@ fn render_ops(operations: &[Operation]) -> String {
         out.push_str(&format!(
             "            Op::{}{} => \"{}\",\n",
             op.variant,
-            pattern(op),
+            wildcard(op),
             op.id
         ));
     }
@@ -162,7 +167,7 @@ fn render_ops(operations: &[Operation]) -> String {
         out.push_str(&format!(
             "            Op::{}{} => \"{}\",\n",
             op.variant,
-            pattern(op),
+            wildcard(op),
             op.method
         ));
     }
@@ -197,6 +202,10 @@ fn render_ops(operations: &[Operation]) -> String {
     }
     out.push_str("        }\n    }\n}\n");
     out
+}
+
+fn wildcard(op: &Operation) -> &'static str {
+    if op.params.is_empty() { "" } else { " { .. }" }
 }
 
 fn pattern(op: &Operation) -> String {
@@ -248,7 +257,11 @@ fn rustfmt(source: &str) -> Result<String, String> {
         .wait_with_output()
         .map_err(|error| format!("rustfmt failed: {error}"))?;
     if !output.status.success() {
-        return Err(format!("rustfmt rejected generated code: {}", output.status));
+        return Err(format!(
+            "rustfmt rejected generated code: {}",
+            output.status
+        ));
     }
-    String::from_utf8(output.stdout).map_err(|error| format!("rustfmt output is not UTF-8: {error}"))
+    String::from_utf8(output.stdout)
+        .map_err(|error| format!("rustfmt output is not UTF-8: {error}"))
 }
