@@ -12,6 +12,7 @@
 | `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps` | Rustdoc; broken links fail |
 | `cargo +1.85 test --workspace --locked` | The MSRV build |
 | `cargo test -p blazing-agents --no-default-features --features native-tls,schemars` | The OpenSSL build |
+| `cargo package -p blazing-agents --locked` | Builds the crate exactly as crates.io would receive it |
 
 CI runs all of these plus a grep that fails on `allow(dead_code)` or
 `expect(dead_code)` anywhere under `src/`.
@@ -80,3 +81,29 @@ Done means every command in the table passes and
 - Never hand-edit `src/op.rs` or `src/error/code.rs`.
 - Comments explain a non-obvious why. Code says what.
 - Breaking changes follow the two-step policy in `AGENTS.md`.
+
+## Releasing
+
+1. In a PR, bump `version` in `Cargo.toml` (run `cargo check` so `Cargo.lock`
+   follows) and add a `## X.Y.Z` entry to `CHANGELOG.md`. A release that
+   deprecates or removes something shows the migration, as `AGENTS.md`
+   requires.
+2. After it merges, tag the merge commit `vX.Y.Z` and publish a GitHub
+   release from that tag. `.github/workflows/publish.yml` reruns CI, checks
+   that the tag matches the `Cargo.toml` version, and publishes to crates.io
+   with trusted publishing. Prereleases are not published.
+
+One-time setup by the crate owner. crates.io can attach a trusted publisher
+only to a crate that already exists, so the first version goes out by hand:
+
+1. From a clean checkout of `main` at the release commit, run
+   `CARGO_REGISTRY_TOKEN=<token> cargo publish -p blazing-agents --locked`
+   with a crates.io token scoped to `blazing-agents` and `publish-new`, with
+   the shortest expiry. Revoke the token right after.
+2. In the crate's settings on crates.io, add a GitHub trusted publisher:
+   owner `blazingagents`, repository `rust-sdk`, workflow `publish.yml`,
+   environment `crates-io`.
+3. Create the `crates-io` environment in the repository settings, optionally
+   with required reviewers.
+4. Publish the GitHub release for that first version as in step 2 above.
+   The workflow sees the version already on crates.io and skips the upload.

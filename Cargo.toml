@@ -15,7 +15,7 @@ documentation = "https://docs.blazingagents.com"
 readme = "README.md"
 keywords = ["blazing-agents", "agents", "ai", "sdk", "api"]
 categories = ["api-bindings", "web-programming::http-client"]
-exclude = ["/.github", "/xtask", "/spec"]
+include = ["/src", "/examples", "/README.md", "/CHANGELOG.md", "/LICENSE"]
 
 [lib]
 name = "blazing_agents"

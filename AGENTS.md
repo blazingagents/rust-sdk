@@ -6,7 +6,7 @@ README.md is the repository's brief for Tenants: what it is, features, installat
 
 ## Commands
 
-- `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`, `cargo xtask spec --check` and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps` are the gate; CI runs them plus the 1.85 MSRV build and the `native-tls` build. Run them before every commit.
+- `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo test --workspace`, `cargo xtask spec --check` and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps` are the gate; CI runs them plus the 1.85 MSRV build, the `native-tls` build and `cargo package -p blazing-agents --locked`. Run them before every commit.
 - `cargo xtask spec` regenerates `src/op.rs` and `src/error/code.rs` from `spec/openapi.json`. Never edit those files by hand.
 - `src/op.rs` is under `#[deny(dead_code)]`: an operation with no SDK method fails the build naming its variant. Never write `allow(dead_code)` or `expect(dead_code)` under `src/`; add the method instead.
 - `CONTRIBUTING.md` holds the layout and the recipe for filling in a resource module; `src/prompts.rs` and `tests/prompts.rs` are the exemplar.

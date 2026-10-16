@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_call:
 
 permissions:
   contents: read
@@ -35,6 +36,7 @@ jobs:
       - run: cargo doc --no-deps
         env:
           RUSTDOCFLAGS: -D warnings
+      - run: cargo package -p blazing-agents --locked
       - name: No dead-code suppression under src/
         run: |
           if grep -rnE '(allow|expect)\(dead_code\)' src/; then
