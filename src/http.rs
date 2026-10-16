@@ -407,11 +407,6 @@ impl Raw {
             .map_err(|error| read_error(meta, error))
     }
 
-    pub(crate) async fn text(self) -> Result<String> {
-        let bytes = self.bytes().await?;
-        Ok(String::from_utf8_lossy(&bytes).into_owned())
-    }
-
     pub(crate) async fn json<T: DeserializeOwned>(self) -> Result<T> {
         let operation_id = self.operation_id;
         let request_id = self.meta.request_id.clone();

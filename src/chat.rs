@@ -14,7 +14,7 @@ use serde::{Serialize, Serializer};
 use crate::call::{Call, Payload, Raw, Request, ResponseMeta, sealed};
 use crate::client::{Client, Scope};
 use crate::error::{Result, StreamError, StreamErrorKind};
-use crate::functions::{Functions, Runner};
+use crate::functions::{Functions, Runner, is_platform_id};
 use crate::generation::SavedPrompt;
 use crate::ids::{AgentId, ApprovalId, SessionId, TurnId};
 use crate::messages::UserMessage;
@@ -545,12 +545,6 @@ fn turn_id_from_header(meta: &ResponseMeta) -> Result<TurnId> {
         return Err(stream_error(StreamErrorKind::MalformedTurnId, meta));
     }
     Ok(TurnId::from(turn_id))
-}
-
-fn is_platform_id(value: &str, prefix: &str) -> bool {
-    value.strip_prefix(prefix).is_some_and(|rest| {
-        rest.len() == 16 && rest.bytes().all(|byte| byte.is_ascii_alphanumeric())
-    })
 }
 
 fn stream_error(kind: StreamErrorKind, meta: &ResponseMeta) -> crate::Error {

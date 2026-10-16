@@ -234,11 +234,10 @@ async fn functions_are_claimed_run_and_resolved_without_reaching_the_caller() {
     drop(stream);
     assert_eq!(
         json_body(&sent[0])["functions"],
-        json!([{
-            "name": "lookup_order",
+        json!({ "lookup_order": {
             "description": "Looks up an order.",
             "inputSchema": { "type": "object", "properties": { "orderId": { "type": "string" } } }
-        }])
+        } })
     );
     let claim = json_body(&sent[1]);
     let claim_request_id = claim["claimRequestId"].as_str().unwrap().to_owned();
@@ -253,4 +252,49 @@ async fn functions_are_claimed_run_and_resolved_without_reaching_the_caller() {
             }
         })
     );
+}
+
+#[tokio::test]
+async fn a_body_ending_inside_an_event_is_incomplete() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .respond_with(new_session(&[r#"{"type":"start"}"#]).set_body_raw(
+            b"data: {\"type\":\"start\"}\n\ndata: {\"type\":\"text-".to_vec(),
+            "text/event-stream",
+        ))
+        .mount(&server)
+        .await;
+
+    let mut stream = client.chat("ag_1", UserMessage::text("hi")).await.unwrap();
+
+    let first = stream.try_next().await.unwrap().unwrap();
+    assert_eq!(first, "data: {\"type\":\"start\"}\n\n".as_bytes());
+    let error = stream.try_next().await.unwrap_err();
+    let Error::Stream(error) = error else {
+        panic!("expected a stream error, got {error:?}");
+    };
+    assert_eq!(error.kind(), StreamErrorKind::Incomplete);
+    assert!(stream.try_next().await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn trailing_whitespace_after_the_last_event_ends_the_stream_normally() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .respond_with(new_session(&[]).set_body_raw(
+            b"data: {\"type\":\"start\"}\n\n\r\n \n".to_vec(),
+            "text/event-stream",
+        ))
+        .mount(&server)
+        .await;
+
+    let frames: Vec<_> = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .await
+        .unwrap()
+        .try_collect()
+        .await
+        .unwrap();
+
+    assert_eq!(frames, ["data: {\"type\":\"start\"}\n\n".as_bytes()]);
 }
