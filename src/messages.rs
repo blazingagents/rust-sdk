@@ -18,10 +18,7 @@ impl UserMessage {
     /// A text message with a random UUID as its ID. Keep the message and resend
     /// it to retry without a `message_id_conflict`.
     pub fn text(text: impl Into<String>) -> Self {
-        Self::new(
-            uuid::Uuid::new_v4().to_string(),
-            UserPart::Text { text: text.into() },
-        )
+        Self::new(uuid::Uuid::new_v4().to_string(), UserPart::text(text))
     }
 
     /// A message with the given ID and first part.
@@ -64,20 +61,47 @@ impl UserMessage {
 #[non_exhaustive]
 pub enum UserPart {
     /// Text.
+    #[non_exhaustive]
     Text {
         /// The text.
         text: String,
+        /// Fields this SDK version does not model, such as `filename` or
+        /// `providerMetadata`, sent back unchanged.
+        extra: serde_json::Map<String, serde_json::Value>,
     },
     /// A file, such as an image, as a `data:` URL or a fetchable URL.
+    #[non_exhaustive]
     File {
         /// The MIME type.
         media_type: String,
         /// The URL.
         url: String,
+        /// Fields this SDK version does not model, such as `filename` or
+        /// `providerMetadata`, sent back unchanged.
+        extra: serde_json::Map<String, serde_json::Value>,
     },
     /// A part type this SDK version does not know. Only deserialization creates
     /// it, and it is sent unchanged.
     Unrecognized(RawPart),
+}
+
+impl UserPart {
+    /// A text part.
+    pub fn text(text: impl Into<String>) -> Self {
+        Self::Text {
+            text: text.into(),
+            extra: serde_json::Map::new(),
+        }
+    }
+
+    /// A file part, such as an image, as a `data:` URL or a fetchable URL.
+    pub fn file(media_type: impl Into<String>, url: impl Into<String>) -> Self {
+        Self::File {
+            media_type: media_type.into(),
+            url: url.into(),
+            extra: serde_json::Map::new(),
+        }
+    }
 }
 
 /// A part the SDK does not know, kept as its JSON.
@@ -91,33 +115,87 @@ impl RawPart {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 enum KnownPart {
     Text {
         text: String,
+        #[serde(flatten)]
+        extra: serde_json::Map<String, serde_json::Value>,
     },
     #[serde(rename_all = "camelCase")]
     File {
         media_type: String,
         url: String,
+        #[serde(flatten)]
+        extra: serde_json::Map<String, serde_json::Value>,
     },
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
 enum WirePart {
     Known(KnownPart),
     Other(serde_json::Value),
 }
 
+impl<'de> Deserialize<'de> for WirePart {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        crate::types::decode_tagged(
+            deserializer,
+            "type",
+            |tag, raw| match tag {
+                "text" | "file" => Some(KnownPart::deserialize(raw).map(Self::Known)),
+                _ => None,
+            },
+            |raw| Self::Other(serde_json::Value::Object(raw)),
+        )
+    }
+}
+
+/// `extra` is written first and the modeled keys overwrite it, so a caller's
+/// `type` or `text` in `extra` cannot corrupt the wire shape.
+impl Serialize for WirePart {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Other(value) => value.serialize(serializer),
+            Self::Known(known) => {
+                let map = match known {
+                    KnownPart::Text { text, extra } => {
+                        let mut map = extra.clone();
+                        map.insert("type".to_owned(), "text".into());
+                        map.insert("text".to_owned(), text.clone().into());
+                        map
+                    }
+                    KnownPart::File {
+                        media_type,
+                        url,
+                        extra,
+                    } => {
+                        let mut map = extra.clone();
+                        map.insert("type".to_owned(), "file".into());
+                        map.insert("mediaType".to_owned(), media_type.clone().into());
+                        map.insert("url".to_owned(), url.clone().into());
+                        map
+                    }
+                };
+                map.serialize(serializer)
+            }
+        }
+    }
+}
+
 impl From<UserPart> for WirePart {
     fn from(part: UserPart) -> Self {
         match part {
-            UserPart::Text { text } => WirePart::Known(KnownPart::Text { text }),
-            UserPart::File { media_type, url } => {
-                WirePart::Known(KnownPart::File { media_type, url })
-            }
+            UserPart::Text { text, extra } => WirePart::Known(KnownPart::Text { text, extra }),
+            UserPart::File {
+                media_type,
+                url,
+                extra,
+            } => WirePart::Known(KnownPart::File {
+                media_type,
+                url,
+                extra,
+            }),
             UserPart::Unrecognized(RawPart(value)) => WirePart::Other(value),
         }
     }
@@ -126,10 +204,16 @@ impl From<UserPart> for WirePart {
 impl From<WirePart> for UserPart {
     fn from(part: WirePart) -> Self {
         match part {
-            WirePart::Known(KnownPart::Text { text }) => UserPart::Text { text },
-            WirePart::Known(KnownPart::File { media_type, url }) => {
-                UserPart::File { media_type, url }
-            }
+            WirePart::Known(KnownPart::Text { text, extra }) => UserPart::Text { text, extra },
+            WirePart::Known(KnownPart::File {
+                media_type,
+                url,
+                extra,
+            }) => UserPart::File {
+                media_type,
+                url,
+                extra,
+            },
             WirePart::Other(value) => UserPart::Unrecognized(RawPart(value)),
         }
     }

@@ -3,7 +3,7 @@ mod support;
 use blazing_agents::Error;
 use blazing_agents::ids::{TenantId, WorkspaceId};
 use blazing_agents::types::Metadata;
-use blazing_agents::workspaces::{NetworkPolicy, WorkspaceTier};
+use blazing_agents::workspaces::{NetworkPolicy, WorkspaceDeletion, WorkspaceTier};
 use futures_util::TryStreamExt;
 use serde_json::json;
 use support::{json, json_body, mock, requests};
@@ -276,11 +276,32 @@ async fn delete_accepts_202_with_an_empty_body() {
         .mount(&server)
         .await;
 
-    client
+    let deletion = client
         .workspaces()
         .delete("ws_3Vb8Ny6HpU1cGf4M")
         .await
         .unwrap();
+
+    assert_eq!(deletion, WorkspaceDeletion::Pending);
+}
+
+#[tokio::test]
+async fn delete_returns_completed_for_204() {
+    let (server, client) = mock().await;
+    Mock::given(method("DELETE"))
+        .and(path("/v1/workspaces/ws_3Vb8Ny6HpU1cGf4M"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let deletion = client
+        .workspaces()
+        .delete("ws_3Vb8Ny6HpU1cGf4M")
+        .await
+        .unwrap();
+
+    assert_eq!(deletion, WorkspaceDeletion::Completed);
 }
 
 #[tokio::test]
@@ -372,6 +393,12 @@ fn unrecognized_network_policy_round_trips() {
     assert_eq!(inner.mode(), "vpn");
     assert_eq!(inner.as_json()["gateway"], json!("10.0.0.1"));
     assert_eq!(serde_json::to_value(&policy).unwrap(), raw);
+}
+
+#[test]
+fn network_policy_rejects_a_missing_or_non_string_mode() {
+    assert!(serde_json::from_value::<NetworkPolicy>(json!({ "allowedHosts": [] })).is_err());
+    assert!(serde_json::from_value::<NetworkPolicy>(json!({ "mode": 7 })).is_err());
 }
 
 #[test]

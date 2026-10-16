@@ -758,6 +758,12 @@ fn unrecognized_schedule_round_trips() {
 }
 
 #[test]
+fn schedule_rejects_a_missing_or_non_string_kind() {
+    assert!(serde_json::from_value::<Schedule>(json!({ "config": {} })).is_err());
+    assert!(serde_json::from_value::<Schedule>(json!({ "kind": 7 })).is_err());
+}
+
+#[test]
 fn schedule_rejects_malformed_known_kinds() {
     assert!(serde_json::from_value::<Schedule>(json!({ "kind": "once" })).is_err());
     assert!(serde_json::from_value::<Schedule>(json!({ "kind": "cron", "config": {} })).is_err());

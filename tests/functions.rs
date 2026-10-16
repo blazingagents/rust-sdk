@@ -8,13 +8,14 @@ use blazing_agents::error::StreamErrorKind;
 use blazing_agents::functions::{Functions, FunctionsBuilder, FunctionsError};
 use blazing_agents::messages::UserMessage;
 use futures_util::TryStreamExt;
+use http::{HeaderName, HeaderValue};
 use serde_json::json;
 use support::{api_error, json, json_body, requests};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const SESSION: &str = "ss_0123456789abcdef";
-const TURN: &str = "tr_0123456789abcdef";
+const TURN: &str = "turn_0123456789abcdef";
 const CALL: &str = "fc_0123456789abcdef";
 
 fn call_path(action: &str) -> String {
@@ -270,6 +271,38 @@ async fn functions_are_sent_keyed_by_name() {
         json_body(&sent[0])["functions"],
         json!({ "lookup_order": { "description": "Looks up an order.", "inputSchema": { "type": "object" } } })
     );
+}
+
+#[tokio::test]
+async fn per_call_headers_reach_claim_and_result() {
+    let server = MockServer::start().await;
+    mount_chat(&server, "lookup_order", json!({})).await;
+    mount_claim(&server).await;
+    mount_result(&server).await;
+    let (_, client) = mock_at(&server).await;
+
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(echo_functions())
+        .with_header(
+            HeaderName::from_static("x-trace"),
+            HeaderValue::from_static("abc"),
+        )
+        .with_client_request_id("req-1")
+        .await
+        .unwrap();
+    while stream.try_next().await.unwrap().is_some() {}
+    let sent = wait_for_requests(&server, 3).await;
+    drop(stream);
+
+    for action in ["claim", "result"] {
+        let request = sent
+            .iter()
+            .find(|request| request.url.path() == call_path(action))
+            .unwrap_or_else(|| panic!("no {action} request"));
+        assert_eq!(request.headers["x-trace"], "abc");
+        assert_eq!(request.headers["x-client-request-id"], "req-1");
+    }
 }
 
 #[tokio::test]

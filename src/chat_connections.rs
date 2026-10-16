@@ -771,16 +771,16 @@ pub enum ChatConfiguration {
 
 impl<'de> Deserialize<'de> for ChatConfiguration {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = serde_json::Value::deserialize(deserializer)?;
-        match value.get("platform").and_then(serde_json::Value::as_str) {
-            Some("slack") => serde_json::from_value::<SlackConfiguration>(value)
-                .map(Self::Slack)
-                .map_err(serde::de::Error::custom),
-            Some("telegram") => serde_json::from_value::<TelegramConfiguration>(value)
-                .map(Self::Telegram)
-                .map_err(serde::de::Error::custom),
-            _ => Ok(Self::Unrecognized(value)),
-        }
+        crate::types::decode_tagged(
+            deserializer,
+            "platform",
+            |platform, raw| match platform {
+                "slack" => Some(SlackConfiguration::deserialize(raw).map(Self::Slack)),
+                "telegram" => Some(TelegramConfiguration::deserialize(raw).map(Self::Telegram)),
+                _ => None,
+            },
+            |raw| Self::Unrecognized(serde_json::Value::Object(raw)),
+        )
     }
 }
 

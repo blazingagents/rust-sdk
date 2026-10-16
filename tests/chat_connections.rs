@@ -275,6 +275,22 @@ async fn a_malformed_known_platform_fails_to_decode() {
 }
 
 #[tokio::test]
+async fn a_configuration_without_a_platform_fails_to_decode() {
+    let (server, client) = mock().await;
+    let mut body = chat_connection("cc_1");
+    body["configuration"] = json!({ "channelIds": ["C0123ABC"] });
+    Mock::given(method("GET"))
+        .and(path("/v1/chat-connections/cc_1"))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+
+    let error = client.chat_connections().get("cc_1").await.unwrap_err();
+
+    assert!(matches!(error, Error::Decode { .. }), "got {error:?}");
+}
+
+#[tokio::test]
 async fn update_sends_only_the_set_fields() {
     let (server, client) = mock().await;
     Mock::given(method("PATCH"))

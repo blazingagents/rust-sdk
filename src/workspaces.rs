@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::call::{Call, impl_request};
+use crate::call::{Call, Raw, impl_request};
 use crate::client::{Client, Scope};
 use crate::ids::{TenantId, WorkspaceId};
 use crate::op::Op;
@@ -80,7 +80,9 @@ impl<S: Scope> Workspaces<'_, S> {
 
     /// Permanently deletes a workspace and all its files. Move attached agents
     /// to another workspace first: while any agent uses it the request fails
-    /// with `workspace_in_use`.
+    /// with `workspace_in_use`. Returns [`WorkspaceDeletion::Pending`] when the
+    /// deletion was accepted and cleanup continues in the background, or
+    /// [`WorkspaceDeletion::Completed`] once the workspace is gone.
     pub fn delete(&self, workspace_id: impl Into<WorkspaceId>) -> Call<DeleteWorkspace> {
         let workspace_id = workspace_id.into();
         Call::new(
@@ -210,10 +212,29 @@ impl Call<UpdateWorkspace> {
     }
 }
 
+/// How a workspace deletion ended. Returned by [`Workspaces::delete`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum WorkspaceDeletion {
+    /// The workspace and its files are gone.
+    Completed,
+    /// The deletion was accepted (202) and cleanup continues in the background.
+    Pending,
+}
+
 /// Request state of [`Workspaces::delete`].
 #[derive(Clone, Debug)]
 pub struct DeleteWorkspace;
-impl_request!(DeleteWorkspace => (); encode = none; decode = none);
+impl_request!(DeleteWorkspace => WorkspaceDeletion; encode = none; decode = (delete_outcome));
+
+/// The outcome comes from the status alone; the body is empty.
+async fn delete_outcome(raw: Raw) -> crate::error::Result<WorkspaceDeletion> {
+    Ok(if raw.meta.status == 202 {
+        WorkspaceDeletion::Pending
+    } else {
+        WorkspaceDeletion::Completed
+    })
+}
 
 crate::open_enum! {
     /// The workspace tier, fixed at creation.
@@ -306,24 +327,25 @@ impl Serialize for NetworkPolicy {
 
 impl<'de> Deserialize<'de> for NetworkPolicy {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let raw = serde_json::Map::<String, serde_json::Value>::deserialize(deserializer)?;
-        let Some(mode) = raw.get("mode").and_then(serde_json::Value::as_str) else {
-            return Err(serde::de::Error::custom("\"mode\" must be a string"));
-        };
-        match mode {
-            "unrestricted" => Ok(Self::Unrestricted),
-            "offline" => Ok(Self::Offline),
-            "allowlist" => {
-                let hosts = raw
-                    .get("allowedHosts")
-                    .ok_or_else(|| serde::de::Error::missing_field("allowedHosts"))?
-                    .clone();
-                serde_json::from_value::<Vec<String>>(hosts)
-                    .map(|allowed_hosts| Self::Allowlist { allowed_hosts })
-                    .map_err(serde::de::Error::custom)
-            }
-            _ => Ok(Self::Unrecognized(UnrecognizedNetworkPolicy { raw })),
-        }
+        crate::types::decode_tagged(
+            deserializer,
+            "mode",
+            |mode, raw| match mode {
+                "unrestricted" => Some(Ok(Self::Unrestricted)),
+                "offline" => Some(Ok(Self::Offline)),
+                "allowlist" => Some(
+                    raw.get("allowedHosts")
+                        .cloned()
+                        .ok_or_else(|| serde::de::Error::missing_field("allowedHosts"))
+                        .and_then(|hosts| {
+                            serde_json::from_value::<Vec<String>>(hosts)
+                                .map(|allowed_hosts| Self::Allowlist { allowed_hosts })
+                        }),
+                ),
+                _ => None,
+            },
+            |raw| Self::Unrecognized(UnrecognizedNetworkPolicy { raw }),
+        )
     }
 }
 

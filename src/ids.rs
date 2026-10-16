@@ -72,7 +72,7 @@ id!(
     SessionId
 );
 id!(
-    /// A turn ID (`tr_…`).
+    /// A turn ID (`turn_…`).
     TurnId
 );
 id!(
@@ -92,7 +92,7 @@ id!(
     TaskId
 );
 id!(
-    /// A task run ID.
+    /// A task run ID (`tr_…`).
     TaskRunId
 );
 id!(
@@ -112,11 +112,11 @@ id!(
     McpConnectionId
 );
 id!(
-    /// A chat connection ID.
+    /// A chat connection ID (`cc_…`).
     ChatConnectionId
 );
 id!(
-    /// A chat delivery ID.
+    /// A chat delivery ID (`cd_…`).
     ChatDeliveryId
 );
 id!(
@@ -132,7 +132,7 @@ id!(
     FunctionCallId
 );
 id!(
-    /// A tool approval ID.
+    /// A tool approval ID (`apr_…`).
     ApprovalId
 );
 id!(

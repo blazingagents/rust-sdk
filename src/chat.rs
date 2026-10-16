@@ -121,14 +121,14 @@ impl Serialize for RegenerateInput {
 /// One decision of a tool approval round.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ApprovalDecision {
+pub struct ToolApprovalDecision {
     approval_id: ApprovalId,
     approved: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     reason: Option<String>,
 }
 
-impl ApprovalDecision {
+impl ToolApprovalDecision {
     /// Approves the call.
     pub fn approve(approval_id: impl Into<ApprovalId>) -> Self {
         Self {
@@ -217,7 +217,7 @@ impl<S: Scope> Client<S> {
         &self,
         agent_id: impl Into<AgentId>,
         session_id: impl Into<SessionId>,
-        decisions: impl IntoIterator<Item = ApprovalDecision>,
+        decisions: impl IntoIterator<Item = ToolApprovalDecision>,
     ) -> Call<ContinueChat> {
         let agent_id = agent_id.into();
         let session_id = session_id.into();
@@ -286,7 +286,9 @@ impl Call<ChatTurn> {
         self.map(|request| request.metadata = Some(metadata))
     }
 
-    /// Backend functions the agent may call during the turn.
+    /// Backend functions the agent may call during the turn. Their claim and
+    /// result requests carry this call's [`with_header`](Call::with_header)
+    /// values and [`with_client_request_id`](Call::with_client_request_id).
     pub fn functions(self, functions: Functions) -> Self {
         self.map(|request| request.functions = Some(functions))
     }
@@ -354,7 +356,9 @@ impl Call<Regenerate> {
         self.map(|request| request.metadata = Some(metadata))
     }
 
-    /// Backend functions the agent may call during the turn.
+    /// Backend functions the agent may call during the turn. Their claim and
+    /// result requests carry this call's [`with_header`](Call::with_header)
+    /// values and [`with_client_request_id`](Call::with_client_request_id).
     pub fn functions(self, functions: Functions) -> Self {
         self.map(|request| request.functions = Some(functions))
     }
@@ -393,13 +397,16 @@ pub struct ContinueChat {
     agent_id: AgentId,
     #[serde(skip)]
     session_id: SessionId,
-    decisions: Vec<ApprovalDecision>,
+    decisions: Vec<ToolApprovalDecision>,
     #[serde(skip_serializing_if = "Option::is_none")]
     functions: Option<Functions>,
 }
 
 impl Call<ContinueChat> {
     /// Backend functions the agent may call during the rest of the turn.
+    /// Their claim and result requests carry this call's
+    /// [`with_header`](Call::with_header) values and
+    /// [`with_client_request_id`](Call::with_client_request_id).
     pub fn functions(self, functions: Functions) -> Self {
         self.map(|request| request.functions = Some(functions))
     }
@@ -457,6 +464,7 @@ impl ChatStream {
                 session_id.clone(),
                 functions,
                 meta.clone(),
+                raw.options,
             )
         });
         Ok(Self {
@@ -541,7 +549,7 @@ fn turn_id_from_header(meta: &ResponseMeta) -> Result<TurnId> {
         .get("x-ba-turn-id")
         .and_then(|value| value.to_str().ok())
         .ok_or_else(|| stream_error(StreamErrorKind::MissingTurnId, meta))?;
-    if !is_platform_id(turn_id, "tr_") {
+    if !is_platform_id(turn_id, "turn_") {
         return Err(stream_error(StreamErrorKind::MalformedTurnId, meta));
     }
     Ok(TurnId::from(turn_id))

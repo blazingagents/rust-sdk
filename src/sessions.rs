@@ -625,7 +625,7 @@ pub struct ToolApproval {
     /// Pass it in a decision to [`Client::continue_chat`].
     pub approval_id: ApprovalId,
     /// The decision so far.
-    pub decision: ToolApprovalDecision,
+    pub decision: ToolApprovalStatus,
     /// The exact arguments the agent proposed.
     pub input: serde_json::Map<String, serde_json::Value>,
     /// The reason given with the decision, if any.
@@ -637,8 +637,8 @@ pub struct ToolApproval {
 }
 
 crate::open_enum! {
-    /// The decision of one tool approval.
-    pub enum ToolApprovalDecision {
+    /// Where one tool approval stands: still pending, or decided.
+    pub enum ToolApprovalStatus {
         /// `pending` — still waiting.
         Pending = "pending",
         /// `approved`

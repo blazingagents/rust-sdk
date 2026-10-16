@@ -22,7 +22,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::call::{Call, Raw, Request, ResponseMeta, impl_request};
 use crate::error::{Error, Result, StreamError, StreamErrorKind};
-use crate::http::Handle;
+use crate::http::{Handle, RequestOptions};
 use crate::ids::{AgentId, FunctionCallId, SessionId};
 use crate::op::Op;
 use crate::types::Timestamp;
@@ -429,6 +429,7 @@ pub(crate) struct Runner {
     session_id: SessionId,
     functions: Functions,
     meta: ResponseMeta,
+    options: RequestOptions,
     seen: HashSet<FunctionCallId>,
     tasks: JoinSet<Result<()>>,
     cancel: CancellationToken,
@@ -441,6 +442,7 @@ impl Runner {
         session_id: SessionId,
         functions: Functions,
         meta: ResponseMeta,
+        options: RequestOptions,
     ) -> Self {
         Self {
             handle,
@@ -448,6 +450,12 @@ impl Runner {
             session_id,
             functions,
             meta,
+            // The chat call's timeout covers only its response headers, so the
+            // claim and result posts keep the client's timeout.
+            options: RequestOptions {
+                timeout: None,
+                ..options
+            },
             seen: HashSet::new(),
             tasks: JoinSet::new(),
             cancel: CancellationToken::new(),
@@ -493,6 +501,7 @@ impl Runner {
             event.data,
             handler,
             self.cancel.child_token(),
+            self.options.clone(),
         ));
         Ok(true)
     }
@@ -610,6 +619,7 @@ async fn run_call(
     call: FunctionCall,
     handler: Option<Arc<dyn Handler>>,
     cancel: CancellationToken,
+    options: RequestOptions,
 ) -> Result<()> {
     let FunctionCall {
         id,
@@ -629,7 +639,8 @@ async fn run_call(
         ClaimFunctionCall {
             claim_request_id: claim_request_id.clone(),
         },
-    );
+    )
+    .with_options(options.clone());
     match post("claim", &id, claim, deadline, &cancel).await {
         Post::Accepted => {}
         Post::Refused | Post::Expired => return Ok(()),
@@ -680,7 +691,8 @@ async fn run_call(
             claim_request_id,
             outcome,
         },
-    );
+    )
+    .with_options(options);
     match post("result", &id, result, deadline + RESULT_GRACE, &cancel).await {
         Post::Failed(error) => Err(error),
         _ => Ok(()),

@@ -133,6 +133,35 @@ impl TryFrom<serde_json::Value> for Metadata {
     }
 }
 
+/// Decodes a JSON object whose `tag` field selects the variant. `decode_known`
+/// returns `None` for a tag it does not handle, which becomes `unrecognized`
+/// with the whole object; a `Some(Err(..))` from a handled tag is a decode
+/// error. A value that is not an object, or whose tag is missing or not a
+/// string, is an error.
+pub(crate) fn decode_tagged<'de, D, T>(
+    deserializer: D,
+    tag: &'static str,
+    decode_known: impl FnOnce(
+        &str,
+        &serde_json::Map<String, serde_json::Value>,
+    ) -> Option<Result<T, serde_json::Error>>,
+    unrecognized: impl FnOnce(serde_json::Map<String, serde_json::Value>) -> T,
+) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = serde_json::Map::<String, serde_json::Value>::deserialize(deserializer)?;
+    let Some(tag_value) = raw.get(tag).and_then(serde_json::Value::as_str) else {
+        return Err(serde::de::Error::custom(format!(
+            "`{tag}` must be a string"
+        )));
+    };
+    match decode_known(tag_value, &raw) {
+        Some(result) => result.map_err(serde::de::Error::custom),
+        None => Ok(unrecognized(raw)),
+    }
+}
+
 /// A wire value that no known variant of an open enum matches. Only decoding and
 /// parsing create it, so it never holds a value a known variant would match.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

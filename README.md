@@ -5,23 +5,37 @@
   <h1>Blazing Agents Rust SDK</h1>
   <p>Build production agents in Rust with a typed client for the Blazing Agents API.</p>
   <p>
-    <a href="https://docs.blazingagents.com">Documentation</a>
+    <a href="https://docs.blazingagents.com/sdk/rust">Documentation</a>
   </p>
 </div>
 
-The official Rust SDK for the Blazing Agents `/v1` API. It is in development
-and not yet published to crates.io: the client, transport and prompts are
-complete, and the other resources are being filled in.
+The official Rust SDK provides an asynchronous client for the Blazing Agents
+`/v1` API, built on Tokio. It supports Rust 1.85 and newer.
+
+## Features
+
+- Typed request builders and response models; unknown fields and enum values
+  still decode.
+- Agent, Workspace, Skill, Provider, MCP connection, Prompt, Memory, Session,
+  Artifact, Task, Chat Connection and delivery, Merchant, Usage, and Tenant
+  management.
+- Chat streams of AI SDK UI message stream events, ready to relay to
+  `useChat`, with message batches, tool approvals and backend functions.
+- Text and structured-object generation, buffered or streamed, with
+  schemars-derived schemas.
+- `for_user` user-scoped clients without tenant administration methods.
+- Lazy pagination, uploads and streamed downloads.
+- Request correlation, per-call timeouts and headers, response observation,
+  and typed errors with credential redaction.
 
 ## Installation
 
-Until the first release, depend on the repository:
+The crate is not on crates.io yet; depend on the repository:
 
 ```toml
 [dependencies]
 blazing-agents = { git = "https://github.com/blazingagents/rust-sdk" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-futures-util = "0.3"
 ```
 
 The crate is async and runs on Tokio. TLS uses rustls by default; enable the
@@ -30,46 +44,62 @@ The crate is async and runs on Tokio. TLS uses rustls by default; enable the
 
 ## Quick start
 
-Set `BLAZING_AGENTS_API_KEY` to a tenant API key, then:
+Create a Tenant API key in the Blazing Agents dashboard and set
+`BLAZING_AGENTS_API_KEY`, then:
 
-```rust,no_run
+```rust
 use blazing_agents::Client;
-use blazing_agents::generation::SavedPrompt;
-use blazing_agents::messages::UserMessage;
-use futures_util::TryStreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::from_env()?;
-    let agent_id = "ag_4kP9sT2vXq7LmN3a";
-
-    let prompt = client
-        .prompts()
-        .create("Greeting", "Greet {{name}} in one sentence.")
-        .await?;
 
     let answer = client
-        .completion(agent_id, SavedPrompt::new(&prompt.id).var("name", "Ada"))
+        .completion("ag_...", "Write a friendly welcome message.")
         .await?;
     println!("{answer}");
-
-    let mut stream = client.chat(agent_id, UserMessage::text("Hello!")).await?;
-    println!("session {}", stream.session_id());
-    while let Some(event) = stream.try_next().await? {
-        print!("{}", String::from_utf8_lossy(&event));
-    }
     Ok(())
 }
 ```
 
-The same program is in [`examples/quickstart.rs`](examples/quickstart.rs);
-run it with `BLAZING_AGENTS_AGENT_ID=ag_... cargo run --example quickstart`.
+Replace `ag_...` with an agent ID from the dashboard. See
+[`examples/`](examples) — `quickstart`, `chat_relay` and `structured_output` —
+and run any of them with
+`BLAZING_AGENTS_API_KEY=... BLAZING_AGENTS_AGENT_ID=ag_... cargo run --example quickstart`.
+`chat_relay` also needs `DEMO_USER_TOKEN`, the bearer token the demo accepts:
+`BLAZING_AGENTS_API_KEY=... BLAZING_AGENTS_AGENT_ID=ag_... DEMO_USER_TOKEN=... cargo run --example chat_relay`.
 
-Every method returns a `Call` that `.await` sends. Required inputs are
-arguments; optional inputs are setters, such as
-`client.prompts().list().agent_id(id).limit(25)`. Lists also offer `.items()`
-to walk every page lazily. `client.for_user(user_id)?` returns a client that
-acts for one end user and omits tenant administration.
+## User scope
+
+`client.for_user("customer_123")?` returns a `UserClient` that sends the end
+user's ID on every request and exposes no tenant administration methods, so
+calling one does not compile.
+
+```rust
+let client = blazing_agents::Client::from_env()?;
+let user = client.for_user("customer_123")?;
+let answer = user.completion("ag_...", "Summarize my last order.").await?;
+```
+
+## Documentation
+
+Read the [Rust SDK documentation](https://docs.blazingagents.com/sdk/rust)
+for authentication, resource guides, chat and generation, error handling, and
+the complete API reference.
+
+## Development
+
+```console
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace
+cargo xtask spec --check
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
+cargo +1.85 test --workspace --locked
+cargo test -p blazing-agents --no-default-features --features native-tls,schemars
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the crate's layout and rules.
 
 ## License
 

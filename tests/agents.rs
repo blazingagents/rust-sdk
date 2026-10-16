@@ -3,12 +3,12 @@ mod support;
 use blazing_agents::Error;
 use blazing_agents::agents::{
     AgentConfig, AgentStatus, AgentTool, ApprovalDecision, ApprovalPolicy, ToolReference,
-    WorkspaceTier,
 };
 use blazing_agents::error::ErrorCode;
 use blazing_agents::files::Upload;
 use blazing_agents::ids::{AgentId, McpConnectionId, ProviderId, WorkspaceId};
 use blazing_agents::types::Metadata;
+use blazing_agents::workspaces::WorkspaceTier;
 use futures_util::TryStreamExt;
 use serde_json::json;
 use support::{json, json_body, mock, requests};

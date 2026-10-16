@@ -3,7 +3,7 @@ mod support;
 use std::time::Duration;
 
 use blazing_agents::Error;
-use blazing_agents::chat::ApprovalDecision;
+use blazing_agents::chat::ToolApprovalDecision;
 use blazing_agents::error::StreamErrorKind;
 use blazing_agents::functions::Functions;
 use blazing_agents::messages::{UserMessage, UserPart};
@@ -14,7 +14,7 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
 const SESSION: &str = "ss_0123456789abcdef";
-const TURN: &str = "tr_0123456789abcdef";
+const TURN: &str = "turn_0123456789abcdef";
 
 fn sse(status: u16, events: &[&str]) -> ResponseTemplate {
     let body: String = events
@@ -44,12 +44,7 @@ async fn chat_starts_a_session_and_yields_each_event() {
         ]))
         .mount(&server)
         .await;
-    let message = UserMessage::new(
-        "m1",
-        UserPart::Text {
-            text: "Hello".to_owned(),
-        },
-    );
+    let message = UserMessage::new("m1", UserPart::text("Hello"));
 
     let stream = client.chat("ag_1", message).await.unwrap();
 
@@ -72,6 +67,42 @@ async fn chat_starts_a_session_and_yields_each_event() {
             "trigger": "submit-message"
         })
     );
+}
+
+#[tokio::test]
+async fn a_relayed_browser_message_keeps_every_field() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/sessions"))
+        .respond_with(new_session(&[r#"{"type":"start"}"#]))
+        .mount(&server)
+        .await;
+    let message_json = json!({
+        "id": "m1",
+        "role": "user",
+        "parts": [
+            {
+                "type": "text",
+                "text": "hi",
+                "state": "done",
+                "providerMetadata": { "openai": { "itemId": "x" } }
+            },
+            {
+                "type": "file",
+                "mediaType": "image/png",
+                "url": "data:image/png;base64,AAAA",
+                "filename": "a.png",
+                "providerMetadata": { "anthropic": { "cache": true } }
+            }
+        ]
+    });
+    let message = serde_json::from_value::<UserMessage>(message_json.clone()).unwrap();
+
+    let stream = client.chat("ag_1", message).await.unwrap();
+    drop(stream);
+
+    let sent = requests(&server).await;
+    assert_eq!(json_body(&sent[0])["messages"][0], message_json);
 }
 
 #[tokio::test]
@@ -106,6 +137,12 @@ async fn missing_or_malformed_handshake_headers_fail_before_the_body() {
             ResponseTemplate::new(201)
                 .insert_header("location", format!("/sessions/{SESSION}").as_str()),
             StreamErrorKind::MissingTurnId,
+        ),
+        (
+            ResponseTemplate::new(201)
+                .insert_header("location", format!("/sessions/{SESSION}").as_str())
+                .insert_header("x-ba-turn-id", "tr_0123456789abcdef"),
+            StreamErrorKind::MalformedTurnId,
         ),
     ];
     for (response, kind) in cases {
@@ -144,8 +181,8 @@ async fn continue_chat_sends_every_decision() {
             "ag_1",
             SESSION,
             [
-                ApprovalDecision::approve("apr_1"),
-                ApprovalDecision::deny("apr_2").reason("Too risky."),
+                ToolApprovalDecision::approve("apr_1"),
+                ToolApprovalDecision::deny("apr_2").reason("Too risky."),
             ],
         )
         .await
