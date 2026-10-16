@@ -234,11 +234,10 @@ async fn functions_are_claimed_run_and_resolved_without_reaching_the_caller() {
     drop(stream);
     assert_eq!(
         json_body(&sent[0])["functions"],
-        json!([{
-            "name": "lookup_order",
+        json!({ "lookup_order": {
             "description": "Looks up an order.",
             "inputSchema": { "type": "object", "properties": { "orderId": { "type": "string" } } }
-        }])
+        } })
     );
     let claim = json_body(&sent[1]);
     let claim_request_id = claim["claimRequestId"].as_str().unwrap().to_owned();
