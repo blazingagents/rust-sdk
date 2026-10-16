@@ -535,11 +535,10 @@ impl TextDeltas {
         while let Some(delta) = self.next().await {
             delta?;
         }
-        match self.state {
-            BodyState::Complete => Ok(self.text),
-            BodyState::Failed(kind) => Err(self.fail(kind, None)),
-            BodyState::Reading(_) => Err(self.fail(StreamErrorKind::Incomplete, None)),
+        if let BodyState::Failed(kind) = self.state {
+            return Err(self.fail(kind, None));
         }
+        Ok(self.text)
     }
 }
 
@@ -716,19 +715,35 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn chunks_inside_a_character_yield_no_delta_until_it_is_whole() {
+        let euro = "€".as_bytes();
+        let mut deltas = deltas(vec![
+            Ok(Bytes::copy_from_slice(&euro[..1])),
+            Ok(Bytes::copy_from_slice(&euro[1..2])),
+            Ok(Bytes::copy_from_slice(&euro[2..])),
+        ]);
+
+        assert_eq!(deltas.next().await.unwrap().unwrap(), "€");
+        assert!(deltas.next().await.is_none());
+        assert_eq!(deltas.finish().await.unwrap(), "€");
+    }
+
+    #[tokio::test]
     async fn a_read_error_is_reported_again_by_finish() {
         let failing = reqwest::get("http://[::1]:1/").await.unwrap_err();
         let mut deltas = deltas(vec![Ok(Bytes::from_static(b"partial")), Err(failing)]);
 
         assert_eq!(deltas.next().await.unwrap().unwrap(), "partial");
-        let Err(Error::Stream(first)) = deltas.next().await.unwrap() else {
-            panic!("expected a read error");
-        };
-        assert_eq!(first.kind(), StreamErrorKind::Read);
-        let Err(Error::Stream(again)) = deltas.finish().await else {
-            panic!("expected the read error again");
-        };
-        assert_eq!(again.kind(), StreamErrorKind::Read);
+        let error = deltas.next().await.unwrap().unwrap_err();
+        assert!(
+            matches!(&error, Error::Stream(e) if e.kind() == StreamErrorKind::Read),
+            "{error:?}"
+        );
+        let error = deltas.finish().await.unwrap_err();
+        assert!(
+            matches!(&error, Error::Stream(e) if e.kind() == StreamErrorKind::Read),
+            "{error:?}"
+        );
     }
 
     #[tokio::test]
@@ -737,9 +752,9 @@ mod tests {
 
         let error = deltas.finish().await.unwrap_err();
 
-        let Error::Stream(stream) = error else {
-            panic!("expected a stream error, got {error:?}");
-        };
-        assert_eq!(stream.kind(), StreamErrorKind::Incomplete);
+        assert!(
+            matches!(&error, Error::Stream(e) if e.kind() == StreamErrorKind::Incomplete),
+            "{error:?}"
+        );
     }
 }
