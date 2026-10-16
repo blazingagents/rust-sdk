@@ -3,7 +3,8 @@ mod support;
 use blazing_agents::Error;
 use blazing_agents::ids::McpConnectionId;
 use blazing_agents::mcp_connections::{
-    McpAuthType, McpConnectionErrorCode, McpConnectionStatus, McpReconnect, NewMcpConnection,
+    McpAuthType, McpConnectionErrorCode, McpConnectionStatus, McpConnectionTest, McpReconnect,
+    McpReconnectStatus, NewMcpConnection, OAuthClient,
 };
 use serde_json::json;
 use support::{api_error, json, json_body, mock, requests};
@@ -58,8 +59,7 @@ async fn create_sends_one_body_per_auth_type() {
         .create(NewMcpConnection::OAuthAuthorizationCode {
             name: "Docs Search".to_owned(),
             url: "https://mcp.example.com/mcp".to_owned(),
-            client_id: None,
-            client_secret: None,
+            client: None,
             scope: None,
         })
         .await
@@ -69,8 +69,7 @@ async fn create_sends_one_body_per_auth_type() {
         .create(NewMcpConnection::OAuthAuthorizationCode {
             name: "Docs Search".to_owned(),
             url: "https://mcp.example.com/mcp".to_owned(),
-            client_id: Some("client-42".to_owned()),
-            client_secret: Some("oauth-secret-a1b2c3".to_owned()),
+            client: Some(OAuthClient::new("client-42", "oauth-secret-a1b2c3")),
             scope: Some("read:docs".to_owned()),
         })
         .await
@@ -80,8 +79,7 @@ async fn create_sends_one_body_per_auth_type() {
         .create(NewMcpConnection::OAuthClientCredentials {
             name: "Docs Search".to_owned(),
             url: "https://mcp.example.com/mcp".to_owned(),
-            client_id: "client-42".to_owned(),
-            client_secret: "oauth-secret-a1b2c3".to_owned(),
+            client: OAuthClient::new("client-42", "oauth-secret-a1b2c3"),
             scope: None,
         })
         .await
@@ -172,10 +170,31 @@ async fn unknown_enum_values_decode_as_unrecognized() {
         .respond_with(json(200, body))
         .mount(&server)
         .await;
+    Mock::given(method("POST"))
+        .and(path("/v1/mcp-connections/mcp_3Kd9QwE2sLx5R7Tn/reconnect"))
+        .respond_with(json(
+            200,
+            json!({
+                "status": "provisioning",
+                "connection": connection("mcp_3Kd9QwE2sLx5R7Tn")
+            }),
+        ))
+        .mount(&server)
+        .await;
 
     let fetched = client
         .mcp_connections()
         .get("mcp_3Kd9QwE2sLx5R7Tn")
+        .await
+        .unwrap();
+    let reconnected = client
+        .mcp_connections()
+        .reconnect(
+            "mcp_3Kd9QwE2sLx5R7Tn",
+            McpReconnect::None {
+                url: "https://mcp.example.com/mcp".to_owned(),
+            },
+        )
         .await
         .unwrap();
 
@@ -193,6 +212,11 @@ async fn unknown_enum_values_decode_as_unrecognized() {
             .map(McpConnectionErrorCode::as_str),
         Some("MCP_CONNECTION_RATE_LIMITED")
     );
+    assert_eq!(reconnected.status.as_str(), "provisioning");
+    assert!(matches!(
+        reconnected.status,
+        McpReconnectStatus::Unrecognized(_)
+    ));
 }
 
 #[tokio::test]
@@ -276,21 +300,72 @@ async fn test_decodes_the_success_and_failure_shapes() {
         .await
         .unwrap();
 
-    assert!(ok.ok);
-    assert_eq!(ok.latency_ms, Some(120));
-    let server_info = ok.server.unwrap();
-    assert_eq!(server_info.name, "docs-search");
-    assert_eq!(server_info.version, "1.4.0");
-    assert_eq!(ok.tool_count, Some(2));
-    assert_eq!(
-        ok.tool_names.as_deref().unwrap(),
-        ["search".to_owned(), "fetch".to_owned()]
-    );
-    assert!(!failed.ok);
-    let error = failed.error.unwrap();
+    let McpConnectionTest::Passed {
+        server,
+        tool_names,
+        latency_ms,
+        tool_count,
+    } = ok
+    else {
+        panic!("expected a passed test, got {ok:?}");
+    };
+    assert_eq!(latency_ms, 120);
+    assert_eq!(server.name, "docs-search");
+    assert_eq!(server.version, "1.4.0");
+    assert_eq!(tool_count, 2);
+    assert_eq!(tool_names, ["search".to_owned(), "fetch".to_owned()]);
+
+    let McpConnectionTest::Failed { error } = failed else {
+        panic!("expected a failed test, got {failed:?}");
+    };
     assert_eq!(error.code, McpConnectionErrorCode::Unreachable);
     assert_eq!(error.message, "The server did not respond.");
-    assert!(failed.server.is_none());
+}
+
+#[tokio::test]
+async fn malformed_test_results_are_decode_errors() {
+    let (server, client) = mock().await;
+    let bodies = [
+        // `ok: true` without the success fields.
+        json!({ "ok": true }),
+        // `ok: false` without the error.
+        json!({ "ok": false }),
+        // `ok: true` carrying only an error.
+        json!({
+            "ok": true,
+            "error": {
+                "code": "MCP_CONNECTION_UNREACHABLE",
+                "message": "The server did not respond."
+            }
+        }),
+        // A non-boolean `ok`.
+        json!({
+            "ok": "yes",
+            "server": { "name": "docs-search", "version": "1.4.0" },
+            "toolNames": ["search"],
+            "latencyMs": 120,
+            "toolCount": 1
+        }),
+    ];
+    for body in bodies {
+        let _guard = Mock::given(method("POST"))
+            .and(path("/v1/mcp-connections/mcp_3Kd9QwE2sLx5R7Tn/test"))
+            .respond_with(json(200, body.clone()))
+            .expect(1)
+            .mount_as_scoped(&server)
+            .await;
+
+        let error = client
+            .mcp_connections()
+            .test("mcp_3Kd9QwE2sLx5R7Tn")
+            .await
+            .unwrap_err();
+
+        let Error::Decode { operation_id, .. } = error else {
+            panic!("expected a decode error for {body}, got {error:?}");
+        };
+        assert_eq!(operation_id, "testMcpConnection");
+    }
 }
 
 #[tokio::test]
@@ -329,7 +404,7 @@ async fn reconnect_sends_the_auth_body_and_decodes_needs_auth() {
             "bearerToken": "mcp_live_9Tb3Vc6Nm1Pq8Rw2"
         })
     );
-    assert_eq!(result.status, McpConnectionStatus::NeedsAuth);
+    assert_eq!(result.status, McpReconnectStatus::NeedsAuth);
     assert_eq!(result.connection.status, McpConnectionStatus::NeedsAuth);
     assert_eq!(
         result.connection.auth_type,
@@ -374,8 +449,7 @@ async fn an_error_echoing_a_secret_is_redacted() {
             "mcp_3Kd9QwE2sLx5R7Tn",
             McpReconnect::OAuthClientCredentials {
                 url: "https://mcp.example.com/mcp".to_owned(),
-                client_id: "client-42".to_owned(),
-                client_secret: "oauth-secret-a1b2c3".to_owned(),
+                client: OAuthClient::new("client-42", "oauth-secret-a1b2c3"),
                 scope: None,
             },
         )
@@ -395,6 +469,29 @@ async fn an_error_echoing_a_secret_is_redacted() {
 }
 
 #[tokio::test]
+async fn a_response_echoing_a_bearer_token_is_rejected() {
+    let (server, client) = mock().await;
+    let mut body = connection("mcp_3Kd9QwE2sLx5R7Tn");
+    body["bearerToken"] = json!("mcp_live_4f8Kq2Lz9Xw7x7Qa");
+    Mock::given(method("GET"))
+        .and(path("/v1/mcp-connections/mcp_3Kd9QwE2sLx5R7Tn"))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+
+    let error = client
+        .mcp_connections()
+        .get("mcp_3Kd9QwE2sLx5R7Tn")
+        .await
+        .unwrap_err();
+
+    let Error::CredentialEcho { operation_id, .. } = error else {
+        panic!("expected a credential echo error, got {error:?}");
+    };
+    assert_eq!(operation_id, "getMcpConnection");
+}
+
+#[tokio::test]
 async fn the_debug_output_does_not_leak_secrets() {
     let create = NewMcpConnection::Bearer {
         name: "Docs Search".to_owned(),
@@ -403,8 +500,7 @@ async fn the_debug_output_does_not_leak_secrets() {
     };
     let reconnect = McpReconnect::OAuthClientCredentials {
         url: "https://mcp.example.com/mcp".to_owned(),
-        client_id: "client-42".to_owned(),
-        client_secret: "oauth-secret-a1b2c3".to_owned(),
+        client: OAuthClient::new("client-42", "oauth-secret-a1b2c3"),
         scope: None,
     };
 

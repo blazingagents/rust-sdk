@@ -152,6 +152,16 @@ crate::open_enum! {
 }
 
 crate::open_enum! {
+    /// The status a reconnect leaves an MCP connection in.
+    pub enum McpReconnectStatus {
+        /// `connected`
+        Connected = "connected",
+        /// `needs_auth`
+        NeedsAuth = "needs_auth",
+    }
+}
+
+crate::open_enum! {
     /// Why an MCP connection last failed to authenticate or be reached.
     pub enum McpConnectionErrorCode {
         /// `MCP_CONNECTION_AUTHENTICATION_FAILED`
@@ -162,6 +172,36 @@ crate::open_enum! {
         Unreachable = "MCP_CONNECTION_UNREACHABLE",
         /// `MCP_CONNECTION_DISCOVERY_FAILED`
         DiscoveryFailed = "MCP_CONNECTION_DISCOVERY_FAILED",
+    }
+}
+
+/// An OAuth client ID and secret, sent together.
+#[derive(Clone, Serialize)]
+pub struct OAuthClient {
+    /// The OAuth client ID.
+    #[serde(rename = "clientId")]
+    pub id: String,
+    /// The OAuth client secret. Never returned.
+    #[serde(rename = "clientSecret")]
+    pub secret: String,
+}
+
+impl OAuthClient {
+    /// A client ID and secret pair.
+    pub fn new(id: impl Into<String>, secret: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            secret: secret.into(),
+        }
+    }
+}
+
+impl fmt::Debug for OAuthClient {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OAuthClient")
+            .field("id", &self.id)
+            .field("secret", &"[redacted]")
+            .finish()
     }
 }
 
@@ -189,8 +229,7 @@ pub enum NewMcpConnection {
         /// The bearer token. Never returned.
         bearer_token: String,
     },
-    /// OAuth with the authorization code flow. Send `client_id` and
-    /// `client_secret` together or neither. The connection is saved as
+    /// OAuth with the authorization code flow. The connection is saved as
     /// `needs_auth` until an admin signs in through the dashboard.
     #[serde(rename = "oauth_authorization_code")]
     OAuthAuthorizationCode {
@@ -198,12 +237,10 @@ pub enum NewMcpConnection {
         name: String,
         /// The streamable HTTP URL of the MCP server.
         url: String,
-        /// The OAuth client ID.
+        /// The OAuth client ID and secret. Send both or neither.
+        #[serde(flatten)]
         #[serde(skip_serializing_if = "Option::is_none")]
-        client_id: Option<String>,
-        /// The OAuth client secret. Never returned.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        client_secret: Option<String>,
+        client: Option<OAuthClient>,
         /// The OAuth scope to request.
         #[serde(skip_serializing_if = "Option::is_none")]
         scope: Option<String>,
@@ -215,10 +252,9 @@ pub enum NewMcpConnection {
         name: String,
         /// The streamable HTTP URL of the MCP server.
         url: String,
-        /// The OAuth client ID.
-        client_id: String,
-        /// The OAuth client secret. Never returned.
-        client_secret: String,
+        /// The OAuth client ID and secret.
+        #[serde(flatten)]
+        client: OAuthClient,
         /// The OAuth scope to request.
         #[serde(skip_serializing_if = "Option::is_none")]
         scope: Option<String>,
@@ -230,12 +266,10 @@ impl NewMcpConnection {
         match self {
             Self::None { .. } => Vec::new(),
             Self::Bearer { bearer_token, .. } => vec![bearer_token.clone()],
-            Self::OAuthAuthorizationCode { client_secret, .. } => {
-                client_secret.clone().into_iter().collect()
+            Self::OAuthAuthorizationCode { client, .. } => {
+                client.iter().map(|client| client.secret.clone()).collect()
             }
-            Self::OAuthClientCredentials { client_secret, .. } => {
-                vec![client_secret.clone()]
-            }
+            Self::OAuthClientCredentials { client, .. } => vec![client.secret.clone()],
         }
     }
 }
@@ -257,32 +291,25 @@ impl fmt::Debug for NewMcpConnection {
             Self::OAuthAuthorizationCode {
                 name,
                 url,
-                client_id,
-                client_secret,
+                client,
                 scope,
             } => f
                 .debug_struct("OAuthAuthorizationCode")
                 .field("name", name)
                 .field("url", url)
-                .field("client_id", client_id)
-                .field(
-                    "client_secret",
-                    &client_secret.as_ref().map(|_| "[redacted]"),
-                )
+                .field("client", client)
                 .field("scope", scope)
                 .finish(),
             Self::OAuthClientCredentials {
                 name,
                 url,
-                client_id,
+                client,
                 scope,
-                ..
             } => f
                 .debug_struct("OAuthClientCredentials")
                 .field("name", name)
                 .field("url", url)
-                .field("client_id", client_id)
-                .field("client_secret", &"[redacted]")
+                .field("client", client)
                 .field("scope", scope)
                 .finish(),
         }
@@ -308,19 +335,16 @@ pub enum McpReconnect {
         /// The bearer token. Never returned.
         bearer_token: String,
     },
-    /// OAuth with the authorization code flow. Send `client_id` and
-    /// `client_secret` together or neither. The connection stays `needs_auth`
-    /// until an admin signs in through the dashboard.
+    /// OAuth with the authorization code flow. The connection stays
+    /// `needs_auth` until an admin signs in through the dashboard.
     #[serde(rename = "oauth_authorization_code")]
     OAuthAuthorizationCode {
         /// The streamable HTTP URL of the MCP server.
         url: String,
-        /// The OAuth client ID.
+        /// The OAuth client ID and secret. Send both or neither.
+        #[serde(flatten)]
         #[serde(skip_serializing_if = "Option::is_none")]
-        client_id: Option<String>,
-        /// The OAuth client secret. Never returned.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        client_secret: Option<String>,
+        client: Option<OAuthClient>,
         /// The OAuth scope to request.
         #[serde(skip_serializing_if = "Option::is_none")]
         scope: Option<String>,
@@ -330,10 +354,9 @@ pub enum McpReconnect {
     OAuthClientCredentials {
         /// The streamable HTTP URL of the MCP server.
         url: String,
-        /// The OAuth client ID.
-        client_id: String,
-        /// The OAuth client secret. Never returned.
-        client_secret: String,
+        /// The OAuth client ID and secret.
+        #[serde(flatten)]
+        client: OAuthClient,
         /// The OAuth scope to request.
         #[serde(skip_serializing_if = "Option::is_none")]
         scope: Option<String>,
@@ -345,12 +368,10 @@ impl McpReconnect {
         match self {
             Self::None { .. } => Vec::new(),
             Self::Bearer { bearer_token, .. } => vec![bearer_token.clone()],
-            Self::OAuthAuthorizationCode { client_secret, .. } => {
-                client_secret.clone().into_iter().collect()
+            Self::OAuthAuthorizationCode { client, .. } => {
+                client.iter().map(|client| client.secret.clone()).collect()
             }
-            Self::OAuthClientCredentials { client_secret, .. } => {
-                vec![client_secret.clone()]
-            }
+            Self::OAuthClientCredentials { client, .. } => vec![client.secret.clone()],
         }
     }
 }
@@ -364,31 +385,16 @@ impl fmt::Debug for McpReconnect {
                 .field("url", url)
                 .field("bearer_token", &"[redacted]")
                 .finish(),
-            Self::OAuthAuthorizationCode {
-                url,
-                client_id,
-                client_secret,
-                scope,
-            } => f
+            Self::OAuthAuthorizationCode { url, client, scope } => f
                 .debug_struct("OAuthAuthorizationCode")
                 .field("url", url)
-                .field("client_id", client_id)
-                .field(
-                    "client_secret",
-                    &client_secret.as_ref().map(|_| "[redacted]"),
-                )
+                .field("client", client)
                 .field("scope", scope)
                 .finish(),
-            Self::OAuthClientCredentials {
-                url,
-                client_id,
-                scope,
-                ..
-            } => f
+            Self::OAuthClientCredentials { url, client, scope } => f
                 .debug_struct("OAuthClientCredentials")
                 .field("url", url)
-                .field("client_id", client_id)
-                .field("client_secret", &"[redacted]")
+                .field("client", client)
                 .field("scope", scope)
                 .finish(),
         }
@@ -481,30 +487,112 @@ pub struct McpConnectionList {
     pub mcp_connections: Vec<McpConnection>,
 }
 
-/// The outcome of testing an MCP connection. With `ok` false the `error`
-/// field explains the failure; with `ok` true the other fields describe the
-/// server.
+/// The outcome of testing an MCP connection.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[non_exhaustive]
-#[serde(rename_all = "camelCase")]
-pub struct McpConnectionTest {
-    /// Whether the connection works.
-    pub ok: bool,
-    /// The round-trip time.
-    #[serde(default)]
-    pub latency_ms: Option<u64>,
-    /// The server identity it reported.
-    #[serde(default)]
-    pub server: Option<McpServerInfo>,
-    /// How many tools the server offers.
-    #[serde(default)]
-    pub tool_count: Option<u64>,
-    /// The names of the tools the server offers.
-    #[serde(default)]
-    pub tool_names: Option<Vec<String>>,
-    /// Why the test failed.
-    #[serde(default)]
-    pub error: Option<McpConnectionTestError>,
+#[serde(try_from = "wire::TestResult", into = "wire::TestResult")]
+pub enum McpConnectionTest {
+    /// The server answered.
+    Passed {
+        /// The server identity it reported.
+        server: McpServerInfo,
+        /// The names of the tools the server offers.
+        tool_names: Vec<String>,
+        /// The round-trip time.
+        latency_ms: u64,
+        /// How many tools the server offers.
+        tool_count: u64,
+    },
+    /// The connection failed.
+    Failed {
+        /// Why the test failed.
+        error: McpConnectionTestError,
+    },
+}
+
+mod wire {
+    use super::{McpConnectionTestError, McpServerInfo};
+    use serde::{Deserialize, Serialize};
+
+    /// The `McpConnectionTest` wire shape: `ok` discriminates the oneOf.
+    #[derive(Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TestResult {
+        pub ok: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub server: Option<McpServerInfo>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub tool_names: Option<Vec<String>>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub latency_ms: Option<u64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub tool_count: Option<u64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub error: Option<McpConnectionTestError>,
+    }
+}
+
+impl TryFrom<wire::TestResult> for McpConnectionTest {
+    type Error = String;
+
+    fn try_from(result: wire::TestResult) -> Result<Self, Self::Error> {
+        let wire::TestResult {
+            ok,
+            server,
+            tool_names,
+            latency_ms,
+            tool_count,
+            error,
+        } = result;
+        if ok {
+            match (server, tool_names, latency_ms, tool_count) {
+                (Some(server), Some(tool_names), Some(latency_ms), Some(tool_count)) => {
+                    Ok(Self::Passed {
+                        server,
+                        tool_names,
+                        latency_ms,
+                        tool_count,
+                    })
+                }
+                _ => Err(
+                    "an ok test result needs server, toolNames, latencyMs and toolCount".to_owned(),
+                ),
+            }
+        } else {
+            match error {
+                Some(error) => Ok(Self::Failed { error }),
+                None => Err("a failed test result needs error".to_owned()),
+            }
+        }
+    }
+}
+
+impl From<McpConnectionTest> for wire::TestResult {
+    fn from(test: McpConnectionTest) -> Self {
+        match test {
+            McpConnectionTest::Passed {
+                server,
+                tool_names,
+                latency_ms,
+                tool_count,
+            } => Self {
+                ok: true,
+                server: Some(server),
+                tool_names: Some(tool_names),
+                latency_ms: Some(latency_ms),
+                tool_count: Some(tool_count),
+                error: None,
+            },
+            McpConnectionTest::Failed { error } => Self {
+                ok: false,
+                server: None,
+                tool_names: None,
+                latency_ms: None,
+                tool_count: None,
+                error: Some(error),
+            },
+        }
+    }
 }
 
 /// The identity an MCP server reports.
@@ -536,7 +624,7 @@ pub struct McpConnectionTestError {
 pub struct McpConnectionReconnectResult {
     /// `connected`, or `needs_auth` when an admin must sign in through the
     /// dashboard.
-    pub status: McpConnectionStatus,
+    pub status: McpReconnectStatus,
     /// The updated connection.
     pub connection: McpConnection,
 }
