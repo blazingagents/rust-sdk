@@ -46,5 +46,10 @@ tracing = { version = "0.1", default-features = false, features = ["std"] }
 uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]
-tokio = { version = "1.53", features = ["macros", "rt-multi-thread"] }
+axum = "0.8.9"
+tokio = { version = "1.53", features = ["macros", "net", "rt-multi-thread"] }
 wiremock = "0.6"
+
+[[example]]
+name = "structured_output"
+required-features = ["schemars"]
