@@ -108,7 +108,7 @@ id!(
     ProviderId
 );
 id!(
-    /// An MCP connection ID (`mch_…`).
+    /// An MCP connection ID (`mcp_…`).
     McpConnectionId
 );
 id!(
@@ -122,6 +122,10 @@ id!(
 id!(
     /// A merchant usage event ID (`mev_…`).
     MerchantUsageEventId
+);
+id!(
+    /// A merchant connection ID (`mch_…`).
+    MerchantConnectionId
 );
 id!(
     /// A backend function call ID (`fc_…`).

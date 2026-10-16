@@ -2,9 +2,9 @@ mod support;
 
 use blazing_agents::Error;
 use blazing_agents::chat_connections::{
-    ChatConfiguration, ChatCredentials, ChatDeliveryStatus, ChatHealthCheckStatus, ChatPlatform,
-    NewChatConnection, NewSlackConnection, NewTelegramConnection, SlackCredentials,
-    TelegramCredentials,
+    ChatConfiguration, ChatCredentials, ChatDeliveryListStatus, ChatDeliveryStatus,
+    ChatHealthCheckStatus, ChatPlatform, NewChatConnection, NewSlackConnection,
+    NewTelegramConnection, SlackCredentials, TelegramCredentials,
 };
 use blazing_agents::ids::{ChatConnectionId, ChatDeliveryId};
 use futures_util::TryStreamExt;
@@ -132,8 +132,7 @@ async fn create_sends_only_the_set_fields() {
             )
             .enabled(false)
             .business_mode(true)
-            .chat_ids(["-1001234"])
-            .into(),
+            .chat_ids(["-1001234"]),
         )
         .await
         .unwrap();
@@ -173,15 +172,18 @@ async fn create_accepts_a_platform_variant_directly() {
         .mount(&server)
         .await;
 
-    let connection: NewChatConnection = NewSlackConnection::new(
-        "ag_4kP9sT2vXq7LmN3a",
-        "Support bot",
-        SlackCredentials::new("xoxb-token-value", "0123456789abcdef0123456789abcdef"),
-    )
-    .channel_ids(["C0123ABC"])
-    .into();
-
-    client.chat_connections().create(connection).await.unwrap();
+    client
+        .chat_connections()
+        .create(
+            NewSlackConnection::new(
+                "ag_4kP9sT2vXq7LmN3a",
+                "Support bot",
+                SlackCredentials::new("xoxb-token-value", "0123456789abcdef0123456789abcdef"),
+            )
+            .channel_ids(["C0123ABC"]),
+        )
+        .await
+        .unwrap();
 
     let sent = requests(&server).await;
     assert_eq!(
@@ -202,9 +204,10 @@ async fn create_accepts_a_platform_variant_directly() {
 #[tokio::test]
 async fn get_decodes_an_unknown_platform_and_extra_fields() {
     let (server, client) = mock().await;
+    let configuration = json!({ "platform": "discord", "guildIds": ["1"], "extra": { "a": 1 } });
     let mut body = chat_connection("cc_1");
     body["platform"] = json!("discord");
-    body["configuration"] = json!({ "platform": "discord", "guildIds": ["g1"] });
+    body["configuration"] = configuration.clone();
     body["addedNextYear"] = json!({ "nested": true });
     Mock::given(method("GET"))
         .and(path("/v1/chat-connections/cc_1"))
@@ -216,10 +219,59 @@ async fn get_decodes_an_unknown_platform_and_extra_fields() {
 
     assert_eq!(connection.platform.as_str(), "discord");
     assert!(matches!(connection.platform, ChatPlatform::Unrecognized(_)));
-    assert!(matches!(
-        connection.configuration,
-        ChatConfiguration::Unrecognized
-    ));
+    let ChatConfiguration::Unrecognized(raw) = &connection.configuration else {
+        panic!(
+            "expected an unrecognized configuration, got {:?}",
+            connection.configuration
+        );
+    };
+    assert_eq!(*raw, configuration);
+    assert_eq!(
+        serde_json::to_value(&connection.configuration).unwrap(),
+        configuration
+    );
+}
+
+#[tokio::test]
+async fn a_slack_configuration_round_trips() {
+    let (server, client) = mock().await;
+    Mock::given(method("GET"))
+        .and(path("/v1/chat-connections/cc_1"))
+        .respond_with(json(200, chat_connection("cc_1")))
+        .mount(&server)
+        .await;
+
+    let connection = client.chat_connections().get("cc_1").await.unwrap();
+
+    assert_eq!(
+        serde_json::to_value(&connection.configuration).unwrap(),
+        json!({ "platform": "slack", "channelIds": ["C0123ABC"] })
+    );
+}
+
+#[tokio::test]
+async fn a_malformed_known_platform_fails_to_decode() {
+    let (server, client) = mock().await;
+    let mut body = chat_connection("cc_1");
+    body["configuration"] = json!({ "platform": "slack", "channelIds": "not-a-list" });
+    Mock::given(method("GET"))
+        .and(path("/v1/chat-connections/cc_1"))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+
+    let error = client.chat_connections().get("cc_1").await.unwrap_err();
+
+    assert!(
+        matches!(
+            error,
+            Error::Decode {
+                operation_id: "getChatConnection",
+                ..
+            }
+        ),
+        "{error:?}"
+    );
 }
 
 #[tokio::test]
@@ -437,7 +489,7 @@ async fn repair_delivery_sends_the_confirmation_flags() {
 
     let result = client
         .chat_connections()
-        .repair_delivery("cc_1", "cd_1", 2, true, true)
+        .repair_delivery("cc_1", "cd_1", 2)
         .await
         .unwrap();
 
@@ -495,7 +547,10 @@ async fn tenant_deliveries_send_status_since_and_limit() {
     let page = client
         .chat_deliveries()
         .list()
-        .status([ChatDeliveryStatus::Failed, ChatDeliveryStatus::Ambiguous])
+        .status([
+            ChatDeliveryListStatus::Failed,
+            ChatDeliveryListStatus::Ambiguous,
+        ])
         .since("2026-09-20T00:00:00Z".parse().unwrap())
         .limit(25)
         .await
@@ -529,7 +584,7 @@ async fn tenant_deliveries_omit_an_empty_status_filter() {
     client
         .chat_deliveries()
         .list()
-        .status(std::iter::empty::<ChatDeliveryStatus>())
+        .status(std::iter::empty::<ChatDeliveryListStatus>())
         .await
         .unwrap();
 }
@@ -659,6 +714,71 @@ async fn a_response_that_echoes_credentials_fails_the_call() {
             error,
             Error::CredentialEcho {
                 operation_id: "getChatConnection",
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_create_response_that_echoes_the_token_fails_the_call() {
+    let (server, client) = mock().await;
+    let mut body = chat_connection("cc_1");
+    body["name"] = json!("xoxb-echoed-secret");
+    Mock::given(method("POST"))
+        .and(path("/v1/chat-connections"))
+        .respond_with(json(201, body))
+        .mount(&server)
+        .await;
+
+    let error = client
+        .chat_connections()
+        .create(NewChatConnection::slack(
+            "ag_4kP9sT2vXq7LmN3a",
+            "Support bot",
+            SlackCredentials::new("xoxb-echoed-secret", "0123456789abcdef0123456789abcdef"),
+        ))
+        .await
+        .unwrap_err();
+
+    assert!(
+        matches!(
+            error,
+            Error::CredentialEcho {
+                operation_id: "createChatConnection",
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_rotate_response_that_echoes_the_token_fails_the_call() {
+    let (server, client) = mock().await;
+    let mut body = chat_connection("cc_1");
+    body["name"] = json!("xoxb-rotated-secret");
+    Mock::given(method("POST"))
+        .and(path("/v1/chat-connections/cc_1/credentials"))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+
+    let error = client
+        .chat_connections()
+        .rotate_credentials(
+            "cc_1",
+            ChatCredentials::slack("xoxb-rotated-secret", "fedcba9876543210fedcba9876543210"),
+        )
+        .await
+        .unwrap_err();
+
+    assert!(
+        matches!(
+            error,
+            Error::CredentialEcho {
+                operation_id: "rotateChatCredentials",
                 ..
             }
         ),

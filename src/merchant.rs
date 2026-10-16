@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::call::{Call, Raw, impl_request};
 use crate::client::{Client, Tenant};
 use crate::error::Result;
-use crate::ids::{AgentId, MerchantUsageEventId, SessionId, TurnId};
+use crate::ids::{AgentId, MerchantConnectionId, MerchantUsageEventId, SessionId, TurnId};
 use crate::op::Op;
 use crate::pagination::{Cursor, Paginated};
 use crate::providers::ProviderType;
@@ -567,7 +567,7 @@ async fn decode_summary(raw: Raw) -> Result<MerchantUsageSummary> {
 #[serde(rename_all = "camelCase")]
 pub struct MerchantConnection {
     /// The connection's ID (`mch_…`).
-    pub id: String,
+    pub id: MerchantConnectionId,
     /// The merchant of record platform.
     pub provider: MerchantProvider,
     /// The provider environment.
@@ -673,7 +673,7 @@ pub struct MerchantUsageEvent {
     /// The turn the event bills.
     pub turn_id: TurnId,
     /// The merchant connection the event goes through (`mch_…`).
-    pub connection_id: String,
+    pub connection_id: MerchantConnectionId,
     /// The merchant of record platform.
     pub provider: MerchantProvider,
     /// The end user the event bills.

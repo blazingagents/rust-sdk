@@ -51,11 +51,13 @@ impl ChatConnections<'_> {
     }
 
     /// Connects an agent to a chat platform. Credentials are never returned.
-    pub fn create(&self, connection: NewChatConnection) -> Call<CreateChatConnection> {
+    pub fn create(&self, connection: impl Into<NewChatConnection>) -> Call<CreateChatConnection> {
         Call::new(
             self.client,
             Op::CreateChatConnection,
-            CreateChatConnection { connection },
+            CreateChatConnection {
+                connection: connection.into(),
+            },
         )
     }
 
@@ -71,7 +73,8 @@ impl ChatConnections<'_> {
         )
     }
 
-    /// Changes a chat connection's name or configuration.
+    /// Changes a chat connection's name or configuration. Set at least one
+    /// field; the server rejects an empty update.
     pub fn update(
         &self,
         chat_connection_id: impl Into<ChatConnectionId>,
@@ -178,17 +181,15 @@ impl ChatConnections<'_> {
     }
 
     /// Resends a failed or ambiguous delivery. `expected_attempt` is the
-    /// delivery's current [`attempt`](ChatDelivery::attempt), 0 to 99; the
-    /// repair is refused if it has changed. `previous_sender_stopped` and
-    /// `accept_duplicate_risk` must both be `true` or the server rejects the
-    /// request.
+    /// delivery's current [`attempt`](ChatDelivery::attempt), 0 to 99, and the
+    /// repair is refused if it has changed. Calling it confirms the sender of
+    /// the previous attempt has stopped, and that you accept the message may
+    /// appear twice because the platform may already have it.
     pub fn repair_delivery(
         &self,
         chat_connection_id: impl Into<ChatConnectionId>,
         delivery_id: impl Into<ChatDeliveryId>,
         expected_attempt: u64,
-        previous_sender_stopped: bool,
-        accept_duplicate_risk: bool,
     ) -> Call<RepairChatDelivery> {
         let chat_connection_id = chat_connection_id.into();
         let delivery_id = delivery_id.into();
@@ -200,8 +201,8 @@ impl ChatConnections<'_> {
             },
             RepairChatDelivery {
                 expected_attempt,
-                previous_sender_stopped,
-                accept_duplicate_risk,
+                previous_sender_stopped: true,
+                accept_duplicate_risk: true,
             },
         )
     }
@@ -261,6 +262,26 @@ crate::open_enum! {
         Fail = "fail",
         /// `unknown`
         Unknown = "unknown",
+    }
+}
+
+/// A status the tenant-wide delivery list can filter to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ChatDeliveryListStatus {
+    /// `failed`
+    Failed,
+    /// `ambiguous`
+    Ambiguous,
+}
+
+impl ChatDeliveryListStatus {
+    /// The wire value.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Failed => "failed",
+            Self::Ambiguous => "ambiguous",
+        }
     }
 }
 
@@ -679,7 +700,7 @@ impl_request!(ListTenantChatDeliveries => Page<TenantChatDelivery>; encode = que
 impl Call<ListTenantChatDeliveries> {
     /// Only deliveries with these statuses, sent comma-separated. An empty
     /// iterator leaves the filter out.
-    pub fn status(self, status: impl IntoIterator<Item = ChatDeliveryStatus>) -> Self {
+    pub fn status(self, status: impl IntoIterator<Item = ChatDeliveryListStatus>) -> Self {
         self.map(|request| {
             let status = status
                 .into_iter()
@@ -737,17 +758,48 @@ pub struct ChatConnection {
 }
 
 /// A chat connection's platform settings: one variant per platform.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 #[non_exhaustive]
-#[serde(tag = "platform", rename_all = "lowercase")]
 pub enum ChatConfiguration {
     /// Slack settings.
     Slack(SlackConfiguration),
     /// Telegram settings.
     Telegram(TelegramConfiguration),
-    /// Settings of a platform this version of the SDK does not know.
-    #[serde(other)]
-    Unrecognized,
+    /// The raw object for a platform this version of the SDK does not know.
+    Unrecognized(serde_json::Value),
+}
+
+impl<'de> Deserialize<'de> for ChatConfiguration {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        match value.get("platform").and_then(serde_json::Value::as_str) {
+            Some("slack") => serde_json::from_value::<SlackConfiguration>(value)
+                .map(Self::Slack)
+                .map_err(serde::de::Error::custom),
+            Some("telegram") => serde_json::from_value::<TelegramConfiguration>(value)
+                .map(Self::Telegram)
+                .map_err(serde::de::Error::custom),
+            _ => Ok(Self::Unrecognized(value)),
+        }
+    }
+}
+
+impl Serialize for ChatConfiguration {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        /// The known variants, serialized with the platform tag.
+        #[derive(Serialize)]
+        #[serde(tag = "platform", rename_all = "lowercase")]
+        enum Known<'a> {
+            Slack(&'a SlackConfiguration),
+            Telegram(&'a TelegramConfiguration),
+        }
+
+        match self {
+            Self::Slack(configuration) => Known::Slack(configuration).serialize(serializer),
+            Self::Telegram(configuration) => Known::Telegram(configuration).serialize(serializer),
+            Self::Unrecognized(value) => value.serialize(serializer),
+        }
+    }
 }
 
 /// The Slack settings of a chat connection.

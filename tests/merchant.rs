@@ -1,7 +1,7 @@
 mod support;
 
 use blazing_agents::Error;
-use blazing_agents::ids::MerchantUsageEventId;
+use blazing_agents::ids::{MerchantConnectionId, MerchantUsageEventId};
 use blazing_agents::merchant::{
     MerchantConnectionStatus, MerchantEnvironment, MerchantGuard, MerchantNextAction,
     MerchantProvider, MerchantTurnStatus, MerchantUsageEventStatus, MerchantWorkflowIssue,
@@ -70,7 +70,10 @@ fn event(id: &str) -> serde_json::Value {
 fn assert_event(event: &blazing_agents::merchant::MerchantUsageEvent, id: &str) {
     assert_eq!(event.id, MerchantUsageEventId::from(id));
     assert_eq!(event.turn_id.as_str(), "turn_7Tn4Kd9QwE2sLx5R");
-    assert_eq!(event.connection_id, "mch_2Kd8QwE5sLx7Rm9T");
+    assert_eq!(
+        event.connection_id,
+        MerchantConnectionId::from("mch_2Kd8QwE5sLx7Rm9T")
+    );
     assert_eq!(event.provider, MerchantProvider::Polar);
     assert_eq!(event.customer_id.as_deref(), Some("cus_456"));
     assert_eq!(event.model_provider, ProviderType::OpenAi);
@@ -92,16 +95,24 @@ fn assert_event(event: &blazing_agents::merchant::MerchantUsageEvent, id: &str) 
 #[tokio::test]
 async fn get_returns_the_connection() {
     let (server, client) = mock().await;
+    let mut connection = merchant_connection();
+    connection["addedNextYear"] = json!({ "nested": true });
     Mock::given(method("GET"))
         .and(path("/v1/merchant-connection"))
-        .respond_with(json(200, json!({ "connection": merchant_connection() })))
+        .respond_with(json(
+            200,
+            json!({ "connection": connection, "envelopeAddedNextYear": true }),
+        ))
         .mount(&server)
         .await;
 
     let connection = client.merchant_connection().get().await.unwrap();
 
     let connection = connection.expect("a connection is present");
-    assert_eq!(connection.id, "mch_2Kd8QwE5sLx7Rm9T");
+    assert_eq!(
+        connection.id,
+        MerchantConnectionId::from("mch_2Kd8QwE5sLx7Rm9T")
+    );
     assert_eq!(connection.provider, MerchantProvider::Polar);
     assert_eq!(connection.environment, MerchantEnvironment::Sandbox);
     assert_eq!(connection.status, MerchantConnectionStatus::Active);
@@ -314,9 +325,14 @@ async fn binding_items_walk_every_page() {
 #[tokio::test]
 async fn set_binding_puts_the_customer() {
     let (server, client) = mock().await;
+    let mut binding = binding("user_1");
+    binding["addedNextYear"] = json!(true);
     Mock::given(method("PUT"))
         .and(path("/v1/merchant-connection/bindings/user_1"))
-        .respond_with(json(200, json!({ "binding": binding("user_1") })))
+        .respond_with(json(
+            200,
+            json!({ "binding": binding, "envelopeAddedNextYear": "yes" }),
+        ))
         .mount(&server)
         .await;
 
@@ -330,6 +346,39 @@ async fn set_binding_puts_the_customer() {
     assert_eq!(json_body(&sent[0]), json!({ "customerId": "cus_456" }));
     assert_eq!(bound.user_id, "user_1");
     assert_eq!(bound.customer_id, "cus_456");
+}
+
+#[tokio::test]
+async fn binding_paths_encode_the_user_id_as_one_segment() {
+    let (server, client) = mock().await;
+    Mock::given(method("PUT"))
+        .and(path("/v1/merchant-connection/bindings/user%2F1"))
+        .respond_with(json(200, json!({ "binding": binding("user/1") })))
+        .mount(&server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path("/v1/merchant-connection/bindings/user%2F1"))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let bound = client
+        .merchant_bindings()
+        .set("user/1", "cus_456")
+        .await
+        .unwrap();
+    client.merchant_bindings().delete("user/1").await.unwrap();
+
+    let sent = requests(&server).await;
+    assert_eq!(
+        sent[0].url.path(),
+        "/v1/merchant-connection/bindings/user%2F1"
+    );
+    assert_eq!(
+        sent[1].url.path(),
+        "/v1/merchant-connection/bindings/user%2F1"
+    );
+    assert_eq!(bound.user_id, "user/1");
 }
 
 #[tokio::test]
@@ -467,7 +516,9 @@ async fn summary_sends_days_and_decodes() {
         .respond_with(json(
             200,
             json!({
+                "envelopeAddedNextYear": [1],
                 "summary": {
+                    "addedNextYear": { "nested": true },
                     "counts": {
                         "pending": 3,
                         "accepted": 90,
@@ -587,4 +638,92 @@ async fn calls_do_not_leak_credentials_in_debug() {
         .update()
         .credential("polar_at_rotated_secret");
     assert!(!format!("{update:?}").contains("polar_at_rotated_secret"));
+}
+
+#[tokio::test]
+async fn a_create_response_that_echoes_the_credential_fails_the_call() {
+    let (server, client) = mock().await;
+    let mut connection = merchant_connection();
+    connection["merchantAccountId"] = json!("polar_at_secret_value");
+    Mock::given(method("POST"))
+        .and(path("/v1/merchant-connection"))
+        .respond_with(json(201, json!({ "connection": connection })))
+        .mount(&server)
+        .await;
+
+    let error = client
+        .merchant_connection()
+        .create(
+            MerchantProvider::Polar,
+            MerchantEnvironment::Sandbox,
+            "polar_at_secret_value",
+        )
+        .await
+        .unwrap_err();
+
+    assert!(
+        matches!(
+            error,
+            Error::CredentialEcho {
+                operation_id: "createMerchantConnection",
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+}
+
+#[tokio::test]
+async fn an_update_response_that_echoes_the_credential_fails_the_call() {
+    let (server, client) = mock().await;
+    let mut connection = merchant_connection();
+    connection["merchantAccountId"] = json!("polar_at_rotated_secret");
+    Mock::given(method("PATCH"))
+        .and(path("/v1/merchant-connection"))
+        .respond_with(json(200, json!({ "connection": connection })))
+        .mount(&server)
+        .await;
+
+    let error = client
+        .merchant_connection()
+        .update()
+        .credential("polar_at_rotated_secret")
+        .await
+        .unwrap_err();
+
+    assert!(
+        matches!(
+            error,
+            Error::CredentialEcho {
+                operation_id: "updateMerchantConnection",
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_get_response_with_a_credential_field_fails_the_call() {
+    let (server, client) = mock().await;
+    let mut connection = merchant_connection();
+    connection["apiKey"] = json!("sk_live_x");
+    Mock::given(method("GET"))
+        .and(path("/v1/merchant-connection"))
+        .respond_with(json(200, json!({ "connection": connection })))
+        .mount(&server)
+        .await;
+
+    let error = client.merchant_connection().get().await.unwrap_err();
+
+    assert!(
+        matches!(
+            error,
+            Error::CredentialEcho {
+                operation_id: "getMerchantConnection",
+                ..
+            }
+        ),
+        "{error:?}"
+    );
 }
