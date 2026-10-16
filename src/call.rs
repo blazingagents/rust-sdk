@@ -87,8 +87,8 @@ impl<R: Request> Call<R> {
         self
     }
 
-    /// Adds a header to this call. `Authorization`, `X-Request-Id` and
-    /// `X-BA-User-Id` are owned by the SDK and ignored here.
+    /// Adds a header to this call. `Authorization`, `Content-Type`,
+    /// `X-Request-Id` and `X-BA-User-Id` are owned by the SDK and ignored here.
     pub fn with_header(mut self, name: HeaderName, value: HeaderValue) -> Self {
         self.options.headers.append(name, value);
         self

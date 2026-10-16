@@ -114,6 +114,7 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
     headers.extend(payload.headers);
     headers.remove(X_REQUEST_ID);
     headers.remove(X_BA_USER_ID);
+    headers.remove(CONTENT_TYPE);
     let mut authorization =
         HeaderValue::from_str(&format!("Bearer {}", inner.api_key)).map_err(|_| {
             Error::Config(crate::error::ConfigError::HttpClient(

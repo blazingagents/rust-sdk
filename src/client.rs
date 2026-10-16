@@ -206,9 +206,9 @@ impl ClientBuilder {
         self
     }
 
-    /// A header sent on every request. `Authorization`, `X-Request-Id` and
-    /// `X-BA-User-Id` are owned by the SDK and ignored here. An invalid name or
-    /// value fails [`build`](Self::build).
+    /// A header sent on every request. `Authorization`, `Content-Type`,
+    /// `X-Request-Id` and `X-BA-User-Id` are owned by the SDK and ignored here.
+    /// An invalid name or value fails [`build`](Self::build).
     #[must_use]
     pub fn default_header(mut self, name: impl AsRef<str>, value: impl AsRef<str>) -> Self {
         if self.default_headers.is_err() {

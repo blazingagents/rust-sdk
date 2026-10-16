@@ -74,6 +74,80 @@ async fn headers_follow_the_sdk_policy() {
 }
 
 #[tokio::test]
+async fn content_type_is_owned_by_the_sdk() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/prompts"))
+        .respond_with(json(200, json!({})))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/v1/prompts/prompt_1"))
+        .respond_with(json(200, json!({})))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/avatar"))
+        .respond_with(json(200, json!({})))
+        .mount(&server)
+        .await;
+
+    client
+        .prompts()
+        .create("n", "doc")
+        .with_header(
+            HeaderName::from_static("content-type"),
+            HeaderValue::from_static("text/plain"),
+        )
+        .await
+        .unwrap_err();
+    let with_default = Client::builder()
+        .api_key("test-key")
+        .base_url(format!("{}/", server.uri()))
+        .default_header("content-type", "text/plain")
+        .build()
+        .unwrap();
+    with_default.prompts().create("n", "doc").await.unwrap_err();
+    with_default
+        .prompts()
+        .get("prompt_1")
+        .with_header(
+            HeaderName::from_static("content-type"),
+            HeaderValue::from_static("text/plain"),
+        )
+        .await
+        .unwrap_err();
+    with_default
+        .agents()
+        .upload_avatar(
+            "ag_1",
+            Upload::bytes(b"png-bytes".as_slice()).file_name("avatar.png"),
+        )
+        .with_header(
+            HeaderName::from_static("content-type"),
+            HeaderValue::from_static("text/plain"),
+        )
+        .await
+        .unwrap_err();
+
+    let sent = requests(&server).await;
+    for index in [0, 1] {
+        let values: Vec<_> = sent[index].headers.get_all("content-type").iter().collect();
+        assert_eq!(values.len(), 1, "request {index}: {values:?}");
+        assert_eq!(values[0], "application/json");
+    }
+    assert_eq!(header(&sent[2], "content-type"), None);
+    let values: Vec<_> = sent[3].headers.get_all("content-type").iter().collect();
+    assert_eq!(values.len(), 1, "request 3: {values:?}");
+    assert!(
+        values[0]
+            .to_str()
+            .unwrap()
+            .starts_with("multipart/form-data; boundary=")
+    );
+}
+
+#[tokio::test]
 async fn client_request_id_prefers_the_call_over_the_client() {
     let (server, client) = mock().await;
     Mock::given(method("DELETE"))
