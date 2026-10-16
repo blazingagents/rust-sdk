@@ -12,7 +12,10 @@
   client request IDs.
 - `chat`, `regenerate` and `continue_chat` stream AI SDK UI message stream
   events, ready to relay to `useChat`. `.functions(...)` attaches backend
-  functions the agent calls during the turn.
+  functions the agent calls during the turn. `continue_chat` takes an approval
+  round's `chat::ToolApprovalDecision` values, and
+  `sessions().tool_approvals()` reports each one's
+  `sessions::ToolApprovalStatus`.
 - `completion`/`completion_stream` and `object`/`object_stream` generate text
   and structured objects, buffered or streamed; `ObjectSchema::derive()`
   builds the schema with schemars.

@@ -3,7 +3,7 @@ mod support;
 use std::time::Duration;
 
 use blazing_agents::Error;
-use blazing_agents::chat::ApprovalDecision;
+use blazing_agents::chat::ToolApprovalDecision;
 use blazing_agents::error::StreamErrorKind;
 use blazing_agents::functions::Functions;
 use blazing_agents::messages::{UserMessage, UserPart};
@@ -181,8 +181,8 @@ async fn continue_chat_sends_every_decision() {
             "ag_1",
             SESSION,
             [
-                ApprovalDecision::approve("apr_1"),
-                ApprovalDecision::deny("apr_2").reason("Too risky."),
+                ToolApprovalDecision::approve("apr_1"),
+                ToolApprovalDecision::deny("apr_2").reason("Too risky."),
             ],
         )
         .await

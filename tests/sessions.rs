@@ -5,9 +5,7 @@ use blazing_agents::agents::{AgentStatus, AgentTool, ApprovalDecision, ToolRefer
 use blazing_agents::ids::TurnId;
 use blazing_agents::messages::{UserMessage, UserPart};
 use blazing_agents::pagination::Cursor;
-use blazing_agents::sessions::{
-    ActivityState, ContinuationState, InputState, ToolApprovalDecision,
-};
+use blazing_agents::sessions::{ActivityState, ContinuationState, InputState, ToolApprovalStatus};
 use blazing_agents::transcript::MessageRole;
 use futures_util::TryStreamExt;
 use http::{HeaderName, HeaderValue};
@@ -623,7 +621,7 @@ async fn tool_approvals_decodes_the_round() {
         Some(ToolReference::Builtin { name, .. }) => assert_eq!(*name, AgentTool::Bash),
         other => panic!("expected a builtin tool, got {other:?}"),
     }
-    assert_eq!(items[0].decision, ToolApprovalDecision::Pending);
+    assert_eq!(items[0].decision, ToolApprovalStatus::Pending);
     assert_eq!(items[0].approval_id.as_str(), "apr_1");
     assert_eq!(items[0].tool_call_id, "call_1");
     assert_eq!(items[0].input.get("command"), Some(&json!("ls")));
@@ -645,15 +643,15 @@ async fn tool_approvals_decodes_the_round() {
         }
         other => panic!("expected an MCP tool, got {other:?}"),
     }
-    assert_eq!(items[1].decision, ToolApprovalDecision::Approved);
+    assert_eq!(items[1].decision, ToolApprovalStatus::Approved);
     match &items[2].tool {
         Some(ToolReference::Function { name, .. }) => assert_eq!(name, "charge_card"),
         other => panic!("expected a function tool, got {other:?}"),
     }
-    assert_eq!(items[2].decision, ToolApprovalDecision::Denied);
+    assert_eq!(items[2].decision, ToolApprovalStatus::Denied);
     assert!(items[3].tool.is_none());
     match &items[3].decision {
-        ToolApprovalDecision::Unrecognized(value) => assert_eq!(value.as_str(), "escalated"),
+        ToolApprovalStatus::Unrecognized(value) => assert_eq!(value.as_str(), "escalated"),
         other => panic!("expected an unrecognized decision, got {other:?}"),
     }
     // Fields missing from the wire decode as None.

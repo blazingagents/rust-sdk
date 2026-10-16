@@ -121,14 +121,14 @@ impl Serialize for RegenerateInput {
 /// One decision of a tool approval round.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ApprovalDecision {
+pub struct ToolApprovalDecision {
     approval_id: ApprovalId,
     approved: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     reason: Option<String>,
 }
 
-impl ApprovalDecision {
+impl ToolApprovalDecision {
     /// Approves the call.
     pub fn approve(approval_id: impl Into<ApprovalId>) -> Self {
         Self {
@@ -217,7 +217,7 @@ impl<S: Scope> Client<S> {
         &self,
         agent_id: impl Into<AgentId>,
         session_id: impl Into<SessionId>,
-        decisions: impl IntoIterator<Item = ApprovalDecision>,
+        decisions: impl IntoIterator<Item = ToolApprovalDecision>,
     ) -> Call<ContinueChat> {
         let agent_id = agent_id.into();
         let session_id = session_id.into();
@@ -397,7 +397,7 @@ pub struct ContinueChat {
     agent_id: AgentId,
     #[serde(skip)]
     session_id: SessionId,
-    decisions: Vec<ApprovalDecision>,
+    decisions: Vec<ToolApprovalDecision>,
     #[serde(skip_serializing_if = "Option::is_none")]
     functions: Option<Functions>,
 }
