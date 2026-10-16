@@ -44,12 +44,7 @@ async fn chat_starts_a_session_and_yields_each_event() {
         ]))
         .mount(&server)
         .await;
-    let message = UserMessage::new(
-        "m1",
-        UserPart::Text {
-            text: "Hello".to_owned(),
-        },
-    );
+    let message = UserMessage::new("m1", UserPart::text("Hello"));
 
     let stream = client.chat("ag_1", message).await.unwrap();
 
@@ -72,6 +67,42 @@ async fn chat_starts_a_session_and_yields_each_event() {
             "trigger": "submit-message"
         })
     );
+}
+
+#[tokio::test]
+async fn a_relayed_browser_message_keeps_every_field() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/sessions"))
+        .respond_with(new_session(&[r#"{"type":"start"}"#]))
+        .mount(&server)
+        .await;
+    let message_json = json!({
+        "id": "m1",
+        "role": "user",
+        "parts": [
+            {
+                "type": "text",
+                "text": "hi",
+                "state": "done",
+                "providerMetadata": { "openai": { "itemId": "x" } }
+            },
+            {
+                "type": "file",
+                "mediaType": "image/png",
+                "url": "data:image/png;base64,AAAA",
+                "filename": "a.png",
+                "providerMetadata": { "anthropic": { "cache": true } }
+            }
+        ]
+    });
+    let message = serde_json::from_value::<UserMessage>(message_json.clone()).unwrap();
+
+    let stream = client.chat("ag_1", message).await.unwrap();
+    drop(stream);
+
+    let sent = requests(&server).await;
+    assert_eq!(json_body(&sent[0])["messages"][0], message_json);
 }
 
 #[tokio::test]

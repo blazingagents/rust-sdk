@@ -750,12 +750,7 @@ async fn submit_input_posts_the_message_and_decodes_the_receipt() {
             AGENT,
             SESSION,
             "req-1",
-            UserMessage::new(
-                "m-1",
-                UserPart::Text {
-                    text: "Please also compare costs.".to_owned(),
-                },
-            ),
+            UserMessage::new("m-1", UserPart::text("Please also compare costs.")),
         )
         .await
         .unwrap();
