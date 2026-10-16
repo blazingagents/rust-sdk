@@ -107,6 +107,29 @@ async fn list_sends_filters_and_decodes_items() {
 }
 
 #[tokio::test]
+async fn list_skips_an_empty_search() {
+    let (server, client) = mock().await;
+    Mock::given(method("GET"))
+        .and(path(format!("/v1/agents/{AGENT}/memories")))
+        .and(query_param("userId", "customer_123"))
+        .and(query_param_is_missing("search"))
+        .respond_with(json(200, json!({ "data": [], "nextCursor": null })))
+        .mount(&server)
+        .await;
+
+    client
+        .memories()
+        .list(AGENT)
+        .user_id("customer_123")
+        .search("")
+        .await
+        .unwrap();
+
+    let sent = requests(&server).await;
+    assert_eq!(sent[0].url.query(), Some("userId=customer_123"));
+}
+
+#[tokio::test]
 async fn get_unwraps_the_envelope_and_ignores_unknown_fields() {
     let (server, client) = mock().await;
     let mut body = memory(MEMORY);

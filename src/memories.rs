@@ -150,9 +150,13 @@ impl Call<ListMemories> {
         self.map(|request| request.user_id = Some(user_id.into()))
     }
 
-    /// Only memories whose text matches these words.
+    /// Only memories whose text matches these words. An empty string is
+    /// ignored.
     pub fn search(self, search: impl Into<String>) -> Self {
-        self.map(|request| request.search = Some(search.into()))
+        self.map(|request| {
+            let search = search.into();
+            request.search = (!search.is_empty()).then_some(search);
+        })
     }
 
     /// Memories per page, 1 to 100. Defaults to 50.
