@@ -1,12 +1,17 @@
-//! Workspaces. Start from [`Client::workspaces`].
+//! Private file systems and shells your agents keep between sessions. Start
+//! from [`Client::workspaces`].
+//!
+//! Documentation: <https://docs.blazingagents.com/agents/workspaces>.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::call::{Call, impl_request};
 use crate::client::{Client, Scope};
-use crate::ids::WorkspaceId;
+use crate::ids::{TenantId, WorkspaceId};
 use crate::op::Op;
 use crate::pagination::{Cursor, Page};
+use crate::patch::Patch;
+use crate::types::{Metadata, Timestamp, Unrecognized};
 
 /// Workspace operations. Returned by [`Client::workspaces`].
 #[derive(Clone, Copy, Debug)]
@@ -22,17 +27,32 @@ impl<S: Scope> Client<S> {
 }
 
 impl<S: Scope> Workspaces<'_, S> {
-    /// Lists workspaces.
+    /// Lists workspaces, newest first. The workspace reserved for the
+    /// platform-managed agent is never listed.
     pub fn list(&self) -> Call<ListWorkspaces> {
         Call::new(self.client, Op::ListWorkspaces, ListWorkspaces::default())
     }
 
-    /// Creates a workspace.
+    /// Creates a workspace. It starts no compute until an agent first reads,
+    /// writes, or runs something in it.
+    ///
+    /// ```no_run
+    /// # async fn example(client: blazing_agents::Client) -> blazing_agents::Result<()> {
+    /// use blazing_agents::workspaces::NetworkPolicy;
+    /// let workspace = client
+    ///     .workspaces()
+    ///     .create()
+    ///     .name("Release files")
+    ///     .network_policy(NetworkPolicy::allowlist(["registry.npmjs.org"]))
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn create(&self) -> Call<CreateWorkspace> {
         Call::new(self.client, Op::CreateWorkspace, CreateWorkspace::default())
     }
 
-    /// Gets one workspace.
+    /// Gets one workspace without starting it.
     pub fn get(&self, workspace_id: impl Into<WorkspaceId>) -> Call<GetWorkspace> {
         let workspace_id = workspace_id.into();
         Call::new(
@@ -44,7 +64,9 @@ impl<S: Scope> Workspaces<'_, S> {
         )
     }
 
-    /// Changes a workspace. Fields you do not set keep their values.
+    /// Changes a workspace's name, metadata, or network policy. Send at least
+    /// one field; fields you do not set keep their values, and `metadata` and
+    /// `network_policy` replace their current values completely.
     pub fn update(&self, workspace_id: impl Into<WorkspaceId>) -> Call<UpdateWorkspace> {
         let workspace_id = workspace_id.into();
         Call::new(
@@ -56,7 +78,9 @@ impl<S: Scope> Workspaces<'_, S> {
         )
     }
 
-    /// Deletes a workspace.
+    /// Permanently deletes a workspace and all its files. Move attached agents
+    /// to another workspace first: while any agent uses it the request fails
+    /// with `workspace_in_use`.
     pub fn delete(&self, workspace_id: impl Into<WorkspaceId>) -> Call<DeleteWorkspace> {
         let workspace_id = workspace_id.into();
         Call::new(
@@ -74,15 +98,75 @@ impl<S: Scope> Workspaces<'_, S> {
 #[serde(rename_all = "camelCase")]
 pub struct ListWorkspaces {
     #[serde(skip_serializing_if = "Option::is_none")]
+    user_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     cursor: Option<Cursor>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<u8>,
 }
 impl_request!(ListWorkspaces => Page<Workspace>; encode = query; decode = json; paginate);
+
+impl Call<ListWorkspaces> {
+    /// Only workspaces of this end user. An empty string selects tenant-level
+    /// workspaces.
+    pub fn user_id(self, user_id: impl Into<String>) -> Self {
+        self.map(|request| request.user_id = Some(user_id.into()))
+    }
+
+    /// Workspaces per page, 1 to 200. Defaults to 50.
+    pub fn limit(self, limit: u8) -> Self {
+        self.map(|request| request.limit = Some(limit))
+    }
+}
 
 /// Request state of [`Workspaces::create`].
 #[derive(Clone, Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateWorkspace {}
+pub struct CreateWorkspace {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tier: Option<WorkspaceTier>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    user_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metadata: Option<Metadata>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    network_policy: Option<NetworkPolicy>,
+}
 impl_request!(CreateWorkspace => Workspace; encode = json; decode = json);
+
+impl Call<CreateWorkspace> {
+    /// The workspace tier, fixed at creation. [`WorkspaceTier::Core`] (the
+    /// default) loses its files when the workspace stops;
+    /// [`WorkspaceTier::Plus`] keeps them while it is stopped.
+    pub fn tier(self, tier: WorkspaceTier) -> Self {
+        self.map(|request| request.tier = Some(tier))
+    }
+
+    /// A display name, up to 80 characters. Leave it unset for an unnamed
+    /// workspace.
+    pub fn name(self, name: impl Into<String>) -> Self {
+        self.map(|request| request.name = Some(name.into()))
+    }
+
+    /// The end user who owns the workspace. Fixed after creation; an empty
+    /// string (the default) means a tenant-level workspace.
+    pub fn user_id(self, user_id: impl Into<String>) -> Self {
+        self.map(|request| request.user_id = Some(user_id.into()))
+    }
+
+    /// Your own data, returned unchanged.
+    pub fn metadata(self, metadata: Metadata) -> Self {
+        self.map(|request| request.metadata = Some(metadata))
+    }
+
+    /// Which hosts the workspace can reach. Defaults to
+    /// [`NetworkPolicy::Unrestricted`].
+    pub fn network_policy(self, network_policy: NetworkPolicy) -> Self {
+        self.map(|request| request.network_policy = Some(network_policy))
+    }
+}
 
 /// Request state of [`Workspaces::get`].
 #[derive(Clone, Debug)]
@@ -92,16 +176,146 @@ impl_request!(GetWorkspace => Workspace; encode = none; decode = json);
 /// Request state of [`Workspaces::update`].
 #[derive(Clone, Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateWorkspace {}
+pub struct UpdateWorkspace {
+    #[serde(skip_serializing_if = "Patch::is_keep")]
+    name: Patch<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metadata: Option<Metadata>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    network_policy: Option<NetworkPolicy>,
+}
 impl_request!(UpdateWorkspace => Workspace; encode = json; decode = json);
+
+impl Call<UpdateWorkspace> {
+    /// A new display name, up to 80 characters.
+    pub fn name(self, name: impl Into<String>) -> Self {
+        self.map(|request| request.name = Patch::Set(name.into()))
+    }
+
+    /// Removes the display name.
+    pub fn clear_name(self) -> Self {
+        self.map(|request| request.name = Patch::Clear)
+    }
+
+    /// Replaces the workspace's metadata completely.
+    pub fn metadata(self, metadata: Metadata) -> Self {
+        self.map(|request| request.metadata = Some(metadata))
+    }
+
+    /// Replaces the network policy. If it switches between `unrestricted` and
+    /// a restricted mode, a running workspace saves its files and stops; it
+    /// applies the new policy the next time an agent uses it.
+    pub fn network_policy(self, network_policy: NetworkPolicy) -> Self {
+        self.map(|request| request.network_policy = Some(network_policy))
+    }
+}
 
 /// Request state of [`Workspaces::delete`].
 #[derive(Clone, Debug)]
 pub struct DeleteWorkspace;
 impl_request!(DeleteWorkspace => (); encode = none; decode = none);
 
-/// A workspace.
+crate::open_enum! {
+    /// The workspace tier, fixed at creation.
+    pub enum WorkspaceTier {
+        /// `core`: files are lost when the workspace stops.
+        Core = "core",
+        /// `plus`: files are kept when the workspace stops while idle.
+        Plus = "plus",
+    }
+}
+
+/// Which hosts a workspace can reach. A `mode` this version of the SDK does
+/// not know decodes as [`NetworkPolicy::Unrecognized`] instead of failing.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum NetworkPolicy {
+    /// Every host is reachable (`{"mode": "unrestricted"}`).
+    Unrestricted,
+    /// Only the listed hosts are reachable
+    /// (`{"mode": "allowlist", "allowedHosts": [...]}`).
+    #[non_exhaustive]
+    Allowlist {
+        /// The hosts the workspace may reach.
+        allowed_hosts: Vec<String>,
+    },
+    /// No host is reachable (`{"mode": "offline"}`).
+    Offline,
+    /// A mode this version of the SDK does not know. Holds the raw mode string.
+    Unrecognized(Unrecognized),
+}
+
+impl NetworkPolicy {
+    /// Only `hosts` are reachable. Each is a host name such as
+    /// `registry.npmjs.org`.
+    pub fn allowlist(hosts: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        Self::Allowlist {
+            allowed_hosts: hosts.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+/// The `mode`-tagged wire shape of [`NetworkPolicy`]. Unknown modes decode
+/// instead of failing, and fields a mode does not define are ignored.
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NetworkPolicyWire {
+    mode: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    allowed_hosts: Option<Vec<String>>,
+}
+
+impl Serialize for NetworkPolicy {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let (mode, allowed_hosts) = match self {
+            Self::Unrestricted => ("unrestricted", None),
+            Self::Allowlist { allowed_hosts } => ("allowlist", Some(allowed_hosts.clone())),
+            Self::Offline => ("offline", None),
+            Self::Unrecognized(other) => (other.as_str(), None),
+        };
+        NetworkPolicyWire {
+            mode: mode.to_owned(),
+            allowed_hosts,
+        }
+        .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for NetworkPolicy {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let wire = NetworkPolicyWire::deserialize(deserializer)?;
+        Ok(match wire.mode.as_str() {
+            "unrestricted" => Self::Unrestricted,
+            "allowlist" => Self::Allowlist {
+                allowed_hosts: wire.allowed_hosts.unwrap_or_default(),
+            },
+            "offline" => Self::Offline,
+            other => Self::Unrecognized(Unrecognized::new(other)),
+        })
+    }
+}
+
+/// A workspace: a private file system agents keep between sessions.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[non_exhaustive]
 #[serde(rename_all = "camelCase")]
-pub struct Workspace {}
+pub struct Workspace {
+    /// The workspace's ID.
+    pub id: WorkspaceId,
+    /// The tenant that owns the workspace.
+    pub tenant_id: TenantId,
+    /// The workspace's tier.
+    pub tier: WorkspaceTier,
+    /// The display name, if any.
+    pub name: Option<String>,
+    /// The end user, or an empty string for a tenant-level workspace.
+    pub user_id: String,
+    /// Your own data.
+    pub metadata: Metadata,
+    /// Which hosts the workspace can reach.
+    pub network_policy: NetworkPolicy,
+    /// When the workspace was created.
+    pub created_at: Timestamp,
+    /// When the workspace last changed.
+    pub updated_at: Timestamp,
+}
