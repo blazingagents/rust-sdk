@@ -772,8 +772,9 @@ impl ApprovalOverride {
     }
 }
 
-/// The tool an approval override refers to: a built-in tool by name, or one
-/// tool of an attached MCP connection.
+/// The tool an approval override or a tool approval refers to: a built-in
+/// tool by name, one tool of an attached MCP connection, or, in tool
+/// approvals only, a backend function.
 #[derive(Clone, Debug, Serialize)]
 #[non_exhaustive]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -791,6 +792,13 @@ pub enum ToolReference {
         #[serde(rename = "connectionId")]
         connection_id: McpConnectionId,
         /// The tool's name on the MCP server.
+        name: String,
+    },
+    /// A function a backend supplied for one chat request. Only tool
+    /// approvals name one; approval overrides cannot.
+    #[non_exhaustive]
+    Function {
+        /// The function's name.
         name: String,
     },
     /// A tool kind this version of the SDK does not know; the raw object,
@@ -837,10 +845,13 @@ impl<'de> Deserialize<'de> for ToolReference {
                 connection_id: McpConnectionId,
                 name: String,
             },
+            Function {
+                name: String,
+            },
         }
 
         match kind {
-            "builtin" | "mcp" => {
+            "builtin" | "mcp" | "function" => {
                 let known = Known::deserialize(value).map_err(serde::de::Error::custom)?;
                 Ok(match known {
                     Known::Builtin { name } => Self::Builtin { name },
@@ -851,6 +862,7 @@ impl<'de> Deserialize<'de> for ToolReference {
                         connection_id,
                         name,
                     },
+                    Known::Function { name } => Self::Function { name },
                 })
             }
             _ => Ok(Self::Unrecognized(value)),

@@ -235,7 +235,7 @@ async fn get_decodes_unknown_values_and_defaults_missing_policies() {
         "default": "judge",
         "overrides": [
             { "tool": { "type": "builtin", "name": "fly" }, "decision": "auto" },
-            { "tool": { "type": "function", "name": "lookup" }, "decision": "deny" }
+            { "tool": { "type": "skill", "name": "lookup" }, "decision": "deny" }
         ]
     });
     let object = body.as_object_mut().unwrap();
@@ -272,7 +272,7 @@ async fn get_decodes_unknown_values_and_defaults_missing_policies() {
     }
     match &overrides[1].tool {
         ToolReference::Unrecognized(value) => {
-            assert_eq!(*value, json!({ "type": "function", "name": "lookup" }))
+            assert_eq!(*value, json!({ "type": "skill", "name": "lookup" }))
         }
         other => panic!("expected an unrecognized tool reference, got {other:?}"),
     }
@@ -334,7 +334,7 @@ async fn update_resends_an_unrecognized_tool_reference_unchanged() {
     fetched["approvalInChat"] = json!({
         "default": "auto",
         "overrides": [
-            { "tool": { "type": "function", "name": "lookup" }, "decision": "auto" }
+            { "tool": { "type": "skill", "name": "lookup" }, "decision": "auto" }
         ]
     });
     Mock::given(method("GET"))
@@ -363,7 +363,7 @@ async fn update_resends_an_unrecognized_tool_reference_unchanged() {
             "approvalInChat": {
                 "default": "auto",
                 "overrides": [
-                    { "tool": { "type": "function", "name": "lookup" }, "decision": "auto" }
+                    { "tool": { "type": "skill", "name": "lookup" }, "decision": "auto" }
                 ]
             }
         })
