@@ -112,6 +112,7 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
     headers.extend(options.headers);
     headers.extend(payload.headers);
     headers.remove(X_REQUEST_ID);
+    headers.remove(X_BA_USER_ID);
     let mut authorization =
         HeaderValue::from_str(&format!("Bearer {}", inner.api_key)).map_err(|_| {
             Error::Config(crate::error::ConfigError::HttpClient(
@@ -120,13 +121,13 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
         })?;
     authorization.set_sensitive(true);
     headers.insert(AUTHORIZATION, authorization);
-    let client_request_id = options
+    if let Some(id) = options
         .client_request_id
-        .or_else(|| handle.client_request_id.clone());
-    if let Some(id) = &client_request_id {
+        .or_else(|| handle.client_request_id.clone())
+    {
         headers.insert(
             X_CLIENT_REQUEST_ID,
-            HeaderValue::from_str(id).map_err(|_| {
+            HeaderValue::from_str(&id).map_err(|_| {
                 Error::InvalidArgument("client request ID is not a valid header value".to_owned())
             })?,
         );
@@ -138,6 +139,8 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
                 .expect("a validated user ID is printable ASCII"),
         );
     }
+
+    let client_request_id = header_string(&headers, &X_CLIENT_REQUEST_ID);
 
     let mut url = reqwest::Url::parse(&format!("{}{}", inner.base_url, route.path))
         .map_err(|error| Error::InvalidArgument(format!("invalid request URL: {error}")))?;

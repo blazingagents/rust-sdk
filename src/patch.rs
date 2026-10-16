@@ -1,4 +1,4 @@
-use serde::{Serialize, Serializer};
+use serde::{Serialize, Serializer, ser::Error};
 
 /// The state of a nullable field in a PATCH or PUT body. `Keep` leaves the field
 /// out, `Clear` sends `null`, `Set` sends the value. Every field of this type
@@ -20,7 +20,10 @@ impl<T> Patch<T> {
 impl<T: Serialize> Serialize for Patch<T> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
-            Patch::Keep | Patch::Clear => serializer.serialize_none(),
+            Patch::Keep => Err(S::Error::custom(
+                "Patch::Keep must be skipped with skip_serializing_if = \"Patch::is_keep\"",
+            )),
+            Patch::Clear => serializer.serialize_none(),
             Patch::Set(value) => value.serialize(serializer),
         }
     }

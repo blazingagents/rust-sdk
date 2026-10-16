@@ -301,3 +301,10 @@ pub struct McpAttachment {}
 #[non_exhaustive]
 #[serde(rename_all = "camelCase")]
 pub struct McpAttachmentList {}
+
+/// The agent configuration a session or task run saved when it started.
+/// Later changes to the agent do not change it.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
+#[serde(rename_all = "camelCase")]
+pub struct AgentConfig {}

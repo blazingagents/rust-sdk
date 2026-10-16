@@ -248,6 +248,8 @@ impl ClientBuilder {
             .or_else(|| std::env::var(API_KEY_ENV).ok())
             .filter(|key| !key.is_empty())
             .ok_or(ConfigError::MissingApiKey)?;
+        reqwest::header::HeaderValue::from_str(&format!("Bearer {api_key}"))
+            .map_err(|_| ConfigError::InvalidApiKey)?;
         let base_url = self.base_url.trim_end_matches('/').to_owned();
         let parsed = reqwest::Url::parse(&base_url)
             .map_err(|_| ConfigError::InvalidBaseUrl(self.base_url.clone()))?;

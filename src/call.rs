@@ -150,11 +150,11 @@ impl<R: Request + Clone> Clone for Call<R> {
     }
 }
 
-impl<R: Request + fmt::Debug> fmt::Debug for Call<R> {
+/// Leaves the request out: request bodies can hold credentials.
+impl<R: Request> fmt::Debug for Call<R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Call")
             .field("route", &self.route)
-            .field("request", &self.request)
             .finish_non_exhaustive()
     }
 }

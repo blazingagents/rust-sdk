@@ -307,6 +307,9 @@ pub enum ConfigError {
     /// No `api_key` was given and `BLAZING_AGENTS_API_KEY` is unset or empty.
     #[error("no API key: pass api_key or set BLAZING_AGENTS_API_KEY")]
     MissingApiKey,
+    /// The API key cannot be sent in an HTTP header.
+    #[error("the API key is not a valid HTTP header value")]
+    InvalidApiKey,
     /// The base URL is not an absolute `http` or `https` URL.
     #[error("invalid base URL: {0}")]
     InvalidBaseUrl(String),

@@ -32,6 +32,7 @@ async fn headers_follow_the_sdk_policy() {
         .default_header("x-custom", "1")
         .default_header("x-request-id", "injected")
         .default_header("authorization", "injected")
+        .default_header("x-ba-user-id", "spoofed")
         .build()
         .unwrap();
     Mock::given(method("DELETE"))
@@ -51,6 +52,10 @@ async fn headers_follow_the_sdk_policy() {
             HeaderName::from_static("x-request-id"),
             HeaderValue::from_static("injected"),
         )
+        .with_header(
+            HeaderName::from_static("x-ba-user-id"),
+            HeaderValue::from_static("spoofed"),
+        )
         .await
         .unwrap();
 
@@ -58,6 +63,7 @@ async fn headers_follow_the_sdk_policy() {
     assert_eq!(header(&sent[0], "x-custom"), Some("1"));
     assert_eq!(header(&sent[0], "x-per-call"), Some("2"));
     assert_eq!(header(&sent[0], "x-request-id"), None);
+    assert_eq!(header(&sent[0], "x-ba-user-id"), None);
     assert_eq!(header(&sent[0], "authorization"), Some("Bearer test-key"));
     assert!(
         header(&sent[0], "user-agent")
@@ -155,9 +161,19 @@ async fn on_response_observes_errors_and_survives_panics() {
         .with_client_request_id("cid")
         .await
         .unwrap_err();
+    client
+        .prompts()
+        .get("prompt_1")
+        .with_header(
+            HeaderName::from_static("x-client-request-id"),
+            HeaderValue::from_static("from-header"),
+        )
+        .await
+        .unwrap_err();
 
     let seen = seen.lock().unwrap();
-    assert_eq!(seen.len(), 2);
+    assert_eq!(seen.len(), 3);
+    assert_eq!(seen[2].client_request_id.as_deref(), Some("from-header"));
     assert_eq!(seen[0].operation_id, "deletePrompt");
     assert_eq!(seen[1].operation_id, "getPrompt");
     assert_eq!(seen[1].method, "GET");
@@ -442,4 +458,19 @@ fn timestamps_round_trip_as_rfc_3339() {
         "\"2026-07-10T08:00:00.25Z\""
     );
     assert!("yesterday".parse::<Timestamp>().is_err());
+}
+
+#[test]
+fn api_keys_that_cannot_be_sent_fail_the_build() {
+    let built = Client::builder().api_key("bad\nkey").build();
+    assert!(matches!(built, Err(ConfigError::InvalidApiKey)));
+}
+
+#[test]
+fn debug_output_never_shows_request_bodies() {
+    let client = Client::builder().api_key("k").build().unwrap();
+    let call = client
+        .providers()
+        .create("n", ProviderType::OpenAi, "sk-supersecret-123");
+    assert!(!format!("{call:?}").contains("sk-supersecret-123"));
 }
