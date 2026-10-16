@@ -795,3 +795,48 @@ pub struct MerchantUsageDay {
     /// Events from that day not yet delivered.
     pub pending_events: u64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        CreateMerchantConnection, MerchantConnectionStatus, MerchantEnvironment, MerchantGuard,
+        MerchantProvider, UpdateMerchantConnection,
+    };
+
+    #[test]
+    fn create_debug_redacts_the_credential() {
+        let request = CreateMerchantConnection {
+            provider: MerchantProvider::Polar,
+            environment: MerchantEnvironment::Live,
+            credential: "sk_live_secret".to_owned(),
+            guard: Some(MerchantGuard::new(true)),
+        };
+
+        let debug = format!("{request:?}");
+
+        assert!(debug.contains("[REDACTED]"), "{debug}");
+        assert!(!debug.contains("sk_live_secret"), "{debug}");
+        assert!(debug.contains("provider: Polar"), "{debug}");
+        assert!(debug.contains("environment: Live"), "{debug}");
+        assert!(debug.contains("guard: Some"), "{debug}");
+    }
+
+    #[test]
+    fn update_debug_redacts_the_credential() {
+        let request = UpdateMerchantConnection {
+            credential: Some("sk_live_secret".to_owned()),
+            status: Some(MerchantConnectionStatus::Active),
+            guard: Some(MerchantGuard::new(true)),
+        };
+
+        let debug = format!("{request:?}");
+
+        assert!(debug.contains("[REDACTED]"), "{debug}");
+        assert!(!debug.contains("sk_live_secret"), "{debug}");
+        assert!(debug.contains("status: Some(Active)"), "{debug}");
+        assert!(debug.contains("guard: Some"), "{debug}");
+
+        let debug = format!("{:?}", UpdateMerchantConnection::default());
+        assert!(debug.contains("credential: None"), "{debug}");
+    }
+}

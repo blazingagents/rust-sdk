@@ -101,8 +101,10 @@ async fn get_for_agent_sends_the_query_on_the_tenant_client() {
         .and(path("/v1/agents/ag_4kP9sT2vXq7LmN3a/usage"))
         .and(query_param("from", "2026-07-01"))
         .and(query_param("to", "2026-07-10"))
+        .and(query_param("sessionId", "ss_0123456789abcdef"))
         .and(query_param("userId", "customer_123"))
         .and(query_param("groupBy", "model"))
+        .and(query_param("limit", "25"))
         .respond_with(json(200, usage()))
         .mount(&server)
         .await;
@@ -111,8 +113,10 @@ async fn get_for_agent_sends_the_query_on_the_tenant_client() {
         .usage()
         .get_for_agent("ag_4kP9sT2vXq7LmN3a")
         .range("2026-07-01", "2026-07-10")
+        .session_id("ss_0123456789abcdef")
         .user_id("customer_123")
         .group_by(UsageGroupBy::Model)
+        .limit(25)
         .await
         .unwrap();
 

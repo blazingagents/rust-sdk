@@ -33,12 +33,17 @@ fn call_event(name: &str, input: serde_json::Value, deadline_at: &str) -> String
 
 /// A new-session chat response whose body is `start`, `call`, `finish`.
 fn chat_with(call: &str) -> ResponseTemplate {
-    let body = [r#"{"type":"start"}"#, call, r#"{"type":"finish"}"#]
+    let frames = [r#"{"type":"start"}"#, call, r#"{"type":"finish"}"#]
         .iter()
         .map(|event| format!("data: {event}\n\n"))
-        .collect::<String>();
+        .collect::<Vec<_>>();
+    chat_frames(&frames.iter().map(String::as_str).collect::<Vec<_>>())
+}
+
+/// A new-session chat response whose body is `frames` byte-for-byte.
+fn chat_frames(frames: &[&str]) -> ResponseTemplate {
     ResponseTemplate::new(201)
-        .set_body_raw(body.into_bytes(), "text/event-stream")
+        .set_body_raw(frames.concat().into_bytes(), "text/event-stream")
         .insert_header("x-ba-turn-id", TURN)
         .insert_header(
             "location",
@@ -50,6 +55,15 @@ async fn mount_chat_with(server: &MockServer, call: &str) {
     Mock::given(method("POST"))
         .and(path("/v1/agents/ag_1/sessions"))
         .respond_with(chat_with(call))
+        .mount(server)
+        .await;
+}
+
+/// Mounts a new-session chat response whose body is `frames` byte-for-byte.
+async fn mount_chat_frames(server: &MockServer, frames: &[&str]) {
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/sessions"))
+        .respond_with(chat_frames(frames))
         .mount(server)
         .await;
 }
@@ -255,6 +269,27 @@ fn build_rejects_what_the_platform_rejects() {
     let mut dashes = Functions::builder();
     dashes = add(dashes, "Get-Order_v2", "Finds an order.", valid);
     assert!(dashes.build().is_ok());
+}
+
+#[test]
+fn debug_lists_only_the_function_names() {
+    let functions = Functions::builder()
+        .function_json(
+            "b_fn",
+            "Second.",
+            json!({ "type": "object" }),
+            |input, _| async move { Ok::<_, std::convert::Infallible>(input) },
+        )
+        .function_json(
+            "a_fn",
+            "First.",
+            json!({ "type": "object" }),
+            |input, _| async move { Ok::<_, std::convert::Infallible>(input) },
+        )
+        .build()
+        .unwrap();
+
+    assert_eq!(format!("{functions:?}"), r#"["a_fn", "b_fn"]"#);
 }
 
 #[tokio::test]
@@ -784,5 +819,491 @@ async fn dropping_the_stream_cancels_running_handlers() {
             .iter()
             .all(|request| request.url.path() != call_path("result")),
         "no result is posted for a cancelled handler"
+    );
+}
+
+#[tokio::test]
+async fn the_context_exposes_the_deadline_and_the_call_id() {
+    let server = MockServer::start().await;
+    mount_chat(&server, "lookup_order", json!({})).await;
+    mount_claim(&server).await;
+    mount_result(&server).await;
+    let functions = Functions::builder()
+        .function_json(
+            "lookup_order",
+            "d",
+            json!({ "type": "object" }),
+            |_, context| async move {
+                Ok::<_, std::convert::Infallible>(json!({
+                    "deadline": context.deadline().to_string(),
+                    "key": context.idempotency_key().as_str(),
+                }))
+            },
+        )
+        .build()
+        .unwrap();
+
+    let outcome = result_outcome(&server, functions).await;
+
+    assert_eq!(
+        outcome,
+        json!({
+            "kind": "output",
+            "value": { "deadline": "2099-01-01T00:00:00Z", "key": CALL }
+        })
+    );
+}
+
+#[tokio::test]
+async fn cancelled_resolves_when_the_deadline_passes() {
+    let server = MockServer::start().await;
+    mount_chat_with(
+        &server,
+        &call_event(
+            "lookup_order",
+            json!({}),
+            &deadline_in(Duration::from_secs(1)),
+        ),
+    )
+    .await;
+    mount_claim(&server).await;
+    let (cancelled_tx, cancelled_rx) = tokio::sync::oneshot::channel::<()>();
+    let cancelled_tx = std::sync::Mutex::new(Some(cancelled_tx));
+    let functions = Functions::builder()
+        .function_json(
+            "lookup_order",
+            "d",
+            json!({ "type": "object" }),
+            move |_, context| {
+                let cancelled = cancelled_tx.lock().unwrap().take();
+                async move {
+                    // The handler itself never observes the resolution: it is
+                    // dropped at the deadline. A detached task does.
+                    tokio::spawn(async move {
+                        context.cancelled().await;
+                        if let Some(cancelled) = cancelled {
+                            let _ = cancelled.send(());
+                        }
+                    });
+                    std::future::pending::<()>().await;
+                    Ok::<_, std::convert::Infallible>(json!(null))
+                }
+            },
+        )
+        .build()
+        .unwrap();
+    let (_, client) = mock_at(&server).await;
+
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(functions)
+        .await
+        .unwrap();
+    while stream.try_next().await.unwrap().is_some() {}
+    tokio::time::timeout(Duration::from_secs(5), cancelled_rx)
+        .await
+        .expect("cancelled() resolves at the deadline")
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    assert_eq!(
+        requests(&server).await.len(),
+        2,
+        "chat and claim, but no result"
+    );
+    assert!(stream.try_next().await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn a_claim_body_that_is_not_claimed_true_fails_the_stream() {
+    let server = MockServer::start().await;
+    mount_chat(&server, "lookup_order", json!({})).await;
+    Mock::given(method("POST"))
+        .and(path(call_path("claim")))
+        .respond_with(json(200, json!({ "claimed": false })))
+        .mount(&server)
+        .await;
+    let calls = Arc::new(AtomicUsize::new(0));
+    let counted = calls.clone();
+    let functions = Functions::builder()
+        .function_json(
+            "lookup_order",
+            "d",
+            json!({ "type": "object" }),
+            move |input, _| {
+                counted.fetch_add(1, Ordering::SeqCst);
+                async move { Ok::<_, std::convert::Infallible>(input) }
+            },
+        )
+        .build()
+        .unwrap();
+    let (_, client) = mock_at(&server).await;
+
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(functions)
+        .await
+        .unwrap();
+    stream.try_next().await.unwrap().unwrap();
+    stream.try_next().await.unwrap().unwrap();
+    wait_for_requests(&server, 2).await;
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let error = stream.try_next().await.unwrap_err();
+
+    let blazing_agents::Error::Decode { source, .. } = error else {
+        panic!("expected a decode error, got {error:?}");
+    };
+    assert_eq!(source.to_string(), "expected claimed: true");
+    assert_eq!(calls.load(Ordering::SeqCst), 0, "the handler never ran");
+    assert_eq!(
+        requests(&server).await.len(),
+        2,
+        "a decode failure is not retried and no result is posted"
+    );
+}
+
+#[tokio::test]
+async fn a_frame_without_data_lines_passes_through() {
+    let server = MockServer::start().await;
+    mount_chat_frames(
+        &server,
+        &[
+            "data: {\"type\":\"start\"}\n\n",
+            ": keep-alive\n\n",
+            "data: {\"type\":\"finish\"}\n\n",
+        ],
+    )
+    .await;
+    let (_, client) = mock_at(&server).await;
+
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(echo_functions())
+        .await
+        .unwrap();
+    let mut frames = Vec::new();
+    while let Some(frame) = stream.try_next().await.unwrap() {
+        frames.push(frame);
+    }
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let frames: Vec<&[u8]> = frames.iter().map(AsRef::as_ref).collect();
+    assert_eq!(
+        frames,
+        [
+            "data: {\"type\":\"start\"}\n\n".as_bytes(),
+            ": keep-alive\n\n".as_bytes(),
+            "data: {\"type\":\"finish\"}\n\n".as_bytes(),
+        ]
+    );
+    assert_eq!(requests(&server).await.len(), 1, "a comment claims nothing");
+}
+
+#[tokio::test]
+async fn a_frame_whose_data_mentions_the_event_type_passes_through() {
+    let server = MockServer::start().await;
+    let delta = "data: {\"type\":\"text-delta\",\"delta\":\"data-ba-function-call\"}\n\n";
+    mount_chat_frames(
+        &server,
+        &[
+            "data: {\"type\":\"start\"}\n\n",
+            delta,
+            "data: {\"type\":\"finish\"}\n\n",
+        ],
+    )
+    .await;
+    let (_, client) = mock_at(&server).await;
+
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(echo_functions())
+        .await
+        .unwrap();
+    let mut frames = Vec::new();
+    while let Some(frame) = stream.try_next().await.unwrap() {
+        frames.push(frame);
+    }
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let frames: Vec<&[u8]> = frames.iter().map(AsRef::as_ref).collect();
+    assert_eq!(
+        frames,
+        [
+            "data: {\"type\":\"start\"}\n\n".as_bytes(),
+            delta.as_bytes(),
+            "data: {\"type\":\"finish\"}\n\n".as_bytes(),
+        ]
+    );
+    assert_eq!(
+        requests(&server).await.len(),
+        1,
+        "a text-delta claims nothing"
+    );
+}
+
+#[tokio::test]
+async fn a_duplicate_call_id_is_claimed_once() {
+    let server = MockServer::start().await;
+    let call = format!(
+        "data: {}\n\n",
+        call_event("lookup_order", json!({}), "2099-01-01T00:00:00Z")
+    );
+    mount_chat_frames(
+        &server,
+        &[
+            "data: {\"type\":\"start\"}\n\n",
+            call.as_str(),
+            call.as_str(),
+            "data: {\"type\":\"finish\"}\n\n",
+        ],
+    )
+    .await;
+    mount_claim(&server).await;
+    mount_result(&server).await;
+    let calls = Arc::new(AtomicUsize::new(0));
+    let counted = calls.clone();
+    let functions = Functions::builder()
+        .function_json(
+            "lookup_order",
+            "d",
+            json!({ "type": "object" }),
+            move |input, _| {
+                counted.fetch_add(1, Ordering::SeqCst);
+                async move { Ok::<_, std::convert::Infallible>(input) }
+            },
+        )
+        .build()
+        .unwrap();
+    let (_, client) = mock_at(&server).await;
+
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(functions)
+        .await
+        .unwrap();
+    let mut frames = 0;
+    while stream.try_next().await.unwrap().is_some() {
+        frames += 1;
+    }
+    let sent = wait_for_requests(&server, 3).await;
+    drop(stream);
+
+    assert_eq!(frames, 2, "start and finish reach the consumer");
+    assert_eq!(calls.load(Ordering::SeqCst), 1, "the handler ran once");
+    assert_eq!(
+        sent.iter()
+            .filter(|request| request.url.path() == call_path("claim"))
+            .count(),
+        1,
+        "the duplicate event is not claimed again"
+    );
+}
+
+#[tokio::test]
+async fn a_claim_timeout_is_retried() {
+    let server = MockServer::start().await;
+    mount_chat(&server, "lookup_order", json!({ "orderId": "o-1" })).await;
+    Mock::given(method("POST"))
+        .and(path(call_path("claim")))
+        .respond_with(json(200, json!({ "claimed": true })).set_delay(Duration::from_secs(1)))
+        .up_to_n_times(1)
+        .mount(&server)
+        .await;
+    mount_claim(&server).await;
+    mount_result(&server).await;
+    let client = blazing_agents::Client::builder()
+        .api_key("test-key")
+        .base_url(server.uri())
+        .timeout(Some(Duration::from_millis(200)))
+        .build()
+        .unwrap();
+
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(echo_functions())
+        .await
+        .unwrap();
+    while stream.try_next().await.unwrap().is_some() {}
+    let is_result = |request: &wiremock::Request| request.url.path() == call_path("result");
+    let sent = wait_for(&server, |sent| sent.iter().any(is_result), "a result").await;
+    drop(stream);
+
+    let claims: Vec<_> = sent
+        .iter()
+        .filter(|request| request.url.path() == call_path("claim"))
+        .map(json_body)
+        .collect();
+    assert_eq!(claims.len(), 2, "a timed-out claim is retried");
+    assert_eq!(
+        claims[0], claims[1],
+        "the retry reuses the claim request ID"
+    );
+    assert_eq!(
+        json_body(sent.iter().find(|request| is_result(request)).unwrap())["outcome"],
+        json!({ "kind": "output", "value": { "orderId": "o-1" } })
+    );
+}
+
+#[tokio::test]
+async fn a_call_past_its_deadline_is_skipped() {
+    let server = MockServer::start().await;
+    mount_chat_with(
+        &server,
+        &call_event("lookup_order", json!({}), "2000-01-01T00:00:00Z"),
+    )
+    .await;
+    let calls = Arc::new(AtomicUsize::new(0));
+    let counted = calls.clone();
+    let functions = Functions::builder()
+        .function_json(
+            "lookup_order",
+            "d",
+            json!({ "type": "object" }),
+            move |input, _| {
+                counted.fetch_add(1, Ordering::SeqCst);
+                async move { Ok::<_, std::convert::Infallible>(input) }
+            },
+        )
+        .build()
+        .unwrap();
+    let (_, client) = mock_at(&server).await;
+
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(functions)
+        .await
+        .unwrap();
+    let mut frames = 0;
+    while stream.try_next().await.unwrap().is_some() {
+        frames += 1;
+    }
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    assert_eq!(frames, 2, "start and finish reach the consumer");
+    assert_eq!(calls.load(Ordering::SeqCst), 0, "the handler never ran");
+    assert_eq!(
+        requests(&server).await.len(),
+        1,
+        "an expired call is never claimed"
+    );
+}
+
+#[tokio::test]
+async fn a_claim_accepted_after_the_deadline_posts_nothing() {
+    let server = MockServer::start().await;
+    mount_chat_with(
+        &server,
+        &call_event(
+            "lookup_order",
+            json!({}),
+            &deadline_in(Duration::from_secs(1)),
+        ),
+    )
+    .await;
+    Mock::given(method("POST"))
+        .and(path(call_path("claim")))
+        .respond_with(json(200, json!({ "claimed": true })).set_delay(Duration::from_secs(2)))
+        .mount(&server)
+        .await;
+    mount_result(&server).await;
+    let calls = Arc::new(AtomicUsize::new(0));
+    let counted = calls.clone();
+    let functions = Functions::builder()
+        .function_json(
+            "lookup_order",
+            "d",
+            json!({ "type": "object" }),
+            move |input, _| {
+                counted.fetch_add(1, Ordering::SeqCst);
+                async move { Ok::<_, std::convert::Infallible>(input) }
+            },
+        )
+        .build()
+        .unwrap();
+    let (_, client) = mock_at(&server).await;
+
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(functions)
+        .await
+        .unwrap();
+    let mut frames = 0;
+    while stream.try_next().await.unwrap().is_some() {
+        frames += 1;
+    }
+    wait_for_requests(&server, 2).await;
+    // The claim answers 2 s in; the deadline check runs once it arrives.
+    tokio::time::sleep(Duration::from_millis(2_500)).await;
+
+    assert_eq!(frames, 2, "start and finish reach the consumer");
+    assert_eq!(calls.load(Ordering::SeqCst), 0, "the handler never ran");
+    assert_eq!(
+        requests(&server).await.len(),
+        2,
+        "a claim accepted after the deadline posts no result"
+    );
+    assert!(stream.try_next().await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn a_permanent_result_failure_is_the_next_stream_item() {
+    let server = MockServer::start().await;
+    mount_chat(&server, "lookup_order", json!({})).await;
+    mount_claim(&server).await;
+    Mock::given(method("POST"))
+        .and(path(call_path("result")))
+        .respond_with(api_error(400, "validation_failed", "Bad result."))
+        .mount(&server)
+        .await;
+    let (_, client) = mock_at(&server).await;
+
+    let mut stream = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .functions(echo_functions())
+        .await
+        .unwrap();
+    let start = stream.try_next().await.unwrap().unwrap();
+    assert_eq!(start, "data: {\"type\":\"start\"}\n\n".as_bytes());
+    let finish = stream.try_next().await.unwrap().unwrap();
+    assert_eq!(finish, "data: {\"type\":\"finish\"}\n\n".as_bytes());
+    wait_for_requests(&server, 3).await;
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let error = stream.try_next().await.unwrap_err();
+
+    assert_eq!(error.status(), Some(400));
+    assert_eq!(
+        error.code().map(|code| code.as_str()),
+        Some("validation_failed")
+    );
+    assert_eq!(requests(&server).await.len(), 3, "a 400 is not retried");
+}
+
+#[cfg(feature = "schemars")]
+#[tokio::test]
+async fn a_result_that_is_not_plain_json_is_an_invalid_result() {
+    let server = MockServer::start().await;
+    mount_chat(&server, "lookup_order", json!({})).await;
+    mount_claim(&server).await;
+    mount_result(&server).await;
+    // Serializes fine, but serde_json's parser recursion limit rejects the
+    // decode back that checks the result is wire-safe.
+    let deep = (0..200).fold(json!(null), |value, _| json!([value]));
+    let functions = Functions::builder()
+        .function::<std::collections::HashMap<String, serde_json::Value>, _, _, _, std::convert::Infallible>(
+            "lookup_order",
+            "d",
+            move |_, _| {
+                let deep = deep.clone();
+                async move { Ok(deep) }
+            },
+        )
+        .build()
+        .unwrap();
+
+    let outcome = result_outcome(&server, functions).await;
+
+    assert_eq!(
+        outcome,
+        json!({ "kind": "error", "message": "Function returned an invalid result." })
     );
 }
