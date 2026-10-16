@@ -1,14 +1,16 @@
 mod support;
 
+use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::time::Duration;
 
 use blazing_agents::Error;
-use blazing_agents::error::ObjectErrorKind;
+use blazing_agents::error::{ErrorCode, ObjectErrorKind};
 use blazing_agents::generation::{ObjectSchema, SavedPrompt};
+use blazing_agents::types::Metadata;
 use futures_util::TryStreamExt;
 use serde_json::json;
-use support::{json_body, mock, requests};
+use support::{api_error, json_body, mock, requests};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -294,4 +296,180 @@ async fn a_buffered_completion_is_not_cut_off_by_the_timeout_once_headers_arrive
     let answer = client.completion("ag_1", "Say hi").await.unwrap();
 
     assert_eq!(answer, "Hello world");
+}
+
+#[tokio::test]
+async fn every_generation_call_sends_user_id_and_metadata() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/generation"))
+        .respond_with(text(r#"{"priority": 2, "summary": "late"}"#))
+        .mount(&server)
+        .await;
+
+    let answer = client
+        .completion("ag_1", String::from("Say hi"))
+        .user_id("customer_123")
+        .metadata(Metadata::new().insert("team", "support"))
+        .await
+        .unwrap();
+    assert_eq!(answer, r#"{"priority": 2, "summary": "late"}"#);
+    let text = client
+        .completion_stream("ag_1", "Say hi")
+        .user_id("customer_123")
+        .metadata(Metadata::new().insert("team", "support"))
+        .await
+        .unwrap()
+        .final_text()
+        .await
+        .unwrap();
+    assert_eq!(text, r#"{"priority": 2, "summary": "late"}"#);
+    let triage: Triage = client
+        .object(
+            "ag_1",
+            "Triage it",
+            ObjectSchema::from_json_schema(json!({})),
+        )
+        .user_id("customer_123")
+        .metadata(Metadata::new().insert("team", "support"))
+        .await
+        .unwrap();
+    assert_eq!(triage.priority, 2);
+    let triage = client
+        .object_stream::<Triage>(
+            "ag_1",
+            "Triage it",
+            ObjectSchema::from_json_schema(json!({})),
+        )
+        .user_id("customer_123")
+        .metadata(Metadata::new().insert("team", "support"))
+        .await
+        .unwrap()
+        .final_object()
+        .await
+        .unwrap();
+    assert_eq!(triage.priority, 2);
+
+    let sent = requests(&server).await;
+    assert_eq!(sent.len(), 4);
+    for request in &sent[..2] {
+        assert_eq!(
+            json_body(request),
+            json!({
+                "prompt": "Say hi",
+                "output": { "type": "text" },
+                "userId": "customer_123",
+                "metadata": { "team": "support" }
+            })
+        );
+    }
+    for request in &sent[2..] {
+        assert_eq!(
+            json_body(request),
+            json!({
+                "prompt": "Triage it",
+                "output": { "type": "object", "schema": {} },
+                "userId": "customer_123",
+                "metadata": { "team": "support" }
+            })
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_saved_prompt_without_variables_sends_no_variables_key() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .respond_with(text("ok"))
+        .mount(&server)
+        .await;
+
+    client
+        .completion("ag_1", SavedPrompt::new("prompt_1"))
+        .await
+        .unwrap();
+
+    let sent = requests(&server).await;
+    assert_eq!(
+        json_body(&sent[0]),
+        json!({ "promptId": "prompt_1", "output": { "type": "text" } })
+    );
+}
+
+#[test]
+fn a_saved_prompt_exposes_its_id_and_variables() {
+    let prompt = SavedPrompt::new("prompt_1").var("audience", "devs");
+
+    assert_eq!(prompt.id().as_str(), "prompt_1");
+    assert_eq!(
+        prompt.variables(),
+        &BTreeMap::from([("audience".to_owned(), "devs".to_owned())])
+    );
+}
+
+#[test]
+fn an_object_schema_clones_and_prints_its_schema() {
+    let schema = ObjectSchema::<serde_json::Value>::from_json_schema(json!({ "type": "object" }));
+    let clone = schema.clone();
+
+    assert_eq!(clone.schema(), schema.schema());
+    assert_eq!(
+        format!("{schema:?}"),
+        r#"ObjectSchema { schema: Object {"type": String("object")} }"#
+    );
+}
+
+#[tokio::test]
+async fn streams_expose_their_meta_and_debug() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .respond_with(text(r#"{"priority": 1, "summary": "x"}"#))
+        .mount(&server)
+        .await;
+
+    let stream = client.completion_stream("ag_1", "Say hi").await.unwrap();
+    assert_eq!(stream.meta().status(), 200);
+    let debug = format!("{stream:?}");
+    assert!(
+        debug.starts_with("CompletionStream { meta: ResponseMeta { status: 200"),
+        "{debug}"
+    );
+    assert!(debug.ends_with(".. }"), "{debug}");
+    drop(stream);
+
+    let stream = client
+        .object_stream::<Triage>(
+            "ag_1",
+            "Triage it",
+            ObjectSchema::from_json_schema(json!({})),
+        )
+        .await
+        .unwrap();
+    assert_eq!(stream.meta().status(), 200);
+    let debug = format!("{stream:?}");
+    assert!(
+        debug.starts_with("ObjectStream { meta: ResponseMeta { status: 200"),
+        "{debug}"
+    );
+    assert!(debug.ends_with(".. }"), "{debug}");
+    drop(stream);
+}
+
+#[tokio::test]
+async fn a_rejected_generation_is_an_api_error() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/generation"))
+        .respond_with(api_error(404, "not_found", "Agent not found."))
+        .mount(&server)
+        .await;
+
+    let error = client
+        .completion_stream("ag_1", "Say hi")
+        .await
+        .unwrap_err();
+
+    assert!(matches!(error, Error::Api(_)), "{error:?}");
+    assert_eq!(error.status(), Some(404));
+    assert_eq!(error.code(), Some(&ErrorCode::NotFound));
 }

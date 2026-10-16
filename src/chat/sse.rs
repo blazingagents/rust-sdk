@@ -96,7 +96,13 @@ impl Stream for Frames {
 
 #[cfg(test)]
 mod tests {
-    use super::frame_end;
+    use bytes::Bytes;
+    use futures_util::{StreamExt, stream};
+    use http::HeaderMap;
+
+    use super::{Frames, frame_end};
+    use crate::call::ResponseMeta;
+    use crate::error::{Error, StreamErrorKind};
 
     #[test]
     fn frame_ends_at_the_first_delimiter_of_either_kind() {
@@ -104,5 +110,73 @@ mod tests {
         assert_eq!(frame_end(b"data: a\r\n\r\ndata: b\n\n"), Some(11));
         assert_eq!(frame_end(b"data: a\n\ndata: b\r\n\r\n"), Some(9));
         assert_eq!(frame_end(b"data: a\ndata: b"), None);
+    }
+
+    #[tokio::test]
+    async fn a_body_read_error_fails_the_stream() {
+        let failing = reqwest::get("http://[::1]:1/").await.unwrap_err();
+        let meta = ResponseMeta {
+            status: 200,
+            headers: HeaderMap::new(),
+            request_id: None,
+        };
+        let mut frames = Frames::new(
+            Box::pin(stream::iter(vec![
+                Ok(Bytes::from_static(b"data: a\n")),
+                Ok(Bytes::from_static(b"\ndata: b")),
+                Err(failing),
+            ])),
+            meta,
+        );
+
+        let first = frames.next().await.unwrap().unwrap();
+        assert_eq!(first, Bytes::from_static(b"data: a\n\n"));
+        let error = frames.next().await.unwrap().unwrap_err();
+        assert!(
+            matches!(
+                &error,
+                Error::Stream(e)
+                    if e.kind() == StreamErrorKind::Read
+                        && std::error::Error::source(e.as_ref()).is_some()
+            ),
+            "{error:?}"
+        );
+        assert!(frames.next().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn a_body_end_is_clean_or_incomplete_depending_on_the_tail() {
+        let meta = || ResponseMeta {
+            status: 200,
+            headers: HeaderMap::new(),
+            request_id: None,
+        };
+        let mut frames = Frames::new(
+            Box::pin(stream::iter(vec![Ok(Bytes::from_static(
+                b"data: a\n\n \r\n",
+            ))])),
+            meta(),
+        );
+        assert_eq!(
+            frames.next().await.unwrap().unwrap(),
+            Bytes::from_static(b"data: a\n\n")
+        );
+        assert!(frames.next().await.is_none());
+
+        let mut frames = Frames::new(
+            Box::pin(stream::iter(vec![Ok(Bytes::from_static(
+                b"data: a\n\ndata: b",
+            ))])),
+            meta(),
+        );
+        assert_eq!(
+            frames.next().await.unwrap().unwrap(),
+            Bytes::from_static(b"data: a\n\n")
+        );
+        let error = frames.next().await.unwrap().unwrap_err();
+        assert!(
+            matches!(&error, Error::Stream(e) if e.kind() == StreamErrorKind::Incomplete),
+            "{error:?}"
+        );
     }
 }
