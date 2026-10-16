@@ -330,19 +330,19 @@ impl<'de> Deserialize<'de> for NetworkPolicy {
         crate::types::decode_tagged(
             deserializer,
             "mode",
-            &["unrestricted", "allowlist", "offline"],
             |mode, raw| match mode {
-                "unrestricted" => Ok(Self::Unrestricted),
-                "offline" => Ok(Self::Offline),
-                "allowlist" => {
-                    let hosts = raw
-                        .get("allowedHosts")
-                        .ok_or_else(|| serde::de::Error::missing_field("allowedHosts"))?
-                        .clone();
-                    serde_json::from_value::<Vec<String>>(hosts)
-                        .map(|allowed_hosts| Self::Allowlist { allowed_hosts })
-                }
-                _ => unreachable!("`known` names every tag this closure sees"),
+                "unrestricted" => Some(Ok(Self::Unrestricted)),
+                "offline" => Some(Ok(Self::Offline)),
+                "allowlist" => Some(
+                    raw.get("allowedHosts")
+                        .cloned()
+                        .ok_or_else(|| serde::de::Error::missing_field("allowedHosts"))
+                        .and_then(|hosts| {
+                            serde_json::from_value::<Vec<String>>(hosts)
+                                .map(|allowed_hosts| Self::Allowlist { allowed_hosts })
+                        }),
+                ),
+                _ => None,
             },
             |raw| Self::Unrecognized(UnrecognizedNetworkPolicy { raw }),
         )

@@ -423,14 +423,12 @@ impl<'de> Deserialize<'de> for SkillCopyResult {
         crate::types::decode_tagged(
             deserializer,
             "status",
-            &["created", "failed"],
-            |_, raw| {
-                serde_json::from_value::<Known>(serde_json::Value::Object(raw)).map(|known| {
-                    match known {
-                        Known::Created { agent_id, skill } => Self::Created { agent_id, skill },
-                        Known::Failed { agent_id, error } => Self::Failed { agent_id, error },
-                    }
-                })
+            |tag, raw| match tag {
+                "created" | "failed" => Some(Known::deserialize(raw).map(|known| match known {
+                    Known::Created { agent_id, skill } => Self::Created { agent_id, skill },
+                    Known::Failed { agent_id, error } => Self::Failed { agent_id, error },
+                })),
+                _ => None,
             },
             |raw| Self::Unrecognized(serde_json::Value::Object(raw)),
         )

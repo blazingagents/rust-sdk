@@ -774,16 +774,10 @@ impl<'de> Deserialize<'de> for ChatConfiguration {
         crate::types::decode_tagged(
             deserializer,
             "platform",
-            &["slack", "telegram"],
-            |platform, raw| {
-                let value = serde_json::Value::Object(raw);
-                match platform {
-                    "slack" => serde_json::from_value::<SlackConfiguration>(value).map(Self::Slack),
-                    "telegram" => {
-                        serde_json::from_value::<TelegramConfiguration>(value).map(Self::Telegram)
-                    }
-                    _ => unreachable!("`known` names every tag this closure sees"),
-                }
+            |platform, raw| match platform {
+                "slack" => Some(SlackConfiguration::deserialize(raw).map(Self::Slack)),
+                "telegram" => Some(TelegramConfiguration::deserialize(raw).map(Self::Telegram)),
+                _ => None,
             },
             |raw| Self::Unrecognized(serde_json::Value::Object(raw)),
         )

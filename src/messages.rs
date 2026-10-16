@@ -142,9 +142,9 @@ impl<'de> Deserialize<'de> for WirePart {
         crate::types::decode_tagged(
             deserializer,
             "type",
-            &["text", "file"],
-            |_, raw| {
-                serde_json::from_value::<KnownPart>(serde_json::Value::Object(raw)).map(Self::Known)
+            |tag, raw| match tag {
+                "text" | "file" => Some(KnownPart::deserialize(raw).map(Self::Known)),
+                _ => None,
             },
             |raw| Self::Other(serde_json::Value::Object(raw)),
         )

@@ -836,10 +836,9 @@ impl<'de> Deserialize<'de> for ToolReference {
         crate::types::decode_tagged(
             deserializer,
             "type",
-            &["builtin", "mcp", "function"],
-            |_, raw| {
-                serde_json::from_value::<Known>(serde_json::Value::Object(raw)).map(|known| {
-                    match known {
+            |tag, raw| match tag {
+                "builtin" | "mcp" | "function" => {
+                    Some(Known::deserialize(raw).map(|known| match known {
                         Known::Builtin { name } => Self::Builtin { name },
                         Known::Mcp {
                             connection_id,
@@ -849,8 +848,9 @@ impl<'de> Deserialize<'de> for ToolReference {
                             name,
                         },
                         Known::Function { name } => Self::Function { name },
-                    }
-                })
+                    }))
+                }
+                _ => None,
             },
             |raw| Self::Unrecognized(serde_json::Value::Object(raw)),
         )

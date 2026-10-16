@@ -675,26 +675,24 @@ impl<'de> Deserialize<'de> for Schedule {
         crate::types::decode_tagged(
             deserializer,
             "kind",
-            &["once", "interval", "cron"],
-            |kind, raw| {
-                let config = schedule_config(&raw)?;
-                match kind {
-                    "once" => serde_json::from_value::<OnceConfig>(config)
-                        .map(|config| Self::Once { at: config.at }),
-                    "interval" => serde_json::from_value::<IntervalConfig>(config).map(|config| {
-                        Self::Interval {
-                            every_ms: config.every_ms,
-                        }
-                    }),
-                    "cron" => {
-                        serde_json::from_value::<CronConfig>(config).map(|config| Self::Cron {
-                            expression: config.expression,
-                            timezone: config.timezone,
-                            stagger_ms: config.stagger_ms,
-                        })
-                    }
-                    _ => unreachable!("`known` names every tag this closure sees"),
-                }
+            |kind, raw| match kind {
+                "once" => Some(schedule_config(raw).and_then(|config| {
+                    serde_json::from_value::<OnceConfig>(config)
+                        .map(|config| Self::Once { at: config.at })
+                })),
+                "interval" => Some(schedule_config(raw).and_then(|config| {
+                    serde_json::from_value::<IntervalConfig>(config).map(|config| Self::Interval {
+                        every_ms: config.every_ms,
+                    })
+                })),
+                "cron" => Some(schedule_config(raw).and_then(|config| {
+                    serde_json::from_value::<CronConfig>(config).map(|config| Self::Cron {
+                        expression: config.expression,
+                        timezone: config.timezone,
+                        stagger_ms: config.stagger_ms,
+                    })
+                })),
+                _ => None,
             },
             |raw| Self::Unrecognized(UnrecognizedSchedule { raw }),
         )
