@@ -10989,8 +10989,7 @@
           "400": {
             "description": "The request is invalid",
             "x-error-codes": [
-              "invalid_request",
-              "validation_failed"
+              "invalid_request"
             ],
             "content": {
               "application/json": {
@@ -11030,19 +11029,6 @@
             "description": "The caller is not allowed to make this request",
             "x-error-codes": [
               "forbidden"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The resource was not found",
-            "x-error-codes": [
-              "not_found"
             ],
             "content": {
               "application/json": {
@@ -11175,19 +11161,6 @@
             "x-error-codes": [
               "forbidden",
               "insufficient_scope"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The resource was not found",
-            "x-error-codes": [
-              "not_found"
             ],
             "content": {
               "application/json": {
@@ -15107,7 +15080,8 @@
             "description": "The request is invalid",
             "x-error-codes": [
               "invalid_request",
-              "validation_failed"
+              "validation_failed",
+              "invalid_cursor"
             ],
             "content": {
               "application/json": {
@@ -15147,6 +15121,19 @@
             "description": "The caller is not allowed to make this request",
             "x-error-codes": [
               "forbidden"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource was not found",
+            "x-error-codes": [
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -21259,8 +21246,7 @@
             "description": "The request conflicts with the resource's current state",
             "x-error-codes": [
               "input_idempotency_conflict",
-              "steer_not_available",
-              "session_busy"
+              "steer_not_available"
             ],
             "content": {
               "application/json": {
@@ -21753,21 +21739,6 @@
                 }
               }
             }
-          },
-          "409": {
-            "description": "The request conflicts with the resource's current state",
-            "x-error-codes": [
-              "input_idempotency_conflict",
-              "steer_not_available",
-              "session_busy"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
           }
         }
       }
@@ -21998,6 +21969,19 @@
             "description": "The resource was not found",
             "x-error-codes": [
               "not_found"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The service is temporarily unavailable",
+            "x-error-codes": [
+              "service_unavailable"
             ],
             "content": {
               "application/json": {
@@ -23167,7 +23151,8 @@
             "description": "The request is invalid",
             "x-error-codes": [
               "invalid_request",
-              "validation_failed"
+              "validation_failed",
+              "invalid_cursor"
             ],
             "content": {
               "application/json": {
@@ -23207,6 +23192,19 @@
             "description": "The caller is not allowed to make this request",
             "x-error-codes": [
               "forbidden"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource was not found",
+            "x-error-codes": [
+              "not_found"
             ],
             "content": {
               "application/json": {
