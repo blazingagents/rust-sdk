@@ -279,17 +279,16 @@ pub(crate) enum Body {
 impl Payload {
     /// Serializes `value` as the JSON body.
     pub(crate) fn json(mut self, value: &impl Serialize) -> Result<Self> {
-        self.body = Body::Json(serde_json::to_vec(value).map_err(|error| {
-            crate::Error::InvalidArgument(format!("request body is not serializable: {error}"))
-        })?);
+        self.body = Body::Json(serde_json::to_vec(value).map_err(body_not_serializable)?);
         Ok(self)
     }
 
     /// Adds `value`'s fields as query parameters. `None` fields are left out.
-    pub(crate) fn query(mut self, value: &impl Serialize) -> Result<Self> {
-        let value = serde_json::to_value(value).map_err(|error| {
-            crate::Error::InvalidArgument(format!("query is not serializable: {error}"))
-        })?;
+    pub(crate) fn query(self, value: &impl Serialize) -> Result<Self> {
+        self.query_value(serde_json::to_value(value).map_err(query_not_serializable)?)
+    }
+
+    fn query_value(mut self, value: serde_json::Value) -> Result<Self> {
         let serde_json::Value::Object(fields) = value else {
             return Err(crate::Error::InvalidArgument(
                 "query must serialize to an object".to_owned(),
@@ -326,6 +325,14 @@ impl Payload {
         self.body = Body::OctetStream(body);
         self
     }
+}
+
+fn body_not_serializable(error: serde_json::Error) -> crate::Error {
+    crate::Error::InvalidArgument(format!("request body is not serializable: {error}"))
+}
+
+fn query_not_serializable(error: serde_json::Error) -> crate::Error {
+    crate::Error::InvalidArgument(format!("query is not serializable: {error}"))
 }
 
 /// A successful response before decoding.
@@ -435,3 +442,70 @@ macro_rules! impl_request {
 }
 
 pub(crate) use impl_request;
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use serde_json::json;
+
+    use super::Payload;
+    use crate::Error;
+
+    fn invalid_argument(result: Result<Payload, Error>) -> String {
+        result
+            .err()
+            .unwrap()
+            .to_string()
+            .strip_prefix("invalid argument: ")
+            .unwrap()
+            .to_owned()
+    }
+
+    #[test]
+    fn query_pairs_come_out_in_field_order_with_nulls_dropped() {
+        let payload = Payload::default()
+            .query(&json!({
+                "a_flag": true,
+                "b_count": 3,
+                "c_name": "x",
+                "d_none": null
+            }))
+            .unwrap();
+
+        assert_eq!(
+            payload.query,
+            [
+                ("a_flag".to_owned(), "true".to_owned()),
+                ("b_count".to_owned(), "3".to_owned()),
+                ("c_name".to_owned(), "x".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn query_rejects_non_objects_and_non_scalar_fields() {
+        for value in [json!("a string"), json!(["an", "array"])] {
+            let message = invalid_argument(Payload::default().query(&value));
+            assert_eq!(message, "query must serialize to an object");
+        }
+        let message = invalid_argument(Payload::default().query(&json!({ "a": [1] })));
+        assert_eq!(message, "query parameter a is not a scalar: [1]");
+    }
+
+    #[test]
+    fn unserializable_values_fail_the_encode() {
+        let unserializable = BTreeMap::from([((1, 2), 3)]);
+
+        let message = invalid_argument(Payload::default().query(&unserializable));
+        assert!(
+            message.starts_with("query is not serializable: "),
+            "{message}"
+        );
+        let message = invalid_argument(Payload::default().json(&unserializable));
+        assert!(
+            message.starts_with("request body is not serializable: "),
+            "{message}"
+        );
+    }
+}
