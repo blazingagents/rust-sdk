@@ -358,13 +358,48 @@ async fn uploads_send_multipart_and_octet_stream_bodies() {
     let (server, client) = mock().await;
     Mock::given(method("POST"))
         .and(path("/v1/agents/ag_1/avatar"))
-        .respond_with(json(200, json!({})))
+        .respond_with(json(
+            200,
+            json!({
+                "id": "ag_1",
+                "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                "name": "Support writer",
+                "model": "openai/gpt-6-luna",
+                "thinkingLevel": "high",
+                "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                "workspaceId": "ws_3Jv8Km2Np6Qr4Xt7",
+                "autoCompaction": true,
+                "compactionReserveTokens": 16384,
+                "memoryInjectionEnabled": false,
+                "tools": ["read"],
+                "instructions": "Answer clearly and briefly.",
+                "userId": "",
+                "metadata": {},
+                "mcpConnectionIds": [],
+                "avatarUrl": "https://files.example.com/agents/ag_1/avatar.png?sig=abc",
+                "createdAt": "2026-07-10T10:00:00.000Z",
+                "updatedAt": "2026-07-10T10:15:00.000Z",
+                "status": "active"
+            }),
+        ))
         .mount(&server)
         .await;
     Mock::given(method("PUT"))
         .and(path("/v1/agents/ag_1/skills/skill_1/files"))
         .and(query_param("path", "SKILL.md"))
-        .respond_with(json(200, json!({})))
+        .respond_with(json(
+            200,
+            json!({
+                "id": "skill_1",
+                "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                "agentId": "ag_1",
+                "name": "refund-policy",
+                "description": "Answer refund questions.",
+                "createdAt": "2026-07-10T10:00:00.000Z",
+                "updatedAt": "2026-07-10T10:15:00.000Z",
+                "files": [{ "path": "SKILL.md", "sizeBytes": 240 }]
+            }),
+        ))
         .mount(&server)
         .await;
 
