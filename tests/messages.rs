@@ -136,3 +136,64 @@ fn extra_cannot_override_the_modeled_keys() {
     let wire = serde_json::to_value(UserMessage::new("m1", part)).unwrap();
     assert_eq!(wire["parts"][0], json!({ "type": "text", "text": "real" }));
 }
+
+#[test]
+fn the_builder_serializes_a_full_message() {
+    let message = UserMessage::new("m1", UserPart::text("hi"))
+        .part(UserPart::file("image/png", "https://x/a.png"))
+        .metadata(json!({ "k": 1 }));
+    let wire = json!({
+        "id": "m1",
+        "role": "user",
+        "parts": [
+            { "type": "text", "text": "hi" },
+            { "type": "file", "mediaType": "image/png", "url": "https://x/a.png" }
+        ],
+        "metadata": { "k": 1 }
+    });
+
+    assert_eq!(serde_json::to_value(&message).unwrap(), wire);
+    assert_eq!(message.id(), "m1");
+    assert_eq!(message.parts().count(), 2);
+    assert_eq!(
+        serde_json::from_value::<UserMessage>(wire).unwrap(),
+        message
+    );
+}
+
+#[test]
+fn text_assigns_a_random_uuid_id() {
+    let message = UserMessage::text("hi");
+    let other = UserMessage::text("hi");
+
+    assert_eq!(message.id().len(), 36);
+    assert_eq!(message.id().chars().nth(14), Some('4'));
+    assert_ne!(message.id(), other.id());
+    match message.parts().next() {
+        Some(UserPart::Text { text, .. }) => assert_eq!(text, "hi"),
+        other => panic!("expected a text part, got {other:?}"),
+    }
+    assert_eq!(message.parts().count(), 1);
+}
+
+#[test]
+fn invalid_wire_messages_are_rejected() {
+    let cases = [
+        (
+            json!({ "id": "m1", "role": "assistant", "parts": [{ "type": "text", "text": "hi" }] }),
+            "message role must be \"user\"",
+        ),
+        (
+            json!({ "id": "", "role": "user", "parts": [{ "type": "text", "text": "hi" }] }),
+            "message id must not be empty",
+        ),
+        (
+            json!({ "id": "m1", "role": "user", "parts": [] }),
+            "message must have at least one part",
+        ),
+    ];
+    for (value, expected) in cases {
+        let error = serde_json::from_value::<UserMessage>(value).unwrap_err();
+        assert!(error.to_string().contains(expected), "{error}");
+    }
+}
