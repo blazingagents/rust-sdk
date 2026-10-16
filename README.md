@@ -92,7 +92,8 @@ the complete API reference.
 ```console
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace
+cargo cov
+cargo test --workspace --doc
 cargo xtask spec --check
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 cargo +1.85 test --workspace --locked
