@@ -8,7 +8,7 @@
 | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | Lints; warnings fail |
 | `cargo cov` | Unit and integration tests under coverage (an alias for `cargo llvm-cov` in `.cargo/config.toml`); fails under 99% of lines or of functions. Needs `cargo install cargo-llvm-cov` and `rustup component add llvm-tools-preview` |
 | `cargo test --workspace --doc` | Doc tests, which `cargo cov` does not run |
-| `cargo xtask spec --check` | Fails when `src/op.rs` or `src/error/code.rs` differ from what `spec/openapi.json` generates |
+| `cargo xtask spec --check` | Fails when `src/op.rs` or `src/error/code.rs` differ from what `spec/openapi.json` generates, or when an end-user `Op` is constructed in a tenant-only `impl` block |
 | `cargo xtask spec` | Regenerates those two files |
 | `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps` | Rustdoc; broken links fail |
 | `cargo +1.85 test --workspace --locked` | The MSRV build |
@@ -33,11 +33,23 @@ over `spec/openapi.json` and run `cargo xtask spec`.
 
 ## How the crate is laid out
 
-- `src/op.rs` is generated: one `Op` variant per operation in the spec that
-  has an `operationId`, under `#[deny(dead_code)]`. A method sends a request
-  only by constructing a variant, so an operation without a method fails the
-  build with `error: variant X is never constructed`. Never suppress that
-  error; add the method.
+- `src/op.rs` is generated: one variant per operation in the spec that has an
+  `operationId`, split by the operation's `x-scope` into `Op` (`end-user`: a
+  tenant may send it for one of its end users, so every client sends it) and
+  `TenantOp` (`tenant`: only a `Client<Tenant>` sends it). Generation fails
+  on an operation without a valid `x-scope`. Both enums are under
+  `#[deny(dead_code)]`. A method sends a request only by constructing a
+  variant, so an operation without a method fails the build with
+  `error: variant X is never constructed`. Never suppress that error; add the
+  method.
+- The scope is enforced by the send path. `Call::new` takes any `&Client<S>`
+  and only an `Op`; `Call::tenant` takes `&Client<Tenant>` and only a
+  `TenantOp`. A `TenantOp` in a generic `impl<S: Scope>` block, or an `Op`
+  passed to `Call::tenant`, is a type error. The other direction, an `Op`
+  constructed in a tenant-only block (`impl Agents<'_, Tenant>`,
+  `impl McpConnections<'_>`) where a `UserClient` cannot reach it, compiles,
+  so `cargo xtask spec --check` scans `src/` for it and names the method to
+  move.
 - Each resource module (`src/agents.rs`, `src/prompts.rs`, ...) owns its
   accessor (`impl Client<..> { pub fn agents(&self) }`), its view struct, one
   method per operation, one request type per operation, its setters and its
@@ -54,28 +66,33 @@ over `spec/openapi.json` and run `cargo xtask spec`.
 
 `src/prompts.rs` and `tests/prompts.rs` are the exemplar. Copy their shape.
 
-1. Models. Give each `#[non_exhaustive]` model struct its fields from the
+1. Scope. The operation's enum in `src/op.rs` says where its method goes: an
+   `Op` goes in an `impl<S: Scope>` block through `Call::new`, a `TenantOp`
+   in a tenant-only block through `Call::tenant`. Add a `compile_fail`
+   doctest on a tenant-only method showing that a `UserClient` cannot call
+   it.
+2. Models. Give each `#[non_exhaustive]` model struct its fields from the
    spec's response schema: `camelCase` on the wire, `Option<T>` for nullable
    fields, `Timestamp` for date-times, typed IDs from `src/ids.rs`, `Metadata`
    for metadata objects, and `crate::open_enum!` for any value set the server
    may grow. Never add `deny_unknown_fields`.
-2. Request inputs. Required inputs are already positional arguments. Add each
+3. Request inputs. Required inputs are already positional arguments. Add each
    optional input as a private field with
    `#[serde(skip_serializing_if = "Option::is_none")]` and a setter in
    `impl Call<X>`. A nullable field uses `Patch<T>` with
    `#[serde(skip_serializing_if = "Patch::is_keep")]`, a `x(value)` setter and
    a `clear_x()` setter. `anyOf` bodies are enums passed as the positional
    argument. Lists get their own `limit` setter, because maximums differ.
-3. Credentials. A request that sends a secret passes
+4. Credentials. A request that sends a secret passes
    `sensitive = (|request: &Self| vec![request.secret.clone()])` to
    `impl_request!`, so errors redact it. A response that must never carry a
    credential decodes with `decode = credential_safe_json`.
-4. Pages whose shape is not `{ data, nextCursor }` implement `Paginated` in
+5. Pages whose shape is not `{ data, nextCursor }` implement `Paginated` in
    the module. A list that accepts `cursor` or `after` stores one position
    and keeps the direction in `set_cursor`.
-5. Rustdoc on every public item, linking the matching page under
+6. Rustdoc on every public item, linking the matching page under
    <https://docs.blazingagents.com>.
-6. Tests in `tests/<module>.rs` with the harness in `tests/support/mod.rs`.
+7. Tests in `tests/<module>.rs` with the harness in `tests/support/mod.rs`.
    For each operation check the method, path, query and body (including an
    omitted field versus an explicit `null`), and decode a response with an
    unknown field. For each list, walk two pages with `.items()`. For a

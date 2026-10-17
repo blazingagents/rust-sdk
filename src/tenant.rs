@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::call::{Call, impl_request};
 use crate::client::{Client, Tenant};
-use crate::op::Op;
+use crate::op::TenantOp;
 use crate::patch::Patch;
 use crate::spending_limits::{SpendingLimitInput, SpendingLimitStatus};
 use crate::types::Timestamp;
@@ -40,24 +40,24 @@ impl Client<Tenant> {
 impl TenantResource<'_> {
     /// Gets the tenant's settings.
     pub fn get(&self) -> Call<GetTenantSettings> {
-        Call::new(self.client, Op::GetTenantSettings, GetTenantSettings)
+        Call::tenant(self.client, TenantOp::GetTenantSettings, GetTenantSettings)
     }
 
     /// Changes the tenant's settings. Fields you do not set keep their values.
     /// Send at least one field.
     pub fn update(&self) -> Call<UpdateTenantSettings> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::UpdateTenantSettings,
+            TenantOp::UpdateTenantSettings,
             UpdateTenantSettings::default(),
         )
     }
 
     /// Gets the tenant-wide model spending limit and its current period.
     pub fn get_spending_limit(&self) -> Call<GetTenantSpendingLimit> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::GetTenantSpendingLimit,
+            TenantOp::GetTenantSpendingLimit,
             GetTenantSpendingLimit,
         )
     }
@@ -67,9 +67,9 @@ impl TenantResource<'_> {
         &self,
         limit: Option<SpendingLimitInput>,
     ) -> Call<UpdateTenantSpendingLimit> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::UpdateTenantSpendingLimit,
+            TenantOp::UpdateTenantSpendingLimit,
             UpdateTenantSpendingLimit {
                 spending_limit: limit,
             },

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::call::{Call, impl_request};
 use crate::client::{Client, Tenant};
 use crate::ids::ProviderId;
-use crate::op::Op;
+use crate::op::TenantOp;
 use crate::types::Timestamp;
 
 /// Provider operations. Returned by [`Client::providers`].
@@ -40,7 +40,7 @@ impl Client<Tenant> {
 impl Providers<'_> {
     /// Lists providers.
     pub fn list(&self) -> Call<ListProviders> {
-        Call::new(self.client, Op::ListProviders, ListProviders)
+        Call::tenant(self.client, TenantOp::ListProviders, ListProviders)
     }
 
     /// Registers a provider with its API key. The key is never returned.
@@ -50,9 +50,9 @@ impl Providers<'_> {
         provider_type: ProviderType,
         api_key: impl Into<String>,
     ) -> Call<CreateProvider> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::CreateProvider,
+            TenantOp::CreateProvider,
             CreateProvider {
                 name: name.into(),
                 provider_type,
@@ -65,9 +65,9 @@ impl Providers<'_> {
     /// Gets one provider.
     pub fn get(&self, provider_id: impl Into<ProviderId>) -> Call<GetProvider> {
         let provider_id = provider_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::GetProvider {
+            TenantOp::GetProvider {
                 id: provider_id.as_str(),
             },
             GetProvider,
@@ -81,9 +81,9 @@ impl Providers<'_> {
         name: impl Into<String>,
     ) -> Call<UpdateProvider> {
         let provider_id = provider_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::UpdateProvider {
+            TenantOp::UpdateProvider {
                 id: provider_id.as_str(),
             },
             UpdateProvider { name: name.into() },
@@ -93,9 +93,9 @@ impl Providers<'_> {
     /// Deletes a provider.
     pub fn delete(&self, provider_id: impl Into<ProviderId>) -> Call<DeleteProvider> {
         let provider_id = provider_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::DeleteProvider {
+            TenantOp::DeleteProvider {
                 id: provider_id.as_str(),
             },
             DeleteProvider::default(),
@@ -105,9 +105,9 @@ impl Providers<'_> {
     /// Lists the models a provider offers.
     pub fn list_models(&self, provider_id: impl Into<ProviderId>) -> Call<ListProviderModels> {
         let provider_id = provider_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::ListProviderModels {
+            TenantOp::ListProviderModels {
                 id: provider_id.as_str(),
             },
             ListProviderModels,
@@ -121,9 +121,9 @@ impl Providers<'_> {
         model: impl Into<String>,
     ) -> Call<ListThinkingLevels> {
         let provider_id = provider_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::ListThinkingLevels {
+            TenantOp::ListThinkingLevels {
                 id: provider_id.as_str(),
             },
             ListThinkingLevels {
