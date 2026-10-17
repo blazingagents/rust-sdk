@@ -1,7 +1,9 @@
 mod support;
 
 use blazing_agents::Error;
-use blazing_agents::agents::{AgentStatus, AgentTool, ApprovalDecision, ToolReference};
+use blazing_agents::agents::{
+    AgentStatus, AgentTool, ApprovalDecision, BuiltinToolName, ToolReference,
+};
 use blazing_agents::ids::TurnId;
 use blazing_agents::messages::{UserMessage, UserPart};
 use blazing_agents::pagination::Cursor;
@@ -618,7 +620,9 @@ async fn tool_approvals_decodes_the_round() {
     let items = &approvals.data;
     assert_eq!(items.len(), 7);
     match &items[0].tool {
-        Some(ToolReference::Builtin { name, .. }) => assert_eq!(*name, AgentTool::Bash),
+        Some(ToolReference::Builtin { name, .. }) => {
+            assert_eq!(*name, BuiltinToolName::Tool(AgentTool::Bash))
+        }
         other => panic!("expected a builtin tool, got {other:?}"),
     }
     assert_eq!(items[0].decision, ToolApprovalStatus::Pending);
@@ -668,7 +672,7 @@ async fn tool_approvals_decodes_the_round() {
     }
     match &items[6].tool {
         Some(ToolReference::Builtin { name, .. }) => {
-            assert_eq!(*name, AgentTool::from("browse"));
+            assert_eq!(*name, BuiltinToolName::Tool(AgentTool::from("browse")));
             assert_eq!(name.as_str(), "browse");
         }
         other => panic!("expected a builtin tool, got {other:?}"),

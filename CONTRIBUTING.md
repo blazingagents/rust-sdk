@@ -18,6 +18,11 @@
 CI runs all of these plus a grep that fails on `allow(dead_code)` or
 `expect(dead_code)` anywhere under `src/`.
 
+`tests/agent_tools.rs` checks the built-in tool catalog against
+`../typescript-sdk/agent-tools.json`, so `cargo cov` needs the TypeScript SDK
+checked out beside this repository, or `AGENT_TOOLS_JSON` set to that file's
+path.
+
 Coverage ignores only `xtask/`, the spec code generator, which runs at
 development time and is checked by `cargo xtask spec --check`. Generated
 `src/op.rs` stays measured: every variant being built by some test is the

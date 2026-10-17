@@ -116,8 +116,9 @@ impl MerchantBindings<'_> {
         )
     }
 
-    /// Binds an end user to a merchant customer.
-    pub fn set(
+    /// Binds an end user to a merchant customer, replacing any existing
+    /// binding.
+    pub fn put(
         &self,
         user_id: impl AsRef<str>,
         customer_id: impl Into<String>,
@@ -430,7 +431,7 @@ impl Call<ListMerchantBindings> {
     }
 }
 
-/// Request state of [`MerchantBindings::set`].
+/// Request state of [`MerchantBindings::put`].
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SetMerchantBinding {

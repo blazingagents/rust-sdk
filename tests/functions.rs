@@ -10,7 +10,7 @@ use blazing_agents::messages::UserMessage;
 use futures_util::TryStreamExt;
 use http::{HeaderName, HeaderValue};
 use serde_json::json;
-use support::{api_error, json, json_body, requests};
+use support::{api_error, json, json_body, mock, requests};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -158,8 +158,11 @@ async fn wait_for(
 }
 
 /// Runs a chat with `functions`, drains it, and returns the posted result outcome.
-async fn result_outcome(server: &MockServer, functions: Functions) -> serde_json::Value {
-    let (_, client) = mock_at(server).await;
+async fn result_outcome(
+    server: &MockServer,
+    client: &blazing_agents::Client,
+    functions: Functions,
+) -> serde_json::Value {
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
         .functions(functions)
@@ -171,15 +174,6 @@ async fn result_outcome(server: &MockServer, functions: Functions) -> serde_json
     drop(stream);
     let result = sent.iter().find(|request| is_result(request)).unwrap();
     json_body(result)["outcome"].clone()
-}
-
-async fn mock_at(server: &MockServer) -> (&MockServer, blazing_agents::Client) {
-    let client = blazing_agents::Client::builder()
-        .api_key("test-key")
-        .base_url(server.uri())
-        .build()
-        .unwrap();
-    (server, client)
 }
 
 #[test]
@@ -294,12 +288,12 @@ fn debug_lists_only_the_function_names() {
 
 #[tokio::test]
 async fn functions_are_sent_keyed_by_name() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({})).await;
     mount_claim(&server).await;
     mount_result(&server).await;
 
-    result_outcome(&server, echo_functions()).await;
+    result_outcome(&server, &client, echo_functions()).await;
 
     let sent = requests(&server).await;
     assert_eq!(
@@ -310,11 +304,10 @@ async fn functions_are_sent_keyed_by_name() {
 
 #[tokio::test]
 async fn per_call_headers_reach_claim_and_result() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({})).await;
     mount_claim(&server).await;
     mount_result(&server).await;
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -342,7 +335,7 @@ async fn per_call_headers_reach_claim_and_result() {
 
 #[tokio::test]
 async fn a_claim_is_retried_after_a_503_and_the_result_is_then_posted() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({ "orderId": "o-1" })).await;
     Mock::given(method("POST"))
         .and(path(call_path("claim")))
@@ -353,7 +346,7 @@ async fn a_claim_is_retried_after_a_503_and_the_result_is_then_posted() {
     mount_claim(&server).await;
     mount_result(&server).await;
 
-    let outcome = result_outcome(&server, echo_functions()).await;
+    let outcome = result_outcome(&server, &client, echo_functions()).await;
 
     assert_eq!(
         outcome,
@@ -378,7 +371,7 @@ async fn retry_after_sets_the_delay_of_a_429_with_a_250ms_floor() {
         ("1", Duration::from_secs(1), Duration::from_secs(2)),
         ("0", Duration::from_millis(250), Duration::from_secs(1)),
     ] {
-        let server = MockServer::start().await;
+        let (server, client) = mock().await;
         mount_chat(&server, "lookup_order", json!({})).await;
         Mock::given(method("POST"))
             .and(path(call_path("claim")))
@@ -393,7 +386,7 @@ async fn retry_after_sets_the_delay_of_a_429_with_a_250ms_floor() {
         mount_result(&server).await;
         let started = tokio::time::Instant::now();
 
-        result_outcome(&server, echo_functions()).await;
+        result_outcome(&server, &client, echo_functions()).await;
 
         let elapsed = started.elapsed();
         assert!(
@@ -405,7 +398,7 @@ async fn retry_after_sets_the_delay_of_a_429_with_a_250ms_floor() {
 
 #[tokio::test]
 async fn claims_stop_retrying_at_the_deadline() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat_with(
         &server,
         &call_event(
@@ -420,7 +413,6 @@ async fn claims_stop_retrying_at_the_deadline() {
         .respond_with(api_error(503, "unavailable", "Try again."))
         .mount(&server)
         .await;
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -449,7 +441,7 @@ async fn claims_stop_retrying_at_the_deadline() {
 
 #[tokio::test]
 async fn a_handler_still_running_at_the_deadline_is_cancelled_and_posts_nothing() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat_with(
         &server,
         &call_event(
@@ -479,7 +471,6 @@ async fn a_handler_still_running_at_the_deadline_is_cancelled_and_posts_nothing(
         )
         .build()
         .unwrap();
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -528,9 +519,8 @@ async fn a_malformed_private_event_fails_the_stream() {
         r#"{"type":"data-ba-function-call","data":{"id":"nope","name":"lookup_order","input":{},"deadlineAt":"2099-01-01T00:00:00Z"},"transient":true}"#,
         r#"{"type":"data-ba-function-call","data":{"id":"fc_0123456789abcdef","name":"web_search","input":{},"deadlineAt":"2099-01-01T00:00:00Z"},"transient":true}"#,
     ] {
-        let server = MockServer::start().await;
+        let (server, client) = mock().await;
         mount_chat_with(&server, frame).await;
-        let (_, client) = mock_at(&server).await;
 
         let mut stream = client
             .chat("ag_1", UserMessage::text("hi"))
@@ -553,7 +543,7 @@ async fn a_malformed_private_event_fails_the_stream() {
 
 #[tokio::test]
 async fn a_refused_claim_is_skipped_silently() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({})).await;
     Mock::given(method("POST"))
         .and(path(call_path("claim")))
@@ -574,7 +564,6 @@ async fn a_refused_claim_is_skipped_silently() {
         )
         .build()
         .unwrap();
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -595,14 +584,13 @@ async fn a_refused_claim_is_skipped_silently() {
 
 #[tokio::test]
 async fn a_permanent_claim_failure_is_the_next_stream_item() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({})).await;
     Mock::given(method("POST"))
         .and(path(call_path("claim")))
         .respond_with(api_error(400, "validation_failed", "Bad claim."))
         .mount(&server)
         .await;
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -627,7 +615,7 @@ async fn a_permanent_claim_failure_is_the_next_stream_item() {
 
 #[tokio::test]
 async fn handler_failures_become_sanitized_outcomes() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({})).await;
     mount_claim(&server).await;
     mount_result(&server).await;
@@ -645,7 +633,7 @@ async fn handler_failures_become_sanitized_outcomes() {
         .build()
         .unwrap();
 
-    let outcome = result_outcome(&server, failing).await;
+    let outcome = result_outcome(&server, &client, failing).await;
 
     assert_eq!(
         outcome,
@@ -670,7 +658,7 @@ async fn handler_failures_become_sanitized_outcomes() {
         .build()
         .unwrap();
 
-    let outcome = result_outcome(&server, panicking).await;
+    let outcome = result_outcome(&server, &client, panicking).await;
 
     assert_eq!(
         outcome,
@@ -691,7 +679,7 @@ async fn handler_failures_become_sanitized_outcomes() {
         .build()
         .unwrap();
 
-    let outcome = result_outcome(&server, oversize).await;
+    let outcome = result_outcome(&server, &client, oversize).await;
 
     assert_eq!(
         outcome,
@@ -703,7 +691,7 @@ async fn handler_failures_become_sanitized_outcomes() {
     mount_claim(&server).await;
     mount_result(&server).await;
 
-    let outcome = result_outcome(&server, echo_functions()).await;
+    let outcome = result_outcome(&server, &client, echo_functions()).await;
 
     assert_eq!(
         outcome,
@@ -718,7 +706,7 @@ async fn typed_handlers_reject_invalid_input_without_running() {
     struct Lookup {
         order_id: String,
     }
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({ "order_id": 7 })).await;
     mount_claim(&server).await;
     mount_result(&server).await;
@@ -731,7 +719,7 @@ async fn typed_handlers_reject_invalid_input_without_running() {
         .build()
         .unwrap();
 
-    let outcome = result_outcome(&server, functions).await;
+    let outcome = result_outcome(&server, &client, functions).await;
 
     assert_eq!(
         outcome,
@@ -749,7 +737,7 @@ async fn typed_handlers_reject_invalid_input_without_running() {
         .build()
         .unwrap();
 
-    let outcome = result_outcome(&server, tuple_keys).await;
+    let outcome = result_outcome(&server, &client, tuple_keys).await;
 
     assert_eq!(
         outcome,
@@ -759,7 +747,7 @@ async fn typed_handlers_reject_invalid_input_without_running() {
 
 #[tokio::test]
 async fn dropping_the_stream_cancels_running_handlers() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({})).await;
     mount_claim(&server).await;
     mount_result(&server).await;
@@ -789,7 +777,6 @@ async fn dropping_the_stream_cancels_running_handlers() {
         )
         .build()
         .unwrap();
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -824,7 +811,7 @@ async fn dropping_the_stream_cancels_running_handlers() {
 
 #[tokio::test]
 async fn the_context_exposes_the_deadline_and_the_call_id() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({})).await;
     mount_claim(&server).await;
     mount_result(&server).await;
@@ -843,7 +830,7 @@ async fn the_context_exposes_the_deadline_and_the_call_id() {
         .build()
         .unwrap();
 
-    let outcome = result_outcome(&server, functions).await;
+    let outcome = result_outcome(&server, &client, functions).await;
 
     assert_eq!(
         outcome,
@@ -856,7 +843,7 @@ async fn the_context_exposes_the_deadline_and_the_call_id() {
 
 #[tokio::test]
 async fn cancelled_resolves_when_the_deadline_passes() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat_with(
         &server,
         &call_event(
@@ -892,7 +879,6 @@ async fn cancelled_resolves_when_the_deadline_passes() {
         )
         .build()
         .unwrap();
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -916,7 +902,7 @@ async fn cancelled_resolves_when_the_deadline_passes() {
 
 #[tokio::test]
 async fn a_claim_body_that_is_not_claimed_true_fails_the_stream() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({})).await;
     Mock::given(method("POST"))
         .and(path(call_path("claim")))
@@ -937,7 +923,6 @@ async fn a_claim_body_that_is_not_claimed_true_fails_the_stream() {
         )
         .build()
         .unwrap();
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -964,7 +949,7 @@ async fn a_claim_body_that_is_not_claimed_true_fails_the_stream() {
 
 #[tokio::test]
 async fn a_frame_without_data_lines_passes_through() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat_frames(
         &server,
         &[
@@ -974,7 +959,6 @@ async fn a_frame_without_data_lines_passes_through() {
         ],
     )
     .await;
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -1001,7 +985,7 @@ async fn a_frame_without_data_lines_passes_through() {
 
 #[tokio::test]
 async fn a_frame_whose_data_mentions_the_event_type_passes_through() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     let delta = "data: {\"type\":\"text-delta\",\"delta\":\"data-ba-function-call\"}\n\n";
     mount_chat_frames(
         &server,
@@ -1012,7 +996,6 @@ async fn a_frame_whose_data_mentions_the_event_type_passes_through() {
         ],
     )
     .await;
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -1043,7 +1026,7 @@ async fn a_frame_whose_data_mentions_the_event_type_passes_through() {
 
 #[tokio::test]
 async fn a_duplicate_call_id_is_claimed_once() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     let call = format!(
         "data: {}\n\n",
         call_event("lookup_order", json!({}), "2099-01-01T00:00:00Z")
@@ -1074,7 +1057,6 @@ async fn a_duplicate_call_id_is_claimed_once() {
         )
         .build()
         .unwrap();
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -1146,7 +1128,7 @@ async fn a_claim_timeout_is_retried() {
 
 #[tokio::test]
 async fn a_call_past_its_deadline_is_skipped() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat_with(
         &server,
         &call_event("lookup_order", json!({}), "2000-01-01T00:00:00Z"),
@@ -1166,7 +1148,6 @@ async fn a_call_past_its_deadline_is_skipped() {
         )
         .build()
         .unwrap();
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -1190,7 +1171,7 @@ async fn a_call_past_its_deadline_is_skipped() {
 
 #[tokio::test]
 async fn a_claim_accepted_after_the_deadline_posts_nothing() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat_with(
         &server,
         &call_event(
@@ -1220,7 +1201,6 @@ async fn a_claim_accepted_after_the_deadline_posts_nothing() {
         )
         .build()
         .unwrap();
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -1247,7 +1227,7 @@ async fn a_claim_accepted_after_the_deadline_posts_nothing() {
 
 #[tokio::test]
 async fn a_permanent_result_failure_is_the_next_stream_item() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({})).await;
     mount_claim(&server).await;
     Mock::given(method("POST"))
@@ -1255,7 +1235,6 @@ async fn a_permanent_result_failure_is_the_next_stream_item() {
         .respond_with(api_error(400, "validation_failed", "Bad result."))
         .mount(&server)
         .await;
-    let (_, client) = mock_at(&server).await;
 
     let mut stream = client
         .chat("ag_1", UserMessage::text("hi"))
@@ -1281,7 +1260,7 @@ async fn a_permanent_result_failure_is_the_next_stream_item() {
 #[cfg(feature = "schemars")]
 #[tokio::test]
 async fn a_result_that_is_not_plain_json_is_an_invalid_result() {
-    let server = MockServer::start().await;
+    let (server, client) = mock().await;
     mount_chat(&server, "lookup_order", json!({})).await;
     mount_claim(&server).await;
     mount_result(&server).await;
@@ -1300,7 +1279,7 @@ async fn a_result_that_is_not_plain_json_is_an_invalid_result() {
         .build()
         .unwrap();
 
-    let outcome = result_outcome(&server, functions).await;
+    let outcome = result_outcome(&server, &client, functions).await;
 
     assert_eq!(
         outcome,

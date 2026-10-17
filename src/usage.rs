@@ -1,5 +1,4 @@
-//! Usage reports. Start from [`Client::usage`]. The overview and per-agent
-//! reports are tenant only.
+//! Usage reports. Start from [`Client::usage`]. The overview is tenant only.
 //!
 //! Documentation: <https://docs.blazingagents.com/platform/usage-and-quotas>.
 
@@ -44,6 +43,24 @@ impl<S: Scope> UsageResource<'_, S> {
             },
         )
     }
+
+    /// Gets one agent's usage over a period.
+    ///
+    /// ```no_run
+    /// # fn f(client: blazing_agents::UserClient) {
+    /// let usage = client.usage().get_for_agent("ag_4kP9sT2vXq7LmN3a");
+    /// # }
+    /// ```
+    pub fn get_for_agent(&self, agent_id: impl Into<AgentId>) -> Call<GetAgentUsage> {
+        let agent_id = agent_id.into();
+        Call::new(
+            self.client,
+            Op::GetAgentUsage {
+                agent_id: agent_id.as_str(),
+            },
+            GetAgentUsage::default(),
+        )
+    }
 }
 
 impl UsageResource<'_, Tenant> {
@@ -65,30 +82,6 @@ impl UsageResource<'_, Tenant> {
             self.client,
             Op::GetUsageOverview,
             GetUsageOverview::default(),
-        )
-    }
-
-    /// Gets one agent's usage over a period.
-    ///
-    /// ```compile_fail
-    /// # fn f(client: blazing_agents::UserClient) {
-    /// client.usage().get_for_agent("ag_4kP9sT2vXq7LmN3a");
-    /// # }
-    /// ```
-    ///
-    /// ```no_run
-    /// # fn f(client: blazing_agents::Client) {
-    /// let usage = client.usage().get_for_agent("ag_4kP9sT2vXq7LmN3a");
-    /// # }
-    /// ```
-    pub fn get_for_agent(&self, agent_id: impl Into<AgentId>) -> Call<GetAgentUsage> {
-        let agent_id = agent_id.into();
-        Call::new(
-            self.client,
-            Op::GetAgentUsage {
-                agent_id: agent_id.as_str(),
-            },
-            GetAgentUsage::default(),
         )
     }
 }
