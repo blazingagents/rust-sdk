@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-17)
 
 - Initial release.
 - `agents::AGENT_TOOLS` and `agents::AGENT_TOOL_GROUPS` list the built-in
