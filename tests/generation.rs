@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use std::time::Duration;
 
 use blazing_agents::Error;
-use blazing_agents::error::{ErrorCode, ObjectErrorKind};
+use blazing_agents::error::{ErrorCode, ObjectErrorKind, StreamErrorKind};
 use blazing_agents::generation::{ObjectSchema, SavedPrompt};
 use blazing_agents::types::Metadata;
 use futures_util::TryStreamExt;
@@ -105,17 +105,26 @@ async fn object_sends_the_schema_and_decodes_the_result() {
 #[tokio::test]
 async fn object_failures_are_told_apart() {
     let (server, client) = mock().await;
-    for (body, kind) in [
-        (r#"{"priority": 2,"#, ObjectErrorKind::Truncated),
-        ("not json at all", ObjectErrorKind::InvalidJson),
+    for (body, kind, message) in [
+        (
+            r#"{"priority": 2,"#,
+            ObjectErrorKind::Truncated,
+            "the agent produced truncated JSON",
+        ),
+        (
+            "not json at all",
+            ObjectErrorKind::InvalidJson,
+            "the agent produced invalid JSON",
+        ),
         (
             r#"{"priority": "high", "summary": "x"}"#,
             ObjectErrorKind::Mismatch,
+            "the generated object did not match the requested output type",
         ),
     ] {
         server.reset().await;
         Mock::given(method("POST"))
-            .respond_with(text(body))
+            .respond_with(text(body).insert_header("x-request-id", "req_object"))
             .mount(&server)
             .await;
 
@@ -128,12 +137,19 @@ async fn object_failures_are_told_apart() {
             .await
             .unwrap_err();
 
-        let Error::Object(object) = error else {
+        assert_eq!(error.to_string(), message);
+        assert_eq!(error.status(), Some(200));
+        assert_eq!(error.request_id(), Some("req_object"));
+        assert_eq!(error.code(), None);
+        let Error::Object(object) = &error else {
             panic!("expected an object error for {body:?}, got {error:?}");
         };
         assert_eq!(object.kind(), kind, "{body:?}");
         assert_eq!(object.text(), body);
         assert_eq!(object.meta().status(), 200);
+        assert_eq!(object.meta().request_id(), Some("req_object"));
+        let source = std::error::Error::source(object.as_ref()).expect("the serde error");
+        assert!(source.is::<serde_json::Error>(), "{source:?}");
     }
 }
 
@@ -242,9 +258,11 @@ async fn object_stream_failures_are_told_apart() {
     }
 }
 
-/// Answers one request with a chunked body whose second chunk arrives after
-/// `pause`, so the headers are fast and the body is slow.
-fn slow_body_server(pause: Duration) -> String {
+/// Answers one request with a chunked body, one chunk per `pause`, so the
+/// client reads each chunk separately. Without `complete`, the connection
+/// drops before the terminating chunk.
+fn chunked_body_server(pause: Duration, chunks: &[&[u8]], complete: bool) -> String {
+    let chunks: Vec<Vec<u8>> = chunks.iter().map(|chunk| chunk.to_vec()).collect();
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
     std::thread::spawn(move || {
@@ -272,20 +290,122 @@ fn slow_body_server(pause: Duration) -> String {
         }
         socket
             .write_all(
-                b"HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n5\r\nHello\r\n",
+                b"HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n",
             )
             .unwrap();
-        socket.flush().unwrap();
-        std::thread::sleep(pause);
-        socket.write_all(b"6\r\n world\r\n0\r\n\r\n").unwrap();
-        socket.flush().unwrap();
+        for chunk in chunks {
+            socket
+                .write_all(format!("{:x}\r\n", chunk.len()).as_bytes())
+                .unwrap();
+            socket.write_all(&chunk).unwrap();
+            socket.write_all(b"\r\n").unwrap();
+            socket.flush().unwrap();
+            std::thread::sleep(pause);
+        }
+        if complete {
+            socket.write_all(b"0\r\n\r\n").unwrap();
+            socket.flush().unwrap();
+        }
     });
     format!("http://{address}")
 }
 
+fn client_for(base_url: String) -> blazing_agents::Client {
+    blazing_agents::Client::builder()
+        .api_key("test-key")
+        .base_url(base_url)
+        .build()
+        .unwrap()
+}
+
+const CHUNK_PAUSE: Duration = Duration::from_millis(50);
+
+#[tokio::test]
+async fn a_character_split_across_chunks_is_yielded_once_complete() {
+    let euro = "€".as_bytes();
+    let first = [b"price: ".as_slice(), &euro[..1]].concat();
+    let second = [&euro[1..], b"5".as_slice()].concat();
+    let client = client_for(chunked_body_server(CHUNK_PAUSE, &[&first, &second], true));
+
+    let mut stream = client.completion_stream("ag_1", "Price?").await.unwrap();
+
+    assert_eq!(stream.try_next().await.unwrap().unwrap(), "price: ");
+    assert_eq!(stream.try_next().await.unwrap().unwrap(), "€5");
+    assert_eq!(stream.try_next().await.unwrap(), None);
+    assert_eq!(stream.final_text().await.unwrap(), "price: €5");
+}
+
+#[tokio::test]
+async fn chunks_inside_a_character_yield_nothing_until_it_is_whole() {
+    let euro = "€".as_bytes();
+    let client = client_for(chunked_body_server(
+        CHUNK_PAUSE,
+        &[&euro[..1], &euro[1..2], &euro[2..]],
+        true,
+    ));
+
+    let mut stream = client.completion_stream("ag_1", "Currency?").await.unwrap();
+
+    assert_eq!(stream.try_next().await.unwrap().unwrap(), "€");
+    assert_eq!(stream.try_next().await.unwrap(), None);
+    assert_eq!(stream.final_text().await.unwrap(), "€");
+}
+
+#[tokio::test]
+async fn an_invalid_utf8_sequence_becomes_the_replacement_character() {
+    let client = client_for(chunked_body_server(CHUNK_PAUSE, &[b"a\xffb"], true));
+
+    let stream = client.completion_stream("ag_1", "Say hi").await.unwrap();
+
+    assert_eq!(stream.final_text().await.unwrap(), "a\u{FFFD}b");
+}
+
+#[tokio::test]
+async fn a_body_ending_mid_character_is_incomplete() {
+    let client = client_for(chunked_body_server(CHUNK_PAUSE, &[b"ok \xe2\x82"], true));
+
+    let mut stream = client.completion_stream("ag_1", "Say hi").await.unwrap();
+
+    assert_eq!(stream.try_next().await.unwrap().unwrap(), "ok ");
+    let error = stream.try_next().await.unwrap_err();
+    let Error::Stream(stream_error) = &error else {
+        panic!("expected a stream error, got {error:?}");
+    };
+    assert_eq!(stream_error.kind(), StreamErrorKind::Incomplete);
+    assert_eq!(error.to_string(), "the stream ended before it finished");
+    assert_eq!(error.status(), Some(200));
+    assert!(std::error::Error::source(&error).is_none());
+    let error = stream.final_text().await.unwrap_err();
+    assert!(
+        matches!(&error, Error::Stream(e) if e.kind() == StreamErrorKind::Incomplete),
+        "{error:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_dropped_body_is_a_read_error_that_final_text_reports_again() {
+    let client = client_for(chunked_body_server(CHUNK_PAUSE, &[b"partial"], false));
+
+    let mut stream = client.completion_stream("ag_1", "Say hi").await.unwrap();
+
+    assert_eq!(stream.try_next().await.unwrap().unwrap(), "partial");
+    let error = stream.try_next().await.unwrap_err();
+    let Error::Stream(stream_error) = &error else {
+        panic!("expected a stream error, got {error:?}");
+    };
+    assert_eq!(stream_error.kind(), StreamErrorKind::Read);
+    assert_eq!(error.to_string(), "response body read failed");
+    assert!(std::error::Error::source(stream_error.as_ref()).is_some());
+    let error = stream.final_text().await.unwrap_err();
+    assert!(
+        matches!(&error, Error::Stream(e) if e.kind() == StreamErrorKind::Read),
+        "{error:?}"
+    );
+}
+
 #[tokio::test]
 async fn a_buffered_completion_is_not_cut_off_by_the_timeout_once_headers_arrived() {
-    let base_url = slow_body_server(Duration::from_millis(300));
+    let base_url = chunked_body_server(Duration::from_millis(300), &[b"Hello", b" world"], true);
     let client = blazing_agents::Client::builder()
         .api_key("test-key")
         .base_url(base_url)

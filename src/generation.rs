@@ -449,19 +449,6 @@ impl TextDeltas {
         }
     }
 
-    #[cfg(test)]
-    fn from_chunks(
-        chunks: impl Stream<Item = reqwest::Result<Bytes>> + Send + 'static,
-        meta: ResponseMeta,
-    ) -> Self {
-        Self {
-            state: BodyState::Reading(Box::pin(chunks)),
-            pending: Vec::new(),
-            text: String::new(),
-            meta,
-        }
-    }
-
     /// Decodes `chunk` after the pending bytes. An invalid sequence becomes
     /// U+FFFD; an incomplete trailing sequence waits for the next chunk.
     fn decode(&mut self, chunk: &[u8]) -> String {
@@ -667,96 +654,5 @@ impl<T> fmt::Debug for ObjectStream<T> {
         f.debug_struct("ObjectStream")
             .field("meta", &self.deltas.meta)
             .finish_non_exhaustive()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use bytes::Bytes;
-    use futures_util::{StreamExt, stream};
-    use http::HeaderMap;
-
-    use super::TextDeltas;
-    use crate::call::ResponseMeta;
-    use crate::error::{Error, StreamErrorKind};
-
-    fn meta() -> ResponseMeta {
-        ResponseMeta {
-            status: 200,
-            headers: HeaderMap::new(),
-            request_id: None,
-        }
-    }
-
-    fn deltas(chunks: Vec<reqwest::Result<Bytes>>) -> TextDeltas {
-        TextDeltas::from_chunks(stream::iter(chunks), meta())
-    }
-
-    #[tokio::test]
-    async fn a_character_split_across_chunks_is_decoded_once_complete() {
-        let euro = "€".as_bytes();
-        let mut deltas = deltas(vec![
-            Ok(Bytes::from([b"price: ", &euro[..1]].concat())),
-            Ok(Bytes::from([&euro[1..], b"5".as_slice()].concat())),
-        ]);
-
-        let first = deltas.next().await.unwrap().unwrap();
-        let second = deltas.next().await.unwrap().unwrap();
-
-        assert_eq!(first, "price: ");
-        assert_eq!(second, "€5");
-        assert!(deltas.next().await.is_none());
-        assert_eq!(deltas.finish().await.unwrap(), "price: €5");
-    }
-
-    #[tokio::test]
-    async fn an_invalid_sequence_becomes_the_replacement_character() {
-        let mut deltas = deltas(vec![Ok(Bytes::from_static(b"a\xffb"))]);
-
-        assert_eq!(deltas.next().await.unwrap().unwrap(), "a\u{FFFD}b");
-    }
-
-    #[tokio::test]
-    async fn chunks_inside_a_character_yield_no_delta_until_it_is_whole() {
-        let euro = "€".as_bytes();
-        let mut deltas = deltas(vec![
-            Ok(Bytes::copy_from_slice(&euro[..1])),
-            Ok(Bytes::copy_from_slice(&euro[1..2])),
-            Ok(Bytes::copy_from_slice(&euro[2..])),
-        ]);
-
-        assert_eq!(deltas.next().await.unwrap().unwrap(), "€");
-        assert!(deltas.next().await.is_none());
-        assert_eq!(deltas.finish().await.unwrap(), "€");
-    }
-
-    #[tokio::test]
-    async fn a_read_error_is_reported_again_by_finish() {
-        let failing = reqwest::get("http://[::1]:1/").await.unwrap_err();
-        let mut deltas = deltas(vec![Ok(Bytes::from_static(b"partial")), Err(failing)]);
-
-        assert_eq!(deltas.next().await.unwrap().unwrap(), "partial");
-        let error = deltas.next().await.unwrap().unwrap_err();
-        assert!(
-            matches!(&error, Error::Stream(e) if e.kind() == StreamErrorKind::Read),
-            "{error:?}"
-        );
-        let error = deltas.finish().await.unwrap_err();
-        assert!(
-            matches!(&error, Error::Stream(e) if e.kind() == StreamErrorKind::Read),
-            "{error:?}"
-        );
-    }
-
-    #[tokio::test]
-    async fn a_body_ending_mid_character_is_incomplete() {
-        let deltas = deltas(vec![Ok(Bytes::from_static(b"ok \xe2\x82"))]);
-
-        let error = deltas.finish().await.unwrap_err();
-
-        assert!(
-            matches!(&error, Error::Stream(e) if e.kind() == StreamErrorKind::Incomplete),
-            "{error:?}"
-        );
     }
 }

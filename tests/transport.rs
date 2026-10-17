@@ -338,6 +338,10 @@ async fn timeouts_apply_per_call() {
 
     let error = client.prompts().delete("prompt_1").await.unwrap_err();
     assert!(matches!(error, Error::Timeout), "{error:?}");
+    assert_eq!(error.to_string(), "request timed out");
+    assert_eq!(error.status(), None);
+    assert_eq!(error.request_id(), None);
+    assert_eq!(error.code(), None);
     client
         .prompts()
         .delete("prompt_1")
@@ -666,9 +670,14 @@ async fn uploads_send_multipart_and_octet_stream_bodies() {
 fn user_ids_are_validated() {
     let client = Client::builder().api_key("k").build().unwrap();
     for invalid in ["", " a", "a ", "tab\tin", "ünïcode", &"x".repeat(257)] {
+        let error = client.for_user(invalid).unwrap_err();
         assert!(
-            matches!(client.for_user(invalid), Err(ConfigError::InvalidUserId)),
+            matches!(error, ConfigError::InvalidUserId),
             "{invalid:?} should be rejected"
+        );
+        assert_eq!(
+            error.to_string(),
+            "invalid user ID: 1 to 256 printable ASCII characters without surrounding spaces"
         );
     }
     assert!(client.for_user("customer_123").is_ok());
@@ -683,12 +692,14 @@ fn base_urls_are_validated() {
         .build()
         .unwrap_err();
     assert!(matches!(error, ConfigError::InvalidBaseUrl(_)), "{error:?}");
+    assert_eq!(error.to_string(), "invalid base URL: not a url");
     let error = Client::builder()
         .api_key("k")
         .default_header("bad header", "v")
         .build()
         .unwrap_err();
     assert!(matches!(error, ConfigError::InvalidHeader(_)), "{error:?}");
+    assert_eq!(error.to_string(), "invalid default header: bad header");
 }
 
 #[test]
@@ -721,6 +732,32 @@ fn timestamps_round_trip_as_rfc_3339() {
 fn api_keys_that_cannot_be_sent_fail_the_build() {
     let built = Client::builder().api_key("bad\nkey").build();
     assert!(matches!(built, Err(ConfigError::InvalidApiKey)));
+    assert_eq!(
+        built.unwrap_err().to_string(),
+        "the API key is not a valid HTTP header value"
+    );
+}
+
+#[test]
+fn a_config_error_converts_into_an_error() {
+    fn build() -> Result<Client, Error> {
+        Ok(Client::builder().api_key("").build()?)
+    }
+
+    let error = build().unwrap_err();
+
+    assert!(
+        matches!(error, Error::Config(ConfigError::MissingApiKey)),
+        "{error:?}"
+    );
+    assert_eq!(
+        error.to_string(),
+        "no API key: pass api_key or set BLAZING_AGENTS_API_KEY"
+    );
+    assert!(std::error::Error::source(&error).is_none());
+    assert_eq!(error.status(), None);
+    assert_eq!(error.request_id(), None);
+    assert_eq!(error.code(), None);
 }
 
 #[test]
@@ -1005,6 +1042,11 @@ async fn a_refused_connection_hides_the_request_url() {
     let error = client.prompts().get("prompt_1").await.unwrap_err();
 
     assert!(matches!(error, Error::Connection(_)), "{error:?}");
+    assert_eq!(error.to_string(), "connection failed");
+    assert!(std::error::Error::source(&error).is_some());
+    assert_eq!(error.status(), None);
+    assert_eq!(error.request_id(), None);
+    assert_eq!(error.code(), None);
     let debug = format!("{error:?}");
     assert!(!debug.contains("/v1/prompts"), "{debug}");
 }
@@ -1551,6 +1593,58 @@ async fn upload_content_type_overrides_the_guess_and_validates() {
         matches!(&error, Error::InvalidArgument(message) if message == "invalid MIME type not a mime"),
         "{error:?}"
     );
+    assert_eq!(
+        error.to_string(),
+        "invalid argument: invalid MIME type not a mime"
+    );
+    assert_eq!(error.request_id(), None);
+}
+
+#[tokio::test]
+async fn upload_content_type_is_guessed_from_the_file_extension() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/avatar"))
+        .respond_with(json(200, agent()))
+        .mount(&server)
+        .await;
+    let cases = [
+        ("a.png", "image/png"),
+        ("a.jpg", "image/jpeg"),
+        ("a.jpeg", "image/jpeg"),
+        ("a.webp", "image/webp"),
+        ("a.gif", "image/gif"),
+        ("a.zip", "application/zip"),
+        ("a.tar", "application/x-tar"),
+        ("a.gz", "application/gzip"),
+        ("a.tgz", "application/gzip"),
+        ("a.md", "text/markdown"),
+        ("a.txt", "text/plain"),
+        ("a.json", "application/json"),
+        ("a.pdf", "application/pdf"),
+        ("PHOTO.JPG", "image/jpeg"),
+        ("a.weird", "application/octet-stream"),
+        ("no-extension", "application/octet-stream"),
+    ];
+
+    for (name, _) in cases {
+        client
+            .agents()
+            .upload_avatar("ag_1", Upload::bytes(b"x".as_slice()).file_name(name))
+            .await
+            .unwrap();
+    }
+
+    let sent = requests(&server).await;
+    for ((name, expected), request) in cases.iter().zip(&sent) {
+        let multipart = String::from_utf8_lossy(&request.body);
+        assert!(
+            multipart.contains(&format!(
+                "filename=\"{name}\"\r\nContent-Type: {expected}\r\n"
+            )),
+            "{name}: {multipart}"
+        );
+    }
 }
 
 #[test]
