@@ -136,11 +136,17 @@ jobs:
     permissions:
       contents: write
     steps:
-      - env:
+      # A rerun must not fail on a release an earlier attempt already created.
+      - name: Create the release unless it exists
+        env:
           GH_TOKEN: ${{ github.token }}
           NOTES: ${{ needs.verify.outputs.notes }}
           PRERELEASE: ${{ needs.verify.outputs.prerelease }}
         run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json url -q .url; then
+            echo "::notice::release $GITHUB_REF_NAME already exists; leaving it as it is"
+            exit 0
+          fi
           flags=()
           if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \

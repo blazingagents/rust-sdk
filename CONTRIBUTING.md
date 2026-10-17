@@ -116,7 +116,8 @@ and gets a GitHub prerelease.
 
 The crates.io upload cannot be undone. If a check fails, nothing was
 published: delete the tag (`git push origin :refs/tags/vX.Y.Z`), fix `main`,
-and tag again.
+and tag again. Rerunning a failed run is safe: a version crates.io already has
+and a GitHub release that already exists are skipped, not recreated.
 
 Before tagging, check a release without publishing anything: run the Publish
 workflow from the Actions tab on `main` with the tag you are about to push

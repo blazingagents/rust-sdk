@@ -24,10 +24,12 @@ if [[ $version != "$crate_version" ]]; then
 fi
 
 # The entry is everything between "## X.Y.Z" (optionally followed by a date)
-# and the next "## " heading, without leading or trailing blank lines.
+# and the next "## " heading outside a fenced code block, without leading or
+# trailing blank lines.
 awk -v heading="## $version" '
-  $0 == heading || index($0, heading " ") == 1 { inside = 1; next }
-  inside && /^## / { exit }
+  /^ {0,3}(```|~~~)/ { fenced = !fenced }
+  !fenced && ($0 == heading || index($0, heading " ") == 1) { inside = 1; next }
+  inside && !fenced && /^## / { exit }
   inside && /^[[:space:]]*$/ { if (started) blanks++; next }
   inside { for (; blanks > 0; blanks--) print ""; print; started = 1 }
 ' "$root/CHANGELOG.md" > "$notes"
