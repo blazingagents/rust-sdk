@@ -338,7 +338,7 @@ async fn set_binding_puts_the_customer() {
 
     let bound = client
         .merchant_bindings()
-        .set("user_1", "cus_456")
+        .put("user_1", "cus_456")
         .await
         .unwrap();
 
@@ -364,7 +364,7 @@ async fn binding_paths_encode_the_user_id_as_one_segment() {
 
     let bound = client
         .merchant_bindings()
-        .set("user/1", "cus_456")
+        .put("user/1", "cus_456")
         .await
         .unwrap();
     client.merchant_bindings().delete("user/1").await.unwrap();

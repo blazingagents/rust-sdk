@@ -18,7 +18,8 @@ fn bucket() -> serde_json::Value {
         "inputTokens": 18240,
         "outputTokens": 6120,
         "requestCount": 14,
-        "durationMs": 41300
+        "durationMs": 41300,
+        "addedNextYear": true
     })
 }
 
@@ -30,7 +31,8 @@ fn usage() -> serde_json::Value {
             "outputTokens": 6120,
             "requestCount": 14,
             "durationMs": 41300
-        }
+        },
+        "addedNextYear": { "nested": true }
     })
 }
 
@@ -123,6 +125,33 @@ async fn get_for_agent_sends_the_query_on_the_tenant_client() {
     let sent = requests(&server).await;
     assert!(!sent[0].headers.contains_key("x-ba-user-id"));
     assert_eq!(report.totals.input_tokens, 18240);
+}
+
+#[tokio::test]
+async fn get_for_agent_on_a_user_client_sends_the_user_header() {
+    let (server, client) = mock().await;
+    Mock::given(method("GET"))
+        .and(path("/v1/agents/ag_4kP9sT2vXq7LmN3a/usage"))
+        .respond_with(json(200, usage()))
+        .mount(&server)
+        .await;
+
+    client
+        .for_user("customer_123")
+        .unwrap()
+        .usage()
+        .get_for_agent("ag_4kP9sT2vXq7LmN3a")
+        .await
+        .unwrap();
+
+    let sent = requests(&server).await;
+    assert_eq!(
+        sent[0]
+            .headers
+            .get("x-ba-user-id")
+            .map(|value| value.to_str().unwrap()),
+        Some("customer_123")
+    );
 }
 
 #[tokio::test]
@@ -224,9 +253,12 @@ async fn sessions_posts_the_ids_and_decodes_the_entries() {
                         "inputTokens": 12,
                         "outputTokens": 6,
                         "requestCount": 1,
-                        "durationMs": 450
-                    }
-                }]
+                        "durationMs": 450,
+                        "addedNextYear": true
+                    },
+                    "addedNextYear": true
+                }],
+                "addedNextYear": true
             }),
         ))
         .mount(&server)

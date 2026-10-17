@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
-use blazing_agents::agents::{AGENT_TOOL_GROUPS, AGENT_TOOLS, AgentToolTag};
+use blazing_agents::agents::{
+    AGENT_TOOL_GROUPS, AGENT_TOOLS, AgentToolFileAccessTag, AgentToolGroupTag,
+};
 use serde_json::{Value, json};
 
 fn typescript_catalog() -> Value {
@@ -26,23 +28,25 @@ fn catalog_matches_the_typescript_sdk() {
     let tools: Vec<Value> = AGENT_TOOLS
         .iter()
         .map(|tool| {
+            let mut tags = vec![json!(tool.group)];
+            tags.extend(tool.file_access.as_ref().map(|access| json!(access)));
             json!({
                 "name": tool.name,
                 "description": tool.description,
                 "requiresWorkspace": tool.requires_workspace,
-                "tags": tool.tags,
+                "tags": tags,
             })
         })
         .collect();
     assert_eq!(Value::from(tools), catalog["tools"]);
     let tags = [
-        AgentToolTag::Files,
-        AgentToolTag::Planning,
-        AgentToolTag::Memory,
-        AgentToolTag::Web,
-        AgentToolTag::FileRead,
-        AgentToolTag::FileWrite,
-        AgentToolTag::Execute,
+        json!(AgentToolGroupTag::Files),
+        json!(AgentToolGroupTag::Planning),
+        json!(AgentToolGroupTag::Memory),
+        json!(AgentToolGroupTag::Web),
+        json!(AgentToolFileAccessTag::FileRead),
+        json!(AgentToolFileAccessTag::FileWrite),
+        json!(AgentToolFileAccessTag::Execute),
     ];
     assert_eq!(json!(tags), catalog["tags"]);
 }
@@ -51,7 +55,7 @@ fn catalog_matches_the_typescript_sdk() {
 fn read_only_file_tools_are_the_file_read_tagged_ones() {
     let read_only: Vec<&str> = AGENT_TOOLS
         .iter()
-        .filter(|tool| tool.tags.contains(&AgentToolTag::FileRead))
+        .filter(|tool| tool.file_access == Some(AgentToolFileAccessTag::FileRead))
         .map(|tool| tool.name.as_str())
         .collect();
     assert_eq!(read_only, ["read", "grep", "glob"]);

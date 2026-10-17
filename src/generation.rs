@@ -1,6 +1,8 @@
 //! Stateless generation: text with [`Client::completion`] and
 //! [`Client::completion_stream`], structured output with [`Client::object`] and
 //! [`Client::object_stream`]. Each call runs one metered turn.
+//!
+//! Documentation: <https://docs.blazingagents.com/agents/output/generation-and-streaming>.
 
 use std::collections::BTreeMap;
 use std::fmt;

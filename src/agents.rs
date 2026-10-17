@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::call::{Call, Payload, impl_request};
-use crate::client::{Client, Scope};
+use crate::client::{Client, Scope, Tenant};
 use crate::error::Result;
 use crate::files::Upload;
 use crate::ids::{AgentId, McpConnectionId, ProviderId, TenantId, WorkspaceId};
@@ -210,8 +210,22 @@ impl<S: Scope> Agents<'_, S> {
             UpdateAgentMcpAttachment::default(),
         )
     }
+}
 
+impl Agents<'_, Tenant> {
     /// Gets the agent's model spending limit and its current period.
+    ///
+    /// ```compile_fail
+    /// # fn f(client: blazing_agents::UserClient) {
+    /// client.agents().get_spending_limit("ag_4kP9sT2vXq7LmN3a");
+    /// # }
+    /// ```
+    ///
+    /// ```no_run
+    /// # fn f(client: blazing_agents::Client) {
+    /// let limit = client.agents().get_spending_limit("ag_4kP9sT2vXq7LmN3a");
+    /// # }
+    /// ```
     pub fn get_spending_limit(&self, agent_id: impl Into<AgentId>) -> Call<GetAgentSpendingLimit> {
         let agent_id = agent_id.into();
         Call::new(
@@ -224,6 +238,12 @@ impl<S: Scope> Agents<'_, S> {
     }
 
     /// Sets the agent's model spending limit, or removes it with `None`.
+    ///
+    /// ```compile_fail
+    /// # fn f(client: blazing_agents::UserClient) {
+    /// client.agents().update_spending_limit("ag_4kP9sT2vXq7LmN3a", None);
+    /// # }
+    /// ```
     pub fn update_spending_limit(
         &self,
         agent_id: impl Into<AgentId>,
@@ -287,24 +307,76 @@ crate::open_enum! {
         /// `web_search` — search the public web; each search consumes usage
         /// credit.
         WebSearch = "web_search",
-        /// `activate_skill` — load a skill's instructions. Valid only in
-        /// approval overrides, never in `tools`.
-        ActivateSkill = "activate_skill",
+    }
+}
+
+/// The name of a built-in tool in an approval override or a tool approval:
+/// an [`AgentTool`], or `activate_skill`, which every agent with skills has
+/// and no agent enables through `tools`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum BuiltinToolName {
+    /// A tool an agent enables through `tools`.
+    Tool(AgentTool),
+    /// `activate_skill` — load a skill's instructions.
+    ActivateSkill,
+}
+
+impl BuiltinToolName {
+    /// The wire value.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Tool(tool) => tool.as_str(),
+            Self::ActivateSkill => "activate_skill",
+        }
+    }
+}
+
+impl From<AgentTool> for BuiltinToolName {
+    fn from(tool: AgentTool) -> Self {
+        Self::Tool(tool)
+    }
+}
+
+impl Serialize for BuiltinToolName {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for BuiltinToolName {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        let name = String::deserialize(deserializer)?;
+        Ok(match name.as_str() {
+            "activate_skill" => Self::ActivateSkill,
+            other => Self::Tool(AgentTool::from(other)),
+        })
     }
 }
 
 crate::open_enum! {
-    /// Describes a built-in tool in [`AGENT_TOOLS`]. A tag never enables a
-    /// tool.
-    pub enum AgentToolTag {
-        /// `files` — group: file operations in the workspace.
+    /// The group a built-in tool in [`AGENT_TOOLS`] belongs to. A tag never
+    /// enables a tool.
+    pub enum AgentToolGroupTag {
+        /// `files` — file operations in the workspace.
         Files = "files",
-        /// `planning` — group: task planning.
+        /// `planning` — task planning.
         Planning = "planning",
-        /// `memory` — group: the agent's durable notes.
+        /// `memory` — the agent's durable notes.
         Memory = "memory",
-        /// `web` — group: the public web.
+        /// `web` — the public web.
         Web = "web",
+    }
+}
+
+crate::open_enum! {
+    /// What a file operation tool in [`AGENT_TOOLS`] can do to workspace files.
+    pub enum AgentToolFileAccessTag {
         /// `file_read` — never changes workspace files. An agent whose file
         /// tools are all `file_read` is read-only.
         FileRead = "file_read",
@@ -321,8 +393,8 @@ crate::open_enum! {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct AgentToolGroup {
-    /// The group tag every tool in the group has first.
-    pub tag: AgentToolTag,
+    /// The group tag every tool in the group has.
+    pub tag: AgentToolGroupTag,
     /// Display name.
     pub name: &'static str,
     /// Display description.
@@ -332,22 +404,22 @@ pub struct AgentToolGroup {
 /// The groups of [`AGENT_TOOLS`], in display order.
 pub const AGENT_TOOL_GROUPS: &[AgentToolGroup] = &[
     AgentToolGroup {
-        tag: AgentToolTag::Files,
+        tag: AgentToolGroupTag::Files,
         name: "File operations",
         description: "Read, write, edit, search, and run shell commands in the attached Workspace.",
     },
     AgentToolGroup {
-        tag: AgentToolTag::Planning,
+        tag: AgentToolGroupTag::Planning,
         name: "Task planning",
         description: "Create and manage a structured todo list to plan and track multi-step work.",
     },
     AgentToolGroup {
-        tag: AgentToolTag::Memory,
+        tag: AgentToolGroupTag::Memory,
         name: "Memory",
         description: "Save, recall, search, update, and delete durable notes owned by this Agent.",
     },
     AgentToolGroup {
-        tag: AgentToolTag::Web,
+        tag: AgentToolGroupTag::Web,
         name: "Web",
         description: "Search the public web for current information.",
     },
@@ -363,9 +435,11 @@ pub struct AgentToolDefinition {
     pub description: &'static str,
     /// The tool runs in the agent's attached workspace.
     pub requires_workspace: bool,
-    /// The group tag first; a file operation tool adds one of `file_read`,
-    /// `file_write` or `execute`.
-    pub tags: &'static [AgentToolTag],
+    /// The tool's group.
+    pub group: AgentToolGroupTag,
+    /// What the tool can do to workspace files; `None` outside the `files`
+    /// group.
+    pub file_access: Option<AgentToolFileAccessTag>,
 }
 
 /// Every built-in tool an agent can enable through `tools`, in display order.
@@ -374,85 +448,99 @@ pub const AGENT_TOOLS: &[AgentToolDefinition] = &[
         name: AgentTool::Read,
         description: "Read a file from the Workspace.",
         requires_workspace: true,
-        tags: &[AgentToolTag::Files, AgentToolTag::FileRead],
+        group: AgentToolGroupTag::Files,
+        file_access: Some(AgentToolFileAccessTag::FileRead),
     },
     AgentToolDefinition {
         name: AgentTool::Write,
         description: "Create or overwrite a file in the Workspace.",
         requires_workspace: true,
-        tags: &[AgentToolTag::Files, AgentToolTag::FileWrite],
+        group: AgentToolGroupTag::Files,
+        file_access: Some(AgentToolFileAccessTag::FileWrite),
     },
     AgentToolDefinition {
         name: AgentTool::Edit,
         description: "Replace exact text in a Workspace file.",
         requires_workspace: true,
-        tags: &[AgentToolTag::Files, AgentToolTag::FileWrite],
+        group: AgentToolGroupTag::Files,
+        file_access: Some(AgentToolFileAccessTag::FileWrite),
     },
     AgentToolDefinition {
         name: AgentTool::Grep,
         description: "Search Workspace file contents with a regular expression.",
         requires_workspace: true,
-        tags: &[AgentToolTag::Files, AgentToolTag::FileRead],
+        group: AgentToolGroupTag::Files,
+        file_access: Some(AgentToolFileAccessTag::FileRead),
     },
     AgentToolDefinition {
         name: AgentTool::Glob,
         description: "Find Workspace files by path pattern.",
         requires_workspace: true,
-        tags: &[AgentToolTag::Files, AgentToolTag::FileRead],
+        group: AgentToolGroupTag::Files,
+        file_access: Some(AgentToolFileAccessTag::FileRead),
     },
     AgentToolDefinition {
         name: AgentTool::Bash,
         description: "Run shell commands in the Workspace.",
         requires_workspace: true,
-        tags: &[AgentToolTag::Files, AgentToolTag::Execute],
+        group: AgentToolGroupTag::Files,
+        file_access: Some(AgentToolFileAccessTag::Execute),
     },
     AgentToolDefinition {
         name: AgentTool::PublishArtifacts,
         description: "Publish Workspace files as downloadable Artifacts.",
         requires_workspace: true,
-        tags: &[AgentToolTag::Files],
+        group: AgentToolGroupTag::Files,
+        file_access: None,
     },
     AgentToolDefinition {
         name: AgentTool::WriteTodos,
         description: "Plan and track multi-step work with a todo list.",
         requires_workspace: false,
-        tags: &[AgentToolTag::Planning],
+        group: AgentToolGroupTag::Planning,
+        file_access: None,
     },
     AgentToolDefinition {
         name: AgentTool::SaveMemory,
         description: "Save a durable note.",
         requires_workspace: false,
-        tags: &[AgentToolTag::Memory],
+        group: AgentToolGroupTag::Memory,
+        file_access: None,
     },
     AgentToolDefinition {
         name: AgentTool::GetMemory,
         description: "Read one saved note.",
         requires_workspace: false,
-        tags: &[AgentToolTag::Memory],
+        group: AgentToolGroupTag::Memory,
+        file_access: None,
     },
     AgentToolDefinition {
         name: AgentTool::SearchMemories,
         description: "Search saved notes.",
         requires_workspace: false,
-        tags: &[AgentToolTag::Memory],
+        group: AgentToolGroupTag::Memory,
+        file_access: None,
     },
     AgentToolDefinition {
         name: AgentTool::UpdateMemory,
         description: "Update a saved note.",
         requires_workspace: false,
-        tags: &[AgentToolTag::Memory],
+        group: AgentToolGroupTag::Memory,
+        file_access: None,
     },
     AgentToolDefinition {
         name: AgentTool::DeleteMemory,
         description: "Delete a saved note.",
         requires_workspace: false,
-        tags: &[AgentToolTag::Memory],
+        group: AgentToolGroupTag::Memory,
+        file_access: None,
     },
     AgentToolDefinition {
         name: AgentTool::WebSearch,
         description: "Search the public web for current results. Each search consumes Usage credit.",
         requires_workspace: false,
-        tags: &[AgentToolTag::Web],
+        group: AgentToolGroupTag::Web,
+        file_access: None,
     },
 ];
 
@@ -936,7 +1024,7 @@ pub enum ToolReference {
     #[non_exhaustive]
     Builtin {
         /// The tool's name.
-        name: AgentTool,
+        name: BuiltinToolName,
     },
     /// One tool of an MCP connection attached to the agent.
     #[non_exhaustive]
@@ -962,8 +1050,8 @@ pub enum ToolReference {
 
 impl ToolReference {
     /// A built-in tool by name.
-    pub fn builtin(name: AgentTool) -> Self {
-        Self::Builtin { name }
+    pub fn builtin(name: impl Into<BuiltinToolName>) -> Self {
+        Self::Builtin { name: name.into() }
     }
 
     /// One tool of an attached MCP connection: the connection's ID and the
@@ -984,7 +1072,7 @@ impl<'de> Deserialize<'de> for ToolReference {
         #[serde(tag = "type", rename_all = "lowercase")]
         enum Known {
             Builtin {
-                name: AgentTool,
+                name: BuiltinToolName,
             },
             Mcp {
                 #[serde(rename = "connectionId")]

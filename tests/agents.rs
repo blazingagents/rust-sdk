@@ -2,7 +2,8 @@ mod support;
 
 use blazing_agents::Error;
 use blazing_agents::agents::{
-    AgentConfig, AgentStatus, AgentTool, ApprovalDecision, ApprovalPolicy, ToolReference,
+    AgentConfig, AgentStatus, AgentTool, ApprovalDecision, ApprovalPolicy, BuiltinToolName,
+    ToolReference,
 };
 use blazing_agents::error::ErrorCode;
 use blazing_agents::files::Upload;
@@ -267,7 +268,7 @@ async fn get_decodes_unknown_values_and_defaults_missing_policies() {
     assert_eq!(overrides.len(), 2);
     match &overrides[0].tool {
         ToolReference::Builtin { name, .. } => {
-            assert_eq!(*name, AgentTool::from("fly"));
+            assert_eq!(*name, BuiltinToolName::Tool(AgentTool::from("fly")));
         }
         other => panic!("expected a builtin tool reference, got {other:?}"),
     }
@@ -789,7 +790,9 @@ fn agent_config_decodes_a_saved_snapshot() {
     assert_eq!(config.approval_in_chat.default, ApprovalDecision::Manual);
     assert_eq!(config.approval_in_chat.overrides.len(), 2);
     match &config.approval_in_chat.overrides[0].tool {
-        ToolReference::Builtin { name, .. } => assert_eq!(*name, AgentTool::Bash),
+        ToolReference::Builtin { name, .. } => {
+            assert_eq!(*name, BuiltinToolName::Tool(AgentTool::Bash))
+        }
         other => panic!("expected a builtin tool reference, got {other:?}"),
     }
     assert_eq!(
@@ -822,4 +825,22 @@ fn agent_config_decodes_a_saved_snapshot() {
         config.mcp_connection_ids,
         [McpConnectionId::from("mcp_2Qw8Er5Ty9Ui3Ok6")]
     );
+}
+
+#[test]
+fn activate_skill_is_a_builtin_tool_name_but_not_an_agent_tool() {
+    let wire = json!({ "type": "builtin", "name": "activate_skill" });
+    let reference: ToolReference = serde_json::from_value(wire.clone()).unwrap();
+    match &reference {
+        ToolReference::Builtin { name, .. } => assert_eq!(*name, BuiltinToolName::ActivateSkill),
+        other => panic!("expected a builtin tool reference, got {other:?}"),
+    }
+    assert_eq!(
+        serde_json::to_value(ToolReference::builtin(BuiltinToolName::ActivateSkill)).unwrap(),
+        wire
+    );
+    assert!(matches!(
+        AgentTool::from("activate_skill"),
+        AgentTool::Unrecognized(_)
+    ));
 }

@@ -1,6 +1,8 @@
 //! Chat turns in sessions. Start from [`Client::chat`], [`Client::regenerate`]
 //! and [`Client::continue_chat`]. Each returns a [`ChatStream`] of AI SDK UI
 //! message stream events.
+//!
+//! Documentation: <https://docs.blazingagents.com/platform/sessions-and-turns>.
 
 use std::fmt;
 use std::pin::Pin;

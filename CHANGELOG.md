@@ -4,8 +4,8 @@
 
 - Initial release.
 - `agents::AGENT_TOOLS` and `agents::AGENT_TOOL_GROUPS` list the built-in
-  tools with a description, `requires_workspace`, and `tags`: the group tag
-  first, plus `file_read`, `file_write` or `execute` on file operation tools.
+  tools with a description, `requires_workspace`, a `group`, and, on file
+  operation tools, a `file_access` of `file_read`, `file_write` or `execute`.
   An agent whose file tools are all `file_read` cannot change workspace files.
 - `Client` and `UserClient` scopes: `client.for_user(user_id)` sends the end
   user's ID on every request and has no tenant administration methods.

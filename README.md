@@ -69,18 +69,6 @@ and run any of them with
 `chat_relay` also needs `DEMO_USER_TOKEN`, the bearer token the demo accepts:
 `BLAZING_AGENTS_API_KEY=... BLAZING_AGENTS_AGENT_ID=ag_... DEMO_USER_TOKEN=... cargo run --example chat_relay`.
 
-## User scope
-
-`client.for_user("customer_123")?` returns a `UserClient` that sends the end
-user's ID on every request and exposes no tenant administration methods, so
-calling one does not compile.
-
-```rust
-let client = blazing_agents::Client::from_env()?;
-let user = client.for_user("customer_123")?;
-let answer = user.completion("ag_...", "Summarize my last order.").await?;
-```
-
 ## Documentation
 
 Read the [Rust SDK documentation](https://docs.blazingagents.com/sdk/rust)
