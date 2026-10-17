@@ -14,7 +14,7 @@
 | `cargo +1.85 test --workspace --locked` | The MSRV build |
 | `cargo test -p blazing-agents --no-default-features --features native-tls,schemars` | The OpenSSL build |
 | `cargo package -p blazing-agents --locked` | Builds the crate exactly as crates.io would receive it |
-| `.github/scripts/public-api-tests.sh` | Fails on `#[cfg(test)]` or a test attribute in any file the library compiles, printing the file and line |
+| `.github/scripts/public-api-tests.sh` | Fails on `#[cfg(test)]`, `cfg!(test)` or a test attribute in any file under `src/` or compiled into the library, printing the file and line, and on any test the library's test harness lists |
 
 CI runs all of these plus a grep that fails on `allow(dead_code)` or
 `expect(dead_code)` anywhere under `src/`.

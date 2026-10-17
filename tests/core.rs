@@ -126,6 +126,7 @@ async fn a_credential_echo_reports_the_operation_and_request_id() {
     );
     assert_eq!(error.request_id(), Some("req-9"));
     assert_eq!(error.status(), None);
+    assert_eq!(error.code(), None);
     assert_eq!(
         error.to_string(),
         "the server returned credential material in a response to getProvider"
