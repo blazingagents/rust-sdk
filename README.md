@@ -30,11 +30,16 @@ The official Rust SDK provides an asynchronous client for the Blazing Agents
 
 ## Installation
 
-The crate is not on crates.io yet; depend on the repository:
+```sh
+cargo add blazing-agents
+cargo add tokio --features macros,rt-multi-thread
+```
+
+Or add it to `Cargo.toml`:
 
 ```toml
 [dependencies]
-blazing-agents = { git = "https://github.com/blazingagents/rust-sdk" }
+blazing-agents = "0.1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
