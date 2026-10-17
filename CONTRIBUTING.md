@@ -95,14 +95,34 @@ Done means every command in the table passes and
 
 ## Releasing
 
+Pushing a `vX.Y.Z` tag is the whole release:
+
 1. In a PR, bump `version` in `Cargo.toml` (run `cargo check` so `Cargo.lock`
-   follows) and add a `## X.Y.Z` entry to `CHANGELOG.md`. A release that
-   deprecates or removes something shows the migration, as `AGENTS.md`
-   requires.
-2. After it merges, tag the merge commit `vX.Y.Z` and publish a GitHub
-   release from that tag. `.github/workflows/publish.yml` reruns CI, checks
-   that the tag matches the `Cargo.toml` version, and publishes to crates.io
-   with trusted publishing. Prereleases are not published.
+   follows) and add a `## X.Y.Z` entry to `CHANGELOG.md`; it becomes the
+   GitHub release notes. A release that deprecates or removes something shows
+   the migration, as `AGENTS.md` requires.
+2. After it merges, tag the merge commit on `main` and push the tag:
+   `git tag vX.Y.Z <merge-commit> && git push origin vX.Y.Z`.
+
+`.github/workflows/publish.yml` then reruns CI and
+`.github/scripts/release-check.sh`, which fails unless the tag matches the
+`Cargo.toml` version and `CHANGELOG.md` has a non-empty `## X.Y.Z` entry. It
+also fails when the tagged commit is not on `main`. Only after every check
+passes does it publish to crates.io with trusted publishing (skipped when
+crates.io already has the version) and create the GitHub release for the tag.
+A tag with a prerelease suffix, such as `v0.2.0-rc.1`, needs the same
+`Cargo.toml` version and `CHANGELOG.md` entry, is not published to crates.io,
+and gets a GitHub prerelease.
+
+The crates.io upload cannot be undone. If a check fails, nothing was
+published: delete the tag (`git push origin :refs/tags/vX.Y.Z`), fix `main`,
+and tag again.
+
+Before tagging, check a release without publishing anything: run the Publish
+workflow from the Actions tab on `main` with the tag you are about to push
+(`gh workflow run publish.yml -f tag=vX.Y.Z`). It runs CI and every check,
+and its summary shows what would be published and the release notes. Locally,
+`.github/scripts/release-check.sh vX.Y.Z notes.md` runs the same checks.
 
 One-time setup by the crate owner. crates.io can attach a trusted publisher
 only to a crate that already exists, so the first version goes out by hand:
@@ -116,5 +136,5 @@ only to a crate that already exists, so the first version goes out by hand:
    environment `crates-io`.
 3. Create the `crates-io` environment in the repository settings, optionally
    with required reviewers.
-4. Publish the GitHub release for that first version as in step 2 above.
-   The workflow sees the version already on crates.io and skips the upload.
+4. Push that version's tag as in step 2 above. The workflow sees the version
+   already on crates.io, skips the upload, and creates the GitHub release.
