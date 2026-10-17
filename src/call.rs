@@ -9,10 +9,10 @@ use futures_util::{TryStreamExt, stream};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use serde::Serialize;
 
-use crate::client::{Client, Scope};
+use crate::client::{Client, Scope, Tenant};
 use crate::error::Result;
 use crate::http::{Handle, RequestOptions};
-use crate::op::Op;
+use crate::op::{Op, TenantOp};
 use crate::pagination::{Cursor, Items, Pages, Paginated};
 
 /// A prepared request. Send it with `.await`, or with
@@ -42,11 +42,23 @@ pub(crate) struct Route {
 pub(crate) struct InvalidSegment(pub(crate) &'static str);
 
 impl<R: Request> Call<R> {
+    /// A call any client may send. Only an end-user [`Op`] fits, so a method in a
+    /// generic `impl<S: Scope>` block cannot send a tenant-only operation.
     pub(crate) fn new<S: Scope>(client: &Client<S>, op: Op<'_>, request: R) -> Self {
         Self::with_handle(client.handle().clone(), op, request)
     }
 
+    /// A call only a `Client<Tenant>` may send. A [`TenantOp`] has no other way
+    /// in, so a `UserClient` cannot reach a tenant-only operation.
+    pub(crate) fn tenant(client: &Client<Tenant>, op: TenantOp<'_>, request: R) -> Self {
+        Self::routed(client.handle().clone(), op, request)
+    }
+
     pub(crate) fn with_handle(handle: Handle, op: Op<'_>, request: R) -> Self {
+        Self::routed(handle, op, request)
+    }
+
+    fn routed(handle: Handle, op: impl Operation, request: R) -> Self {
         Self {
             handle,
             route: route(op),
@@ -175,12 +187,25 @@ impl<R: Request> IntoFuture for Call<R> {
     }
 }
 
-fn route(op: Op<'_>) -> Result<Route, InvalidSegment> {
+fn route(op: impl Operation) -> Result<Route, InvalidSegment> {
     Ok(Route {
         op_id: op.id(),
         method: op.method(),
         path: op.path().map_err(InvalidSegment)?,
     })
+}
+
+/// A generated operation: an [`Op`] or a [`TenantOp`].
+pub(crate) trait Operation: Copy {
+    /// The spec's `operationId`.
+    fn id(self) -> &'static str;
+
+    fn method(self) -> &'static str;
+
+    /// The request path with every parameter percent-encoded as one segment.
+    /// Returns the parameter's name when its value is empty, `.` or `..`, because
+    /// URL normalization would change which endpoint receives the request.
+    fn path(self) -> Result<String, &'static str>;
 }
 
 /// A decoded response with its status, headers and server request ID.

@@ -9,7 +9,7 @@ use crate::client::{Client, Scope, Tenant};
 use crate::error::Result;
 use crate::files::Upload;
 use crate::ids::{AgentId, McpConnectionId, ProviderId, TenantId, WorkspaceId};
-use crate::op::Op;
+use crate::op::{Op, TenantOp};
 use crate::pagination::{Cursor, Page};
 use crate::patch::Patch;
 use crate::spending_limits::{SpendingLimitInput, SpendingLimitStatus};
@@ -228,9 +228,9 @@ impl Agents<'_, Tenant> {
     /// ```
     pub fn get_spending_limit(&self, agent_id: impl Into<AgentId>) -> Call<GetAgentSpendingLimit> {
         let agent_id = agent_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::GetAgentSpendingLimit {
+            TenantOp::GetAgentSpendingLimit {
                 agent_id: agent_id.as_str(),
             },
             GetAgentSpendingLimit,
@@ -250,9 +250,9 @@ impl Agents<'_, Tenant> {
         limit: Option<SpendingLimitInput>,
     ) -> Call<UpdateAgentSpendingLimit> {
         let agent_id = agent_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::UpdateAgentSpendingLimit {
+            TenantOp::UpdateAgentSpendingLimit {
                 agent_id: agent_id.as_str(),
             },
             UpdateAgentSpendingLimit {

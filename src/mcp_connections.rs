@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::call::{Call, impl_request};
 use crate::client::{Client, Tenant};
 use crate::ids::McpConnectionId;
-use crate::op::Op;
+use crate::op::TenantOp;
 use crate::types::Timestamp;
 
 /// MCP connection operations. Returned by [`Client::mcp_connections`].
@@ -40,14 +40,18 @@ impl Client<Tenant> {
 impl McpConnections<'_> {
     /// Lists MCP connections.
     pub fn list(&self) -> Call<ListMcpConnections> {
-        Call::new(self.client, Op::ListMcpConnections, ListMcpConnections)
+        Call::tenant(
+            self.client,
+            TenantOp::ListMcpConnections,
+            ListMcpConnections,
+        )
     }
 
     /// Creates an MCP connection. Secrets are never returned.
     pub fn create(&self, connection: NewMcpConnection) -> Call<CreateMcpConnection> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::CreateMcpConnection,
+            TenantOp::CreateMcpConnection,
             CreateMcpConnection { connection },
         )
     }
@@ -55,9 +59,9 @@ impl McpConnections<'_> {
     /// Gets one MCP connection.
     pub fn get(&self, mcp_connection_id: impl Into<McpConnectionId>) -> Call<GetMcpConnection> {
         let mcp_connection_id = mcp_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::GetMcpConnection {
+            TenantOp::GetMcpConnection {
                 id: mcp_connection_id.as_str(),
             },
             GetMcpConnection,
@@ -71,9 +75,9 @@ impl McpConnections<'_> {
         name: impl Into<String>,
     ) -> Call<UpdateMcpConnection> {
         let mcp_connection_id = mcp_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::UpdateMcpConnection {
+            TenantOp::UpdateMcpConnection {
                 id: mcp_connection_id.as_str(),
             },
             UpdateMcpConnection { name: name.into() },
@@ -86,9 +90,9 @@ impl McpConnections<'_> {
         mcp_connection_id: impl Into<McpConnectionId>,
     ) -> Call<DeleteMcpConnection> {
         let mcp_connection_id = mcp_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::DeleteMcpConnection {
+            TenantOp::DeleteMcpConnection {
                 id: mcp_connection_id.as_str(),
             },
             DeleteMcpConnection,
@@ -98,9 +102,9 @@ impl McpConnections<'_> {
     /// Tests an MCP connection against its server.
     pub fn test(&self, mcp_connection_id: impl Into<McpConnectionId>) -> Call<TestMcpConnection> {
         let mcp_connection_id = mcp_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::TestMcpConnection {
+            TenantOp::TestMcpConnection {
                 id: mcp_connection_id.as_str(),
             },
             TestMcpConnection,
@@ -115,9 +119,9 @@ impl McpConnections<'_> {
         auth: McpReconnect,
     ) -> Call<ReconnectMcpConnection> {
         let mcp_connection_id = mcp_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::ReconnectMcpConnection {
+            TenantOp::ReconnectMcpConnection {
                 id: mcp_connection_id.as_str(),
             },
             ReconnectMcpConnection { auth },

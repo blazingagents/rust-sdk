@@ -8617,6 +8617,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "getTenantSettings",
         "tags": [
           "tenant"
@@ -8700,6 +8701,7 @@
       },
       "patch": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "updateTenantSettings",
         "tags": [
           "tenant"
@@ -8901,6 +8903,7 @@
     "/v1/chat-connections": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "createChatConnection",
         "tags": [
           "chat-connections"
@@ -9207,6 +9210,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "listChatConnections",
         "tags": [
           "chat-connections"
@@ -9329,6 +9333,7 @@
     "/v1/chat-connections/{id}/deliveries": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "listChatDeliveries",
         "tags": [
           "chat-connections"
@@ -9482,6 +9487,7 @@
     "/v1/chat-deliveries": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "listTenantChatDeliveries",
         "tags": [
           "chat-connections"
@@ -9638,6 +9644,7 @@
     "/v1/chat-connections/{id}/deliveries/{deliveryId}/repair": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "repairChatDelivery",
         "tags": [
           "chat-connections"
@@ -9804,6 +9811,7 @@
     "/v1/chat-connections/{id}": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "getChatConnection",
         "tags": [
           "chat-connections"
@@ -9947,6 +9955,7 @@
       },
       "patch": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "renameChatConnection",
         "tags": [
           "chat-connections"
@@ -10165,6 +10174,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "deleteChatConnection",
         "tags": [
           "chat-connections"
@@ -10261,6 +10271,7 @@
     "/v1/chat-connections/{id}/credentials": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "rotateChatCredentials",
         "tags": [
           "chat-connections"
@@ -10500,6 +10511,7 @@
     "/v1/chat-connections/{id}/health": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "checkChatHealth",
         "tags": [
           "chat-connections"
@@ -10646,6 +10658,7 @@
     "/v1/chat-connections/{id}/disable": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "disableChatConnection",
         "tags": [
           "chat-connections"
@@ -10792,6 +10805,7 @@
     "/v1/chat-connections/{id}/enable": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "enableChatConnection",
         "tags": [
           "chat-connections"
@@ -10964,6 +10978,7 @@
     "/v1/tenant/spending-limit": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "getTenantSpendingLimit",
         "tags": [
           "tenant"
@@ -11042,6 +11057,7 @@
       },
       "put": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "updateTenantSpendingLimit",
         "tags": [
           "tenant"
@@ -11176,6 +11192,7 @@
     "/v1/agents/{agentId}/spending-limit": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "getAgentSpendingLimit",
         "tags": [
           "agents"
@@ -11281,6 +11298,7 @@
       },
       "put": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "updateAgentSpendingLimit",
         "tags": [
           "agents"
@@ -11445,6 +11463,7 @@
     "/v1/providers": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "createProvider",
         "tags": [
           "providers"
@@ -11610,6 +11629,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "listProviders",
         "tags": [
           "providers"
@@ -11696,6 +11716,7 @@
     "/v1/providers/{id}/models": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "listProviderModels",
         "tags": [
           "providers"
@@ -11831,6 +11852,7 @@
     "/v1/providers/{id}/thinking-levels": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "listThinkingLevels",
         "tags": [
           "providers"
@@ -11954,6 +11976,7 @@
     "/v1/providers/{id}": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "getProvider",
         "tags": [
           "providers"
@@ -12063,6 +12086,7 @@
       },
       "patch": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "updateProvider",
         "tags": [
           "providers"
@@ -12211,6 +12235,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "deleteProvider",
         "tags": [
           "providers"
@@ -12337,6 +12362,7 @@
     "/v1/workspaces": {
       "post": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "createWorkspace",
         "tags": [
           "workspaces"
@@ -12582,6 +12608,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listWorkspaces",
         "tags": [
           "workspaces"
@@ -12718,6 +12745,7 @@
     "/v1/workspaces/{workspaceId}": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getWorkspace",
         "tags": [
           "workspaces"
@@ -12836,6 +12864,7 @@
       },
       "put": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "updateWorkspace",
         "tags": [
           "workspaces"
@@ -13069,6 +13098,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "deleteWorkspace",
         "tags": [
           "workspaces"
@@ -13191,6 +13221,7 @@
     "/v1/mcp-connections": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "createMcpConnection",
         "tags": [
           "mcp-connections"
@@ -13487,6 +13518,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "listMcpConnections",
         "tags": [
           "mcp-connections"
@@ -13650,6 +13682,7 @@
     "/v1/mcp-connections/{id}/test": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "testMcpConnection",
         "tags": [
           "mcp-connections"
@@ -13766,6 +13799,7 @@
     "/v1/mcp-connections/{id}/reconnect": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "reconnectMcpConnection",
         "tags": [
           "mcp-connections"
@@ -14063,6 +14097,7 @@
     "/v1/mcp-connections/{id}": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "getMcpConnection",
         "tags": [
           "mcp-connections"
@@ -14177,6 +14212,7 @@
       },
       "patch": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "updateMcpConnection",
         "tags": [
           "mcp-connections"
@@ -14327,6 +14363,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "deleteMcpConnection",
         "tags": [
           "mcp-connections"
@@ -14436,6 +14473,7 @@
     "/v1/agents": {
       "post": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "createAgent",
         "tags": [
           "agents"
@@ -14971,6 +15009,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listAgents",
         "tags": [
           "agents"
@@ -15149,6 +15188,7 @@
     "/v1/agents/{agentId}/mcp-attachments": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listAgentMcpAttachments",
         "tags": [
           "agents"
@@ -15264,6 +15304,7 @@
     "/v1/agents/{agentId}/mcp-attachments/{mcpConnectionId}": {
       "patch": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "updateAgentMcpAttachment",
         "tags": [
           "agents"
@@ -15420,6 +15461,7 @@
     "/v1/agents/{agentId}": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getAgent",
         "tags": [
           "agents"
@@ -15556,6 +15598,7 @@
       },
       "put": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "updateAgent",
         "tags": [
           "agents"
@@ -16052,6 +16095,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "deleteAgent",
         "tags": [
           "agents"
@@ -16176,6 +16220,7 @@
     "/v1/agents/{agentId}/disable": {
       "post": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "disableAgent",
         "tags": [
           "agents"
@@ -16328,6 +16373,7 @@
     "/v1/agents/{agentId}/enable": {
       "post": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "enableAgent",
         "tags": [
           "agents"
@@ -16480,6 +16526,7 @@
     "/v1/agents/{agentId}/avatar": {
       "post": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "uploadAgentAvatar",
         "tags": [
           "agents"
@@ -16669,6 +16716,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "deleteAgentAvatar",
         "tags": [
           "agents"
@@ -16821,6 +16869,7 @@
     "/v1/agents/{agentId}/skills": {
       "post": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "createSkill",
         "tags": [
           "skills"
@@ -17013,6 +17062,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listSkills",
         "tags": [
           "skills"
@@ -17157,6 +17207,7 @@
     "/v1/agents/{agentId}/skills/upload": {
       "post": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "uploadSkill",
         "tags": [
           "skills"
@@ -17356,6 +17407,7 @@
     "/v1/agents/{agentId}/skills/{skillId}": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getSkill",
         "tags": [
           "skills"
@@ -17503,6 +17555,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "deleteSkill",
         "tags": [
           "skills"
@@ -17624,6 +17677,7 @@
     "/v1/agents/{agentId}/skills/{skillId}/files": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "tags": [
           "skills"
         ],
@@ -17762,6 +17816,7 @@
       },
       "put": {
         "x-access": "write",
+        "x-scope": "end-user",
         "tags": [
           "skills"
         ],
@@ -17961,6 +18016,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "end-user",
         "tags": [
           "skills"
         ],
@@ -18119,6 +18175,7 @@
     "/v1/agents/{agentId}/skills/{skillId}/copies": {
       "post": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "copySkill",
         "tags": [
           "skills"
@@ -18315,6 +18372,7 @@
     "/v1/agents/{agentId}/generation": {
       "post": {
         "x-access": "run",
+        "x-scope": "end-user",
         "operationId": "generate",
         "tags": [
           "agents"
@@ -18568,6 +18626,7 @@
     "/v1/agents/{agentId}/sessions": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listSessions",
         "tags": [
           "sessions"
@@ -18706,6 +18765,7 @@
       },
       "post": {
         "x-access": "run",
+        "x-scope": "end-user",
         "operationId": "createSessionTurn",
         "tags": [
           "sessions"
@@ -18986,6 +19046,7 @@
     "/v1/sessions/latest": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listLatestSessions",
         "tags": [
           "sessions"
@@ -19135,6 +19196,7 @@
     "/v1/agents/{agentId}/sessions/{sessionId}": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getSession",
         "tags": [
           "sessions"
@@ -19286,6 +19348,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "deleteSession",
         "tags": [
           "sessions"
@@ -19432,6 +19495,7 @@
       },
       "post": {
         "x-access": "run",
+        "x-scope": "end-user",
         "operationId": "resumeSessionTurn",
         "tags": [
           "sessions"
@@ -19726,6 +19790,7 @@
     "/v1/agents/{agentId}/sessions/{sessionId}/fork": {
       "post": {
         "x-access": "run",
+        "x-scope": "end-user",
         "operationId": "forkSession",
         "tags": [
           "sessions"
@@ -19998,6 +20063,7 @@
     "/v1/agents/{agentId}/sessions/{sessionId}/messages": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listSessionMessages",
         "tags": [
           "sessions"
@@ -20175,6 +20241,7 @@
     "/v1/agents/{agentId}/sessions/{sessionId}/tool-approvals": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listToolApprovals",
         "tags": [
           "sessions"
@@ -20313,6 +20380,7 @@
     "/v1/agents/{agentId}/sessions/{sessionId}/tool-approvals/continue": {
       "post": {
         "x-access": "run",
+        "x-scope": "end-user",
         "operationId": "continueToolApprovals",
         "tags": [
           "sessions"
@@ -20533,6 +20601,7 @@
     "/v1/agents/{agentId}/sessions/{sessionId}/function-calls/{functionCallId}/claim": {
       "post": {
         "x-access": "run",
+        "x-scope": "end-user",
         "operationId": "claimChatFunctionCall",
         "tags": [
           "sessions"
@@ -20709,6 +20778,7 @@
     "/v1/agents/{agentId}/sessions/{sessionId}/function-calls/{functionCallId}/result": {
       "post": {
         "x-access": "run",
+        "x-scope": "end-user",
         "operationId": "resolveChatFunctionCall",
         "tags": [
           "sessions"
@@ -20941,6 +21011,7 @@
     "/v1/agents/{agentId}/sessions/{sessionId}/inputs": {
       "post": {
         "x-access": "run",
+        "x-scope": "end-user",
         "operationId": "submitSessionInput",
         "tags": [
           "sessions"
@@ -21260,6 +21331,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listSessionInputs",
         "tags": [
           "sessions"
@@ -21580,6 +21652,7 @@
     "/v1/agents/{agentId}/sessions/{sessionId}/stop": {
       "post": {
         "x-access": "run",
+        "x-scope": "end-user",
         "operationId": "stopSessionTurn",
         "tags": [
           "sessions"
@@ -21746,6 +21819,7 @@
     "/v1/artifacts": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listArtifacts",
         "tags": [
           "artifacts"
@@ -21878,6 +21952,7 @@
     "/v1/artifacts/{artifactId}/download-url": {
       "post": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "createArtifactDownloadUrl",
         "tags": [
           "artifacts"
@@ -21997,6 +22072,7 @@
     "/v1/artifacts/{artifactId}": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getArtifact",
         "tags": [
           "artifacts"
@@ -22110,6 +22186,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "deleteArtifact",
         "tags": [
           "artifacts"
@@ -22206,6 +22283,7 @@
     "/v1/agents/{agentId}/memories": {
       "post": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "createMemory",
         "tags": [
           "memories"
@@ -22359,6 +22437,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listMemories",
         "tags": [
           "memories"
@@ -22522,6 +22601,7 @@
     "/v1/agents/{agentId}/memories/{memoryId}": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getMemory",
         "tags": [
           "memories"
@@ -22645,6 +22725,7 @@
       },
       "patch": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "updateMemory",
         "tags": [
           "memories"
@@ -22793,6 +22874,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "deleteMemory",
         "tags": [
           "memories"
@@ -22900,6 +22982,7 @@
     "/v1/prompts": {
       "post": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "createPrompt",
         "tags": [
           "prompts"
@@ -23061,6 +23144,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listPrompts",
         "tags": [
           "prompts"
@@ -23220,6 +23304,7 @@
     "/v1/prompts/{promptId}": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getPrompt",
         "tags": [
           "prompts"
@@ -23337,6 +23422,7 @@
       },
       "patch": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "updatePrompt",
         "tags": [
           "prompts"
@@ -23497,6 +23583,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "deletePrompt",
         "tags": [
           "prompts"
@@ -23593,6 +23680,7 @@
     "/v1/merchant-connection": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "getMerchantConnection",
         "tags": [
           "merchant"
@@ -23684,6 +23772,7 @@
       },
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "createMerchantConnection",
         "tags": [
           "merchant"
@@ -23818,6 +23907,7 @@
       },
       "patch": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "updateMerchantConnection",
         "tags": [
           "merchant"
@@ -23984,6 +24074,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "retireMerchantConnection",
         "tags": [
           "merchant"
@@ -24066,6 +24157,7 @@
     "/v1/merchant-connection/bindings": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "listMerchantBindings",
         "tags": [
           "merchant"
@@ -24203,6 +24295,7 @@
     "/v1/merchant-connection/bindings/{userId}": {
       "put": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "setMerchantBinding",
         "tags": [
           "merchant"
@@ -24351,6 +24444,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "deleteMerchantBinding",
         "tags": [
           "merchant"
@@ -24448,6 +24542,7 @@
     "/v1/merchant-usage-events": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "listMerchantUsageEvents",
         "tags": [
           "merchant"
@@ -24651,6 +24746,7 @@
     "/v1/merchant-usage-events/summary": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "getMerchantUsageSummary",
         "tags": [
           "merchant"
@@ -24772,6 +24868,7 @@
     "/v1/merchant-usage-events/{eventId}": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "getMerchantUsageEvent",
         "tags": [
           "merchant"
@@ -24924,6 +25021,7 @@
     "/v1/merchant-usage-events/{eventId}/retry": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "retryMerchantUsageEvent",
         "tags": [
           "merchant"
@@ -25090,6 +25188,7 @@
     "/v1/merchant-usage-events/{eventId}/release": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "releaseMerchantUsageEvent",
         "tags": [
           "merchant"
@@ -25258,6 +25357,7 @@
     "/v1/merchant-usage-events/{eventId}/discard": {
       "post": {
         "x-access": "write",
+        "x-scope": "tenant",
         "operationId": "discardMerchantUsageEvent",
         "tags": [
           "merchant"
@@ -25424,6 +25524,7 @@
     "/v1/usage": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getUsage",
         "tags": [
           "usage"
@@ -25620,6 +25721,7 @@
     "/v1/usage/overview": {
       "get": {
         "x-access": "read",
+        "x-scope": "tenant",
         "operationId": "getUsageOverview",
         "tags": [
           "usage"
@@ -25822,6 +25924,7 @@
     "/v1/agents/{agentId}/usage": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getAgentUsage",
         "tags": [
           "usage"
@@ -26006,6 +26109,7 @@
     "/v1/usage/sessions": {
       "post": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getSessionUsage",
         "tags": [
           "usage"
@@ -26123,6 +26227,7 @@
     "/v1/tasks": {
       "post": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "createTask",
         "tags": [
           "tasks"
@@ -26508,6 +26613,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listTasks",
         "tags": [
           "tasks"
@@ -26669,6 +26775,7 @@
     "/v1/tasks/{taskId}": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getTask",
         "tags": [
           "tasks"
@@ -26794,6 +26901,7 @@
       },
       "patch": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "updateTask",
         "tags": [
           "tasks"
@@ -27069,6 +27177,7 @@
       },
       "delete": {
         "x-access": "write",
+        "x-scope": "end-user",
         "operationId": "deleteTask",
         "tags": [
           "tasks"
@@ -27178,6 +27287,7 @@
     "/v1/tasks/{taskId}/runs": {
       "post": {
         "x-access": "run",
+        "x-scope": "end-user",
         "operationId": "createTaskRun",
         "tags": [
           "task-runs"
@@ -27317,6 +27427,7 @@
       },
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listTaskRuns",
         "tags": [
           "task-runs"
@@ -27497,6 +27608,7 @@
     "/v1/tasks/{taskId}/runs/{runId}": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "getTaskRun",
         "tags": [
           "task-runs"
@@ -27658,6 +27770,7 @@
     "/v1/tasks/{taskId}/runs/{runId}/messages": {
       "get": {
         "x-access": "read",
+        "x-scope": "end-user",
         "operationId": "listTaskRunMessages",
         "tags": [
           "task-runs"
@@ -27827,6 +27940,7 @@
     "/v1/tasks/{taskId}/runs/{runId}/cancel": {
       "post": {
         "x-access": "run",
+        "x-scope": "end-user",
         "operationId": "cancelTaskRun",
         "tags": [
           "task-runs"

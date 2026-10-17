@@ -18,7 +18,7 @@ use crate::call::{Call, Raw, impl_request};
 use crate::client::{Client, Tenant};
 use crate::error::Result;
 use crate::ids::{AgentId, MerchantConnectionId, MerchantUsageEventId, SessionId, TurnId};
-use crate::op::Op;
+use crate::op::TenantOp;
 use crate::pagination::{Cursor, Paginated};
 use crate::providers::ProviderType;
 use crate::types::Timestamp;
@@ -61,9 +61,9 @@ impl Client<Tenant> {
 impl MerchantConnectionResource<'_> {
     /// Gets the merchant connection, or `None` when the tenant has none.
     pub fn get(&self) -> Call<GetMerchantConnection> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::GetMerchantConnection,
+            TenantOp::GetMerchantConnection,
             GetMerchantConnection,
         )
     }
@@ -75,9 +75,9 @@ impl MerchantConnectionResource<'_> {
         environment: MerchantEnvironment,
         credential: impl Into<String>,
     ) -> Call<CreateMerchantConnection> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::CreateMerchantConnection,
+            TenantOp::CreateMerchantConnection,
             CreateMerchantConnection {
                 provider,
                 environment,
@@ -89,18 +89,18 @@ impl MerchantConnectionResource<'_> {
 
     /// Changes the merchant connection. Fields you do not set keep their values.
     pub fn update(&self) -> Call<UpdateMerchantConnection> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::UpdateMerchantConnection,
+            TenantOp::UpdateMerchantConnection,
             UpdateMerchantConnection::default(),
         )
     }
 
     /// Retires the merchant connection.
     pub fn retire(&self) -> Call<RetireMerchantConnection> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::RetireMerchantConnection,
+            TenantOp::RetireMerchantConnection,
             RetireMerchantConnection,
         )
     }
@@ -109,9 +109,9 @@ impl MerchantConnectionResource<'_> {
 impl MerchantBindings<'_> {
     /// Lists bindings between end users and merchant customers.
     pub fn list(&self) -> Call<ListMerchantBindings> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::ListMerchantBindings,
+            TenantOp::ListMerchantBindings,
             ListMerchantBindings::default(),
         )
     }
@@ -123,9 +123,9 @@ impl MerchantBindings<'_> {
         user_id: impl AsRef<str>,
         customer_id: impl Into<String>,
     ) -> Call<SetMerchantBinding> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::SetMerchantBinding {
+            TenantOp::SetMerchantBinding {
                 user_id: user_id.as_ref(),
             },
             SetMerchantBinding {
@@ -136,9 +136,9 @@ impl MerchantBindings<'_> {
 
     /// Removes an end user's binding.
     pub fn delete(&self, user_id: impl AsRef<str>) -> Call<DeleteMerchantBinding> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::DeleteMerchantBinding {
+            TenantOp::DeleteMerchantBinding {
                 user_id: user_id.as_ref(),
             },
             DeleteMerchantBinding,
@@ -149,9 +149,9 @@ impl MerchantBindings<'_> {
 impl MerchantUsageEvents<'_> {
     /// Lists usage events.
     pub fn list(&self) -> Call<ListMerchantUsageEvents> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::ListMerchantUsageEvents,
+            TenantOp::ListMerchantUsageEvents,
             ListMerchantUsageEvents::default(),
         )
     }
@@ -159,9 +159,9 @@ impl MerchantUsageEvents<'_> {
     /// Gets one usage event.
     pub fn get(&self, event_id: impl Into<MerchantUsageEventId>) -> Call<GetMerchantUsageEvent> {
         let event_id = event_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::GetMerchantUsageEvent {
+            TenantOp::GetMerchantUsageEvent {
                 event_id: event_id.as_str(),
             },
             GetMerchantUsageEvent,
@@ -174,9 +174,9 @@ impl MerchantUsageEvents<'_> {
         event_id: impl Into<MerchantUsageEventId>,
     ) -> Call<DiscardMerchantUsageEvent> {
         let event_id = event_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::DiscardMerchantUsageEvent {
+            TenantOp::DiscardMerchantUsageEvent {
                 event_id: event_id.as_str(),
             },
             DiscardMerchantUsageEvent,
@@ -189,9 +189,9 @@ impl MerchantUsageEvents<'_> {
         event_id: impl Into<MerchantUsageEventId>,
     ) -> Call<ReleaseMerchantUsageEvent> {
         let event_id = event_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::ReleaseMerchantUsageEvent {
+            TenantOp::ReleaseMerchantUsageEvent {
                 event_id: event_id.as_str(),
             },
             ReleaseMerchantUsageEvent,
@@ -204,9 +204,9 @@ impl MerchantUsageEvents<'_> {
         event_id: impl Into<MerchantUsageEventId>,
     ) -> Call<RetryMerchantUsageEvent> {
         let event_id = event_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::RetryMerchantUsageEvent {
+            TenantOp::RetryMerchantUsageEvent {
                 event_id: event_id.as_str(),
             },
             RetryMerchantUsageEvent,
@@ -215,9 +215,9 @@ impl MerchantUsageEvents<'_> {
 
     /// Summarizes usage events over the last days.
     pub fn summary(&self) -> Call<GetMerchantUsageSummary> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::GetMerchantUsageSummary,
+            TenantOp::GetMerchantUsageSummary,
             GetMerchantUsageSummary::default(),
         )
     }

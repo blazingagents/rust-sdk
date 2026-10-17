@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use crate::call::{Call, impl_request};
 use crate::client::{Client, Tenant};
 use crate::ids::{AgentId, ApprovalId, ChatConnectionId, ChatDeliveryId, SessionId, TenantId};
-use crate::op::Op;
+use crate::op::TenantOp;
 use crate::pagination::{Cursor, Page};
 use crate::types::Timestamp;
 
@@ -47,14 +47,18 @@ impl Client<Tenant> {
 impl ChatConnections<'_> {
     /// Lists chat connections.
     pub fn list(&self) -> Call<ListChatConnections> {
-        Call::new(self.client, Op::ListChatConnections, ListChatConnections)
+        Call::tenant(
+            self.client,
+            TenantOp::ListChatConnections,
+            ListChatConnections,
+        )
     }
 
     /// Connects an agent to a chat platform. Credentials are never returned.
     pub fn create(&self, connection: impl Into<NewChatConnection>) -> Call<CreateChatConnection> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::CreateChatConnection,
+            TenantOp::CreateChatConnection,
             CreateChatConnection {
                 connection: connection.into(),
             },
@@ -64,9 +68,9 @@ impl ChatConnections<'_> {
     /// Gets one chat connection.
     pub fn get(&self, chat_connection_id: impl Into<ChatConnectionId>) -> Call<GetChatConnection> {
         let chat_connection_id = chat_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::GetChatConnection {
+            TenantOp::GetChatConnection {
                 id: chat_connection_id.as_str(),
             },
             GetChatConnection,
@@ -80,9 +84,9 @@ impl ChatConnections<'_> {
         chat_connection_id: impl Into<ChatConnectionId>,
     ) -> Call<RenameChatConnection> {
         let chat_connection_id = chat_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::RenameChatConnection {
+            TenantOp::RenameChatConnection {
                 id: chat_connection_id.as_str(),
             },
             RenameChatConnection::default(),
@@ -95,9 +99,9 @@ impl ChatConnections<'_> {
         chat_connection_id: impl Into<ChatConnectionId>,
     ) -> Call<DeleteChatConnection> {
         let chat_connection_id = chat_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::DeleteChatConnection {
+            TenantOp::DeleteChatConnection {
                 id: chat_connection_id.as_str(),
             },
             DeleteChatConnection,
@@ -110,9 +114,9 @@ impl ChatConnections<'_> {
         chat_connection_id: impl Into<ChatConnectionId>,
     ) -> Call<EnableChatConnection> {
         let chat_connection_id = chat_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::EnableChatConnection {
+            TenantOp::EnableChatConnection {
                 id: chat_connection_id.as_str(),
             },
             EnableChatConnection,
@@ -125,9 +129,9 @@ impl ChatConnections<'_> {
         chat_connection_id: impl Into<ChatConnectionId>,
     ) -> Call<DisableChatConnection> {
         let chat_connection_id = chat_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::DisableChatConnection {
+            TenantOp::DisableChatConnection {
                 id: chat_connection_id.as_str(),
             },
             DisableChatConnection,
@@ -140,9 +144,9 @@ impl ChatConnections<'_> {
         chat_connection_id: impl Into<ChatConnectionId>,
     ) -> Call<CheckChatHealth> {
         let chat_connection_id = chat_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::CheckChatHealth {
+            TenantOp::CheckChatHealth {
                 id: chat_connection_id.as_str(),
             },
             CheckChatHealth,
@@ -156,9 +160,9 @@ impl ChatConnections<'_> {
         credentials: ChatCredentials,
     ) -> Call<RotateChatCredentials> {
         let chat_connection_id = chat_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::RotateChatCredentials {
+            TenantOp::RotateChatCredentials {
                 id: chat_connection_id.as_str(),
             },
             RotateChatCredentials { credentials },
@@ -171,9 +175,9 @@ impl ChatConnections<'_> {
         chat_connection_id: impl Into<ChatConnectionId>,
     ) -> Call<ListChatDeliveries> {
         let chat_connection_id = chat_connection_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::ListChatDeliveries {
+            TenantOp::ListChatDeliveries {
                 id: chat_connection_id.as_str(),
             },
             ListChatDeliveries::default(),
@@ -193,9 +197,9 @@ impl ChatConnections<'_> {
     ) -> Call<RepairChatDelivery> {
         let chat_connection_id = chat_connection_id.into();
         let delivery_id = delivery_id.into();
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::RepairChatDelivery {
+            TenantOp::RepairChatDelivery {
                 id: chat_connection_id.as_str(),
                 delivery_id: delivery_id.as_str(),
             },
@@ -211,9 +215,9 @@ impl ChatConnections<'_> {
 impl ChatDeliveries<'_> {
     /// Lists failed and ambiguous deliveries across chat connections.
     pub fn list(&self) -> Call<ListTenantChatDeliveries> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::ListTenantChatDeliveries,
+            TenantOp::ListTenantChatDeliveries,
             ListTenantChatDeliveries::default(),
         )
     }

@@ -1,5 +1,7 @@
 //! Repository tasks. `cargo xtask spec` regenerates the files derived from
-//! `spec/openapi.json`; `cargo xtask spec --check` fails when they drift.
+//! `spec/openapi.json`; `cargo xtask spec --check` fails when they drift. Both
+//! fail when a resource module wires an end-user operation where a
+//! `UserClient` cannot reach it.
 
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -44,6 +46,7 @@ fn spec(check: bool) -> Result<(), String> {
     let spec: Value =
         serde_json::from_str(&spec_text).map_err(|error| format!("{SPEC} is not JSON: {error}"))?;
     let operations = operations(&spec)?;
+    check_wiring(&root, &operations)?;
     let outputs = [
         (OP_FILE, rustfmt(&render_ops(&operations))?),
         (CODE_FILE, rustfmt(&render_error_codes(&spec)?)?),
@@ -78,12 +81,43 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
+/// Who may send an operation, from the contract's `x-scope`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Scope {
+    /// A tenant, or a tenant acting for one of its end users (`UserClient`).
+    EndUser,
+    /// A tenant only.
+    Tenant,
+}
+
+impl Scope {
+    fn parse(method: &str, path: &str, value: &Value) -> Result<Self, String> {
+        match value.as_str() {
+            Some("end-user") => Ok(Self::EndUser),
+            Some("tenant") => Ok(Self::Tenant),
+            _ => Err(format!(
+                "{} {path} has no valid x-scope (expected \"end-user\" or \"tenant\", found {value})",
+                method.to_ascii_uppercase()
+            )),
+        }
+    }
+
+    /// The generated enum that holds the scope's operations.
+    fn enum_name(self) -> &'static str {
+        match self {
+            Self::EndUser => "Op",
+            Self::Tenant => "TenantOp",
+        }
+    }
+}
+
 struct Operation {
     id: String,
     variant: String,
     method: String,
     path: String,
     params: Vec<(String, String)>,
+    scope: Scope,
 }
 
 fn operations(spec: &Value) -> Result<Vec<Operation>, String> {
@@ -96,6 +130,7 @@ fn operations(spec: &Value) -> Result<Vec<Operation>, String> {
             let Some(id) = item[method]["operationId"].as_str() else {
                 continue;
             };
+            let scope = Scope::parse(method, path, &item[method]["x-scope"])?;
             let params = path
                 .split('/')
                 .filter_map(|segment| segment.strip_prefix('{')?.strip_suffix('}'))
@@ -107,6 +142,7 @@ fn operations(spec: &Value) -> Result<Vec<Operation>, String> {
                 method: method.to_ascii_uppercase(),
                 path: path.clone(),
                 params,
+                scope,
             };
             if by_key
                 .insert((path.clone(), method.to_string()), operation)
@@ -127,16 +163,31 @@ fn operations(spec: &Value) -> Result<Vec<Operation>, String> {
 
 fn render_ops(operations: &[Operation]) -> String {
     let mut out = String::from(HEADER);
-    out.push_str("use crate::http::segment;\n\n");
+    out.push_str("use crate::call::Operation;\nuse crate::http::segment;\n\n");
     out.push_str(
-        "/// One variant per operation in the spec that has an `operationId`. An SDK method\n\
-         /// sends a request only by constructing a variant, so a variant that no method\n\
-         /// constructs is an operation the SDK does not cover, and the build fails on it.\n\
-         #[deny(dead_code)]\n\
-         #[derive(Clone, Copy, Debug)]\n\
-         pub(crate) enum Op<'a> {\n",
+        "/// One variant per `end-user` operation in the spec: an operation a tenant may\n\
+         /// send for one of its end users, so every [`Client`](crate::Client) sends it.\n\
+         /// An SDK method sends a request only by constructing a variant, so a variant\n\
+         /// that no method constructs is an operation the SDK does not cover, and the\n\
+         /// build fails on it.\n",
     );
-    for op in operations {
+    render_enum(&mut out, Scope::EndUser, operations);
+    out.push_str(
+        "\n/// One variant per `tenant` operation in the spec: an operation only a\n\
+         /// `Client<Tenant>` sends, through [`Call::tenant`](crate::call::Call::tenant).\n\
+         /// Under the same dead-code gate as [`Op`].\n",
+    );
+    render_enum(&mut out, Scope::Tenant, operations);
+    out
+}
+
+fn render_enum(out: &mut String, scope: Scope, operations: &[Operation]) {
+    let name = scope.enum_name();
+    let operations: Vec<&Operation> = operations.iter().filter(|op| op.scope == scope).collect();
+    out.push_str(&format!(
+        "#[deny(dead_code)]\n#[derive(Clone, Copy, Debug)]\npub(crate) enum {name}<'a> {{\n"
+    ));
+    for op in &operations {
         out.push_str(&format!(
             "    /// `{} {}` (`{}`)\n    {}",
             op.method, op.path, op.id, op.variant
@@ -151,49 +202,44 @@ fn render_ops(operations: &[Operation]) -> String {
         }
         out.push_str(",\n");
     }
-    out.push_str("}\n\nimpl Op<'_> {\n");
-    out.push_str("    /// The spec's `operationId`.\n    pub(crate) const fn id(self) -> &'static str {\n        match self {\n");
-    for op in operations {
+    out.push_str(&format!("}}\n\nimpl Operation for {name}<'_> {{\n"));
+    out.push_str("    fn id(self) -> &'static str {\n        match self {\n");
+    for op in &operations {
         out.push_str(&format!(
-            "            Op::{}{} => \"{}\",\n",
+            "            {name}::{}{} => \"{}\",\n",
             op.variant,
             wildcard(op),
             op.id
         ));
     }
     out.push_str("        }\n    }\n\n");
-    out.push_str("    pub(crate) const fn method(self) -> &'static str {\n        match self {\n");
-    for op in operations {
+    out.push_str("    fn method(self) -> &'static str {\n        match self {\n");
+    for op in &operations {
         out.push_str(&format!(
-            "            Op::{}{} => \"{}\",\n",
+            "            {name}::{}{} => \"{}\",\n",
             op.variant,
             wildcard(op),
             op.method
         ));
     }
     out.push_str("        }\n    }\n\n");
-    out.push_str(
-        "    /// The request path with every parameter percent-encoded as one segment.\n\
-         /// Returns the parameter's name when its value is empty, `.` or `..`, because\n\
-         /// URL normalization would change which endpoint receives the request.\n\
-         \x20   pub(crate) fn path(self) -> Result<String, &'static str> {\n        match self {\n",
-    );
-    for op in operations {
+    out.push_str("    fn path(self) -> Result<String, &'static str> {\n        match self {\n");
+    for op in &operations {
         if op.params.is_empty() {
             out.push_str(&format!(
-                "            Op::{} => Ok(String::from(\"{}\")),\n",
+                "            {name}::{} => Ok(String::from(\"{}\")),\n",
                 op.variant, op.path
             ));
             continue;
         }
         let mut template = op.path.clone();
         let mut args = Vec::new();
-        for (name, field) in &op.params {
-            template = template.replace(&format!("{{{name}}}"), "{}");
-            args.push(format!("segment({field}, \"{name}\")?"));
+        for (param, field) in &op.params {
+            template = template.replace(&format!("{{{param}}}"), "{}");
+            args.push(format!("segment({field}, \"{param}\")?"));
         }
         out.push_str(&format!(
-            "            Op::{}{} => Ok(format!(\"{}\", {})),\n",
+            "            {name}::{}{} => Ok(format!(\"{}\", {})),\n",
             op.variant,
             pattern(op),
             template,
@@ -201,7 +247,100 @@ fn render_ops(operations: &[Operation]) -> String {
         ));
     }
     out.push_str("        }\n    }\n}\n");
-    out
+}
+
+/// Fails when an end-user `Op` is constructed inside a top-level item whose
+/// header names `Tenant` (`impl Agents<'_, Tenant>`, `impl Client<Tenant>`), where
+/// a `UserClient` cannot reach it. No type bound can refuse this: `Client<Tenant>`
+/// is a `Client<S>`. The other direction is a type error, because `Call::tenant`
+/// takes `&Client<Tenant>`. Items start at column 0 and end at a column-0 `}`
+/// because `cargo fmt --check` is part of the gate.
+fn check_wiring(root: &Path, operations: &[Operation]) -> Result<(), String> {
+    let mut files = Vec::new();
+    collect_rust_files(&root.join("src"), &mut files)?;
+    let mut errors = Vec::new();
+    for path in files {
+        let relative = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
+        if relative == Path::new(OP_FILE) {
+            continue;
+        }
+        let source = std::fs::read_to_string(&path)
+            .map_err(|error| format!("cannot read {}: {error}", relative.display()))?;
+        let mut header = String::new();
+        let mut in_header = false;
+        for (index, line) in source.lines().enumerate() {
+            let starts_item = !line.is_empty() && !line.starts_with([' ', '}', '/', '#']);
+            if starts_item && !in_header {
+                header.clear();
+                in_header = true;
+            }
+            if in_header {
+                header.push_str(line.trim());
+                header.push(' ');
+                if line.ends_with('{') {
+                    in_header = false;
+                } else if line.ends_with([';', '}']) {
+                    in_header = false;
+                    header.clear();
+                }
+                continue;
+            }
+            if line.starts_with('}') {
+                header.clear();
+                continue;
+            }
+            if !header.contains("Tenant") {
+                continue;
+            }
+            for op in operations.iter().filter(|op| op.scope == Scope::EndUser) {
+                if mentions(line, &format!("Op::{}", op.variant)) {
+                    errors.push(format!(
+                        "{}:{}: `Op::{}` is an end-user operation, but `{}` is tenant only, so a UserClient cannot reach it; move the method to an `impl<S: Scope>` block",
+                        relative.display(),
+                        index + 1,
+                        op.variant,
+                        header.trim_end_matches([' ', '{']),
+                    ));
+                }
+            }
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("\n"))
+    }
+}
+
+/// Whether `line` holds `token` as a whole path, so `TenantOp::X` and
+/// `Op::XLonger` do not count as `Op::X`.
+fn mentions(line: &str, token: &str) -> bool {
+    line.match_indices(token).any(|(start, _)| {
+        let before = line[..start].chars().next_back();
+        let after = line[start + token.len()..].chars().next();
+        !before.is_some_and(is_ident) && !after.is_some_and(is_ident)
+    })
+}
+
+fn is_ident(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
+}
+
+fn collect_rust_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
+    let entries = std::fs::read_dir(dir)
+        .map_err(|error| format!("cannot read {}: {error}", dir.display()))?;
+    for entry in entries {
+        let path = entry
+            .map_err(|error| format!("cannot read {}: {error}", dir.display()))?
+            .path();
+        if path.is_dir() {
+            collect_rust_files(&path, files)?;
+        } else if path.extension().is_some_and(|ext| ext == "rs") {
+            files.push(path);
+        }
+    }
+    files.sort();
+    Ok(())
 }
 
 fn wildcard(op: &Operation) -> &'static str {

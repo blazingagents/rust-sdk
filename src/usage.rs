@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::call::{Call, impl_request};
 use crate::client::{Client, Scope, Tenant};
 use crate::ids::{AgentId, SessionId};
-use crate::op::Op;
+use crate::op::{Op, TenantOp};
 
 /// Usage operations. Returned by [`Client::usage`].
 #[derive(Clone, Copy, Debug)]
@@ -78,9 +78,9 @@ impl UsageResource<'_, Tenant> {
     /// # }
     /// ```
     pub fn overview(&self) -> Call<GetUsageOverview> {
-        Call::new(
+        Call::tenant(
             self.client,
-            Op::GetUsageOverview,
+            TenantOp::GetUsageOverview,
             GetUsageOverview::default(),
         )
     }
