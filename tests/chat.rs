@@ -155,27 +155,34 @@ async fn chat_continues_an_existing_session() {
 async fn missing_or_malformed_handshake_headers_fail_before_the_body() {
     let (server, client) = mock().await;
     let cases = [
-        (sse(201, &[]), StreamErrorKind::MissingSessionId),
+        (
+            sse(201, &[]),
+            StreamErrorKind::MissingSessionId,
+            "the response has no Location header",
+        ),
         (
             sse(201, &[]).insert_header("location", "/v1/agents/ag_1/sessions/nope"),
             StreamErrorKind::MalformedSessionId,
+            "the Location header is not a session URL",
         ),
         (
             ResponseTemplate::new(201)
                 .insert_header("location", format!("/sessions/{SESSION}").as_str()),
             StreamErrorKind::MissingTurnId,
+            "the response has no X-BA-Turn-Id header",
         ),
         (
             ResponseTemplate::new(201)
                 .insert_header("location", format!("/sessions/{SESSION}").as_str())
                 .insert_header("x-ba-turn-id", "tr_0123456789abcdef"),
             StreamErrorKind::MalformedTurnId,
+            "the X-BA-Turn-Id header is not a turn ID",
         ),
     ];
-    for (response, kind) in cases {
+    for (response, kind, message) in cases {
         server.reset().await;
         Mock::given(method("POST"))
-            .respond_with(response)
+            .respond_with(response.insert_header("x-request-id", "req_chat"))
             .mount(&server)
             .await;
 
@@ -184,11 +191,17 @@ async fn missing_or_malformed_handshake_headers_fail_before_the_body() {
             .await
             .unwrap_err();
 
+        assert_eq!(error.to_string(), message);
+        assert_eq!(error.status(), Some(201));
+        assert_eq!(error.request_id(), Some("req_chat"));
+        assert_eq!(error.code(), None);
+        assert!(std::error::Error::source(&error).is_none());
         let Error::Stream(stream) = error else {
             panic!("expected a stream error, got {error:?}");
         };
         assert_eq!(stream.kind(), kind);
         assert_eq!(stream.meta().status(), 201);
+        assert_eq!(stream.meta().request_id(), Some("req_chat"));
     }
 }
 
@@ -313,11 +326,43 @@ async fn a_body_ending_inside_an_event_is_incomplete() {
     let first = stream.try_next().await.unwrap().unwrap();
     assert_eq!(first, "data: {\"type\":\"start\"}\n\n".as_bytes());
     let error = stream.try_next().await.unwrap_err();
+    assert_eq!(error.to_string(), "the stream ended before it finished");
+    assert!(std::error::Error::source(&error).is_none());
     let Error::Stream(error) = error else {
         panic!("expected a stream error, got {error:?}");
     };
     assert_eq!(error.kind(), StreamErrorKind::Incomplete);
     assert!(stream.try_next().await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn events_end_at_whichever_delimiter_comes_first() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .respond_with(new_session(&[]).set_body_raw(
+            b"data: {\"type\":\"start\"}\r\n\r\ndata: {\"type\":\"finish\"}\n\ndata: {\"type\":\"x\"}\n\ndata: {\"type\":\"y\"}\r\n\r\n".to_vec(),
+            "text/event-stream",
+        ))
+        .mount(&server)
+        .await;
+
+    let frames: Vec<_> = client
+        .chat("ag_1", UserMessage::text("hi"))
+        .await
+        .unwrap()
+        .try_collect()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        frames,
+        [
+            "data: {\"type\":\"start\"}\r\n\r\n".as_bytes(),
+            "data: {\"type\":\"finish\"}\n\n".as_bytes(),
+            "data: {\"type\":\"x\"}\n\n".as_bytes(),
+            "data: {\"type\":\"y\"}\r\n\r\n".as_bytes(),
+        ]
+    );
 }
 
 #[tokio::test]
@@ -581,5 +626,7 @@ async fn a_crlf_event_then_a_dropped_body_is_a_read_error() {
         matches!(&error, Error::Stream(e) if e.kind() == StreamErrorKind::Read),
         "{error:?}"
     );
+    assert_eq!(error.to_string(), "response body read failed");
+    assert!(std::error::Error::source(&error).is_some());
     assert!(stream.try_next().await.unwrap().is_none());
 }

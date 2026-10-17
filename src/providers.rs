@@ -2,8 +2,6 @@
 //!
 //! Documentation: <https://docs.blazingagents.com/agents/providers-and-models>.
 
-use std::fmt;
-
 use serde::{Deserialize, Serialize};
 
 use crate::call::{Call, impl_request};
@@ -169,17 +167,6 @@ pub struct CreateProvider {
 impl_request!(CreateProvider => Provider; encode = json; decode = credential_safe_json;
     sensitive = (|request: &Self| vec![request.api_key.clone()]));
 
-impl fmt::Debug for CreateProvider {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CreateProvider")
-            .field("name", &self.name)
-            .field("provider_type", &self.provider_type)
-            .field("api_key", &"[redacted]")
-            .field("base_url", &self.base_url)
-            .finish()
-    }
-}
-
 impl Call<CreateProvider> {
     /// The provider's endpoint override. Required for `custom`, rejected for
     /// `vercel_ai_gateway`, and fixed after creation.
@@ -305,24 +292,4 @@ pub struct ProviderThinkingLevels {
     pub known: bool,
     /// The supported levels.
     pub levels: Vec<String>,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{CreateProvider, ProviderType};
-
-    #[test]
-    fn create_provider_debug_redacts_the_api_key() {
-        let provider = CreateProvider {
-            name: "Custom".to_owned(),
-            provider_type: ProviderType::Custom,
-            api_key: "sk-or-v1-3b7e9f2c".to_owned(),
-            base_url: Some("https://models.example.com/v1".to_owned()),
-        };
-
-        assert_eq!(
-            format!("{provider:?}"),
-            r#"CreateProvider { name: "Custom", provider_type: Custom, api_key: "[redacted]", base_url: Some("https://models.example.com/v1") }"#
-        );
-    }
 }

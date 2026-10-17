@@ -14,9 +14,26 @@
 | `cargo +1.85 test --workspace --locked` | The MSRV build |
 | `cargo test -p blazing-agents --no-default-features --features native-tls,schemars` | The OpenSSL build |
 | `cargo package -p blazing-agents --locked` | Builds the crate exactly as crates.io would receive it |
+| `.github/scripts/public-api-tests.sh` | Fails on `#[cfg(test)]`, `cfg!(test)` or a test attribute in any file under `src/` or compiled into the library, printing the file and line, and on any test the library's test harness lists |
 
 CI runs all of these plus a grep that fails on `allow(dead_code)` or
 `expect(dead_code)` anywhere under `src/`.
+
+Tests use the public API only. They live in `tests/`, drive the public
+client against the mock server, and assert what a Tenant sees: the request
+sent, the decoded result, the exact error. `src/` has no `#[cfg(test)]`
+modules and no `#[test]` functions; doc tests stay. When a test seems to need
+a private value, do one of two things:
+
+1. Rewrite the test against the public client, so it checks the behavior
+   that value produces.
+2. If the test really needs the value, the SDK is missing a public way to get
+   it. Add one to the public API, with rustdoc, and use that.
+
+Code that no public call can reach has no behavior to test, so delete it.
+The exception is a guard that turns an SDK bug into an error instead of a
+wrong request, such as `Patch::Keep` refusing to serialize when a field lacks
+`skip_serializing_if`. Keep the guard and leave it untested.
 
 `tests/agent_tools.rs` checks the built-in tool catalog against
 `../typescript-sdk/agent-tools.json`, so `cargo cov` needs the TypeScript SDK
@@ -107,6 +124,8 @@ Done means every command in the table passes and
 - Never write `allow(dead_code)` or `expect(dead_code)` under `src/`. The
   dead-code lint is the coverage gate.
 - Never hand-edit `src/op.rs` or `src/error/code.rs`.
+- Never write a test under `src/`. Test through the public API from `tests/`;
+  see the test rule above for what to do when a test needs a private value.
 - Comments explain a non-obvious why. Code says what.
 - Breaking changes follow the two-step policy in `AGENTS.md`.
 

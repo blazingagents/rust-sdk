@@ -47,7 +47,14 @@ fn a_known_part_type_with_a_malformed_body_is_an_error() {
 
 #[test]
 fn a_part_without_a_string_type_is_an_error() {
-    for part in [json!({ "text": "hi" }), json!({ "type": 7 }), json!("hi")] {
+    for part in [json!({ "text": "hi" }), json!({ "type": 7 })] {
+        let error = decode(part.clone()).unwrap_err();
+        assert!(
+            error.to_string().contains("`type` must be a string"),
+            "{part}: {error}"
+        );
+    }
+    for part in [json!("hi"), json!([]), json!(5)] {
         assert!(decode(part.clone()).is_err(), "{part} must not decode");
     }
 }

@@ -530,6 +530,7 @@ async fn a_malformed_private_event_fails_the_stream() {
         stream.try_next().await.unwrap().unwrap();
         let error = stream.try_next().await.unwrap_err();
 
+        assert_eq!(error.to_string(), "a function-call event is malformed");
         let blazing_agents::Error::Stream(error) = error else {
             panic!("expected a stream error for {frame}, got {error:?}");
         };

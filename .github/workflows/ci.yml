@@ -55,6 +55,8 @@ jobs:
             echo 'src/ must not suppress dead_code: it is the operation coverage gate'
             exit 1
           fi
+      - name: No tests in the library's sources
+        run: .github/scripts/public-api-tests.sh
 
   msrv:
     name: Rust 1.85
