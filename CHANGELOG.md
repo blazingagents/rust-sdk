@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-10-19)
 
 - The built-in tool catalog moved from `agents` to the new `agent_tools`
   module, generated from the API contract: `BuiltinToolName`,
