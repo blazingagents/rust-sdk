@@ -9,6 +9,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::agents::AgentConfig;
 use crate::call::{Call, Paginate, impl_request};
 use crate::client::{Client, Scope};
+use crate::error::ErrorCode;
 use crate::ids::{AgentId, SessionId, TaskId, TaskRunId, TenantId, TurnId};
 use crate::op::Op;
 use crate::pagination::{Cursor, Page, Paginated};
@@ -828,6 +829,11 @@ pub struct TaskRun {
     pub status: TaskRunStatus,
     /// Why a `failed` or `blocked` run did not complete, if known.
     pub error: Option<String>,
+    /// The API error code a `blocked` or `failed` run ended with, such as
+    /// [`ErrorCode::UsageCreditRequired`], [`ErrorCode::QuotaExceeded`] or
+    /// [`ErrorCode::ProviderRequired`]. `None` for every other run and for a
+    /// failure without a code.
+    pub error_code: Option<ErrorCode>,
     /// The end user, copied from the task.
     pub user_id: String,
     /// Your own data, copied from the task.
