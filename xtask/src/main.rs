@@ -118,6 +118,7 @@ struct Operation {
     path: String,
     params: Vec<(String, String)>,
     scope: Scope,
+    credential_bearing: bool,
 }
 
 fn operations(spec: &Value) -> Result<Vec<Operation>, String> {
@@ -131,6 +132,16 @@ fn operations(spec: &Value) -> Result<Vec<Operation>, String> {
                 continue;
             };
             let scope = Scope::parse(method, path, &item[method]["x-scope"])?;
+            let credential_bearing = match &item[method]["x-credential-bearing"] {
+                Value::Null => false,
+                Value::Bool(flag) => *flag,
+                other => {
+                    return Err(format!(
+                        "{} {path} has a non-boolean x-credential-bearing: {other}",
+                        method.to_ascii_uppercase()
+                    ));
+                }
+            };
             let params = path
                 .split('/')
                 .filter_map(|segment| segment.strip_prefix('{')?.strip_suffix('}'))
@@ -143,6 +154,7 @@ fn operations(spec: &Value) -> Result<Vec<Operation>, String> {
                 path: path.clone(),
                 params,
                 scope,
+                credential_bearing,
             };
             if by_key
                 .insert((path.clone(), method.to_string()), operation)
@@ -223,6 +235,19 @@ fn render_enum(out: &mut String, scope: Scope, operations: &[Operation]) {
         ));
     }
     out.push_str("        }\n    }\n\n");
+    let guarded: Vec<String> = operations
+        .iter()
+        .filter(|op| op.credential_bearing)
+        .map(|op| format!("{name}::{}{}", op.variant, wildcard(op)))
+        .collect();
+    let guarded = if guarded.is_empty() {
+        String::from("false")
+    } else {
+        format!("matches!(self, {})", guarded.join(" | "))
+    };
+    out.push_str(&format!(
+        "    fn credential_bearing(self) -> bool {{\n        {guarded}\n    }}\n\n"
+    ));
     out.push_str("    fn path(self) -> Result<String, &'static str> {\n        match self {\n");
     for op in &operations {
         if op.params.is_empty() {

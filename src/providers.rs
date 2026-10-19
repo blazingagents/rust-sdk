@@ -152,7 +152,7 @@ crate::open_enum! {
 /// Request state of [`Providers::list`].
 #[derive(Clone, Debug)]
 pub struct ListProviders;
-impl_request!(ListProviders => ProviderList; encode = none; decode = credential_safe_json);
+impl_request!(ListProviders => ProviderList; encode = none; decode = json);
 
 /// Request state of [`Providers::create`].
 #[derive(Clone, Serialize)]
@@ -164,7 +164,7 @@ pub struct CreateProvider {
     #[serde(skip_serializing_if = "Option::is_none")]
     base_url: Option<String>,
 }
-impl_request!(CreateProvider => Provider; encode = json; decode = credential_safe_json;
+impl_request!(CreateProvider => Provider; encode = json; decode = json;
     sensitive = (|request: &Self| vec![request.api_key.clone()]));
 
 impl Call<CreateProvider> {
@@ -178,7 +178,7 @@ impl Call<CreateProvider> {
 /// Request state of [`Providers::get`].
 #[derive(Clone, Debug)]
 pub struct GetProvider;
-impl_request!(GetProvider => Provider; encode = none; decode = credential_safe_json);
+impl_request!(GetProvider => Provider; encode = none; decode = json);
 
 /// Request state of [`Providers::update`].
 #[derive(Clone, Debug, Serialize)]
@@ -186,7 +186,7 @@ impl_request!(GetProvider => Provider; encode = none; decode = credential_safe_j
 pub struct UpdateProvider {
     name: String,
 }
-impl_request!(UpdateProvider => Provider; encode = json; decode = credential_safe_json);
+impl_request!(UpdateProvider => Provider; encode = json; decode = json);
 
 /// Request state of [`Providers::delete`].
 #[derive(Clone, Debug, Default, Serialize)]
@@ -209,14 +209,14 @@ impl Call<DeleteProvider> {
 /// Request state of [`Providers::list_models`].
 #[derive(Clone, Debug)]
 pub struct ListProviderModels;
-impl_request!(ListProviderModels => ProviderModelList; encode = none; decode = credential_safe_json);
+impl_request!(ListProviderModels => ProviderModelList; encode = none; decode = json);
 
 /// Request state of [`Providers::get_thinking_levels`].
 #[derive(Clone, Debug, Serialize)]
 pub struct ListThinkingLevels {
     model: String,
 }
-impl_request!(ListThinkingLevels => ProviderThinkingLevels; encode = query; decode = credential_safe_json);
+impl_request!(ListThinkingLevels => ProviderThinkingLevels; encode = query; decode = json);
 
 /// A provider. Its API key is never returned.
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -505,17 +505,11 @@ struct SummaryEnvelope {
 }
 
 async fn decode_connection(raw: Raw) -> Result<MerchantConnection> {
-    Ok(raw
-        .credential_safe_json::<ConnectionEnvelope>()
-        .await?
-        .connection)
+    Ok(raw.json::<ConnectionEnvelope>().await?.connection)
 }
 
 async fn decode_optional_connection(raw: Raw) -> Result<Option<MerchantConnection>> {
-    Ok(raw
-        .credential_safe_json::<OptionalConnectionEnvelope>()
-        .await?
-        .connection)
+    Ok(raw.json::<OptionalConnectionEnvelope>().await?.connection)
 }
 
 async fn decode_binding(raw: Raw) -> Result<MerchantBinding> {

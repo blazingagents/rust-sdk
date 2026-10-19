@@ -35,6 +35,7 @@ pub(crate) struct Route {
     pub(crate) op_id: &'static str,
     pub(crate) method: &'static str,
     pub(crate) path: String,
+    pub(crate) credential_bearing: bool,
 }
 
 /// The name of a path parameter whose value was empty, `.` or `..`.
@@ -192,6 +193,7 @@ fn route(op: impl Operation) -> Result<Route, InvalidSegment> {
         op_id: op.id(),
         method: op.method(),
         path: op.path().map_err(InvalidSegment)?,
+        credential_bearing: op.credential_bearing(),
     })
 }
 
@@ -201,6 +203,10 @@ pub(crate) trait Operation: Copy {
     fn id(self) -> &'static str;
 
     fn method(self) -> &'static str;
+
+    /// Whether the spec marks the operation `x-credential-bearing`, so a JSON
+    /// response that echoes credential material is refused.
+    fn credential_bearing(self) -> bool;
 
     /// The request path with every parameter percent-encoded as one segment.
     /// Returns the parameter's name when its value is empty, `.` or `..`, because
@@ -367,6 +373,7 @@ pub struct Raw {
     pub(crate) meta: ResponseMeta,
     pub(crate) sensitive: Vec<String>,
     pub(crate) operation_id: &'static str,
+    pub(crate) credential_bearing: bool,
     pub(crate) handle: Handle,
     pub(crate) options: RequestOptions,
 }
@@ -378,14 +385,13 @@ pub struct Raw {
 /// impl_request!(ListPrompts => Page<Prompt>; encode = query; decode = json; paginate);
 /// impl_request!(ReadSkillFile => Download; encode = query; decode = download);
 /// impl_request!(UploadSkill => Skill; encode = (Self::into_payload); decode = json);
-/// impl_request!(CreateProvider => Provider; encode = json; decode = credential_safe_json;
+/// impl_request!(CreateProvider => Provider; encode = json; decode = json;
 ///     sensitive = (|r: &Self| vec![r.api_key.clone()]));
 /// ```
 ///
 /// `encode` is `none`, `query` (the struct's fields as query parameters), `json`
 /// (the struct as the JSON body), or a parenthesized `fn(Self) -> Result<Payload>`.
-/// `decode` is `none` (`()`), `json`, `credential_safe_json` (fails if the body
-/// echoes credential material), `download` (a streamed body), or a parenthesized
+/// `decode` is `none` (`()`), `json`, `download` (a streamed body), or a parenthesized
 /// `fn(Raw) -> impl Future<Output = Result<Output>>`. `paginate` implements
 /// [`Paginate`] through a `cursor: Option<Cursor>` field.
 macro_rules! impl_request {
@@ -454,9 +460,6 @@ macro_rules! impl_request {
     };
     (@decode json, $raw:ident) => {
         $raw.json()
-    };
-    (@decode credential_safe_json, $raw:ident) => {
-        $raw.credential_safe_json()
     };
     (@decode download, $raw:ident) => {
         $raw.download()

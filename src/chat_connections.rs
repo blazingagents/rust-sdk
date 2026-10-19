@@ -552,7 +552,7 @@ impl ChatCredentials {
 /// Request state of [`ChatConnections::list`].
 #[derive(Clone, Debug)]
 pub struct ListChatConnections;
-impl_request!(ListChatConnections => ChatConnectionList; encode = none; decode = credential_safe_json);
+impl_request!(ListChatConnections => ChatConnectionList; encode = none; decode = json);
 
 /// Request state of [`ChatConnections::create`].
 #[derive(Clone, Debug, Serialize)]
@@ -560,13 +560,13 @@ impl_request!(ListChatConnections => ChatConnectionList; encode = none; decode =
 pub struct CreateChatConnection {
     connection: NewChatConnection,
 }
-impl_request!(CreateChatConnection => ChatConnection; encode = json; decode = credential_safe_json;
+impl_request!(CreateChatConnection => ChatConnection; encode = json; decode = json;
     sensitive = (|request: &Self| request.connection.secrets()));
 
 /// Request state of [`ChatConnections::get`].
 #[derive(Clone, Debug)]
 pub struct GetChatConnection;
-impl_request!(GetChatConnection => ChatConnection; encode = none; decode = credential_safe_json);
+impl_request!(GetChatConnection => ChatConnection; encode = none; decode = json);
 
 /// Request state of [`ChatConnections::update`].
 #[derive(Clone, Debug, Default, Serialize)]
@@ -577,7 +577,7 @@ pub struct RenameChatConnection {
     #[serde(skip_serializing_if = "Option::is_none")]
     configuration: Option<ChatConfigurationUpdate>,
 }
-impl_request!(RenameChatConnection => ChatConnection; encode = json; decode = credential_safe_json);
+impl_request!(RenameChatConnection => ChatConnection; encode = json; decode = json);
 
 /// The configuration fields of a chat connection update. Only the set keys are
 /// sent, and the object itself is left out when none are.
@@ -637,17 +637,17 @@ impl_request!(DeleteChatConnection => (); encode = none; decode = none);
 /// Request state of [`ChatConnections::enable`].
 #[derive(Clone, Debug)]
 pub struct EnableChatConnection;
-impl_request!(EnableChatConnection => ChatConnection; encode = none; decode = credential_safe_json);
+impl_request!(EnableChatConnection => ChatConnection; encode = none; decode = json);
 
 /// Request state of [`ChatConnections::disable`].
 #[derive(Clone, Debug)]
 pub struct DisableChatConnection;
-impl_request!(DisableChatConnection => ChatConnection; encode = none; decode = credential_safe_json);
+impl_request!(DisableChatConnection => ChatConnection; encode = none; decode = json);
 
 /// Request state of [`ChatConnections::check_health`].
 #[derive(Clone, Debug)]
 pub struct CheckChatHealth;
-impl_request!(CheckChatHealth => ChatConnection; encode = none; decode = credential_safe_json);
+impl_request!(CheckChatHealth => ChatConnection; encode = none; decode = json);
 
 /// Request state of [`ChatConnections::rotate_credentials`].
 #[derive(Clone, Debug, Serialize)]
@@ -655,7 +655,7 @@ impl_request!(CheckChatHealth => ChatConnection; encode = none; decode = credent
 pub struct RotateChatCredentials {
     credentials: ChatCredentials,
 }
-impl_request!(RotateChatCredentials => ChatConnection; encode = json; decode = credential_safe_json;
+impl_request!(RotateChatCredentials => ChatConnection; encode = json; decode = json;
     sensitive = (|request: &Self| request.credentials.secrets()));
 
 /// Request state of [`ChatConnections::deliveries`].
