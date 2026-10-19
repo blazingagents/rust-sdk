@@ -1,5 +1,6 @@
 mod support;
 
+use blazing_agents::error::ErrorCode;
 use blazing_agents::ids::{AgentId, SessionId, TaskId, TaskRunId, TenantId, TurnId};
 use blazing_agents::tasks::{Schedule, TaskRunStatus};
 use blazing_agents::types::Metadata;
@@ -57,6 +58,7 @@ fn task_run(id: &str) -> serde_json::Value {
         "turnId": "turn_3Xp6Mv9QdB1sKe4H",
         "status": "succeeded",
         "error": null,
+        "errorCode": null,
         "userId": "",
         "metadata": { "team": "support" },
         "startedAt": "2026-07-10T10:00:01.000Z",
@@ -277,6 +279,31 @@ async fn get_ignores_unknown_response_fields() {
 }
 
 #[tokio::test]
+async fn blocked_run_decodes_its_error_code() {
+    let (server, client) = mock().await;
+    let mut body = task_run("tr_9Jd4Ks7NbV2xQm6P");
+    body["status"] = json!("blocked");
+    body["error"] = json!("Usage credit required");
+    body["errorCode"] = json!("usage_credit_required");
+    Mock::given(method("GET"))
+        .and(path(
+            "/v1/tasks/tk_6Wq3Hn8ZpL2vRt5C/runs/tr_9Jd4Ks7NbV2xQm6P",
+        ))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+
+    let run = client
+        .tasks()
+        .get_run("tk_6Wq3Hn8ZpL2vRt5C", "tr_9Jd4Ks7NbV2xQm6P")
+        .await
+        .unwrap();
+
+    assert_eq!(run.status, TaskRunStatus::Blocked);
+    assert_eq!(run.error_code, Some(ErrorCode::UsageCreditRequired));
+}
+
+#[tokio::test]
 async fn unknown_enums_decode_as_unrecognized() {
     let (server, client) = mock().await;
     let mut body = task("tk_6Wq3Hn8ZpL2vRt5C");
@@ -454,6 +481,7 @@ async fn get_run_decodes_every_field() {
     assert_eq!(run.turn_id, Some(TurnId::from("turn_3Xp6Mv9QdB1sKe4H")));
     assert_eq!(run.status, TaskRunStatus::Succeeded);
     assert_eq!(run.error, None);
+    assert_eq!(run.error_code, None);
     assert_eq!(run.user_id, "");
     assert_eq!(run.metadata.get("team"), Some(&json!("support")));
     assert_eq!(

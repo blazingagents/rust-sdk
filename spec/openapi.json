@@ -6969,431 +6969,7 @@
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "pattern": "^tr_[0-9A-Za-z]{16}$"
-                },
-                "taskId": {
-                  "type": "string",
-                  "pattern": "^tk_[0-9A-Za-z]{16}$"
-                },
-                "tenantId": {
-                  "type": "string",
-                  "pattern": "^ten_[0-9A-Za-z]{16}$"
-                },
-                "agentId": {
-                  "type": "string",
-                  "pattern": "^ag_[0-9A-Za-z]{16}$"
-                },
-                "agentConfig": {
-                  "type": "object",
-                  "properties": {
-                    "approvalInChat": {
-                      "type": "object",
-                      "properties": {
-                        "default": {
-                          "type": "string",
-                          "enum": [
-                            "full",
-                            "deny",
-                            "manual",
-                            "auto"
-                          ]
-                        },
-                        "overrides": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "tool": {
-                                "oneOf": [
-                                  {
-                                    "type": "object",
-                                    "properties": {
-                                      "type": {
-                                        "type": "string",
-                                        "enum": [
-                                          "builtin"
-                                        ]
-                                      },
-                                      "name": {
-                                        "type": "string",
-                                        "enum": [
-                                          "read",
-                                          "write",
-                                          "edit",
-                                          "grep",
-                                          "glob",
-                                          "bash",
-                                          "publish_artifacts",
-                                          "write_todos",
-                                          "save_memory",
-                                          "get_memory",
-                                          "search_memories",
-                                          "update_memory",
-                                          "delete_memory",
-                                          "web_search",
-                                          "activate_skill"
-                                        ]
-                                      }
-                                    },
-                                    "required": [
-                                      "type",
-                                      "name"
-                                    ],
-                                    "additionalProperties": false
-                                  },
-                                  {
-                                    "type": "object",
-                                    "properties": {
-                                      "type": {
-                                        "type": "string",
-                                        "enum": [
-                                          "mcp"
-                                        ]
-                                      },
-                                      "connectionId": {
-                                        "type": "string",
-                                        "pattern": "^mcp_[0-9A-Za-z]{16}$"
-                                      },
-                                      "name": {
-                                        "type": "string",
-                                        "minLength": 1
-                                      }
-                                    },
-                                    "required": [
-                                      "type",
-                                      "connectionId",
-                                      "name"
-                                    ],
-                                    "additionalProperties": false
-                                  }
-                                ]
-                              },
-                              "decision": {
-                                "type": "string",
-                                "enum": [
-                                  "full",
-                                  "deny",
-                                  "manual",
-                                  "auto"
-                                ]
-                              }
-                            },
-                            "required": [
-                              "tool",
-                              "decision"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "default": []
-                        }
-                      },
-                      "default": {
-                        "default": "full",
-                        "overrides": []
-                      },
-                      "required": [
-                        "default"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "approvalInTasks": {
-                      "type": "object",
-                      "properties": {
-                        "default": {
-                          "type": "string",
-                          "enum": [
-                            "full",
-                            "deny",
-                            "manual",
-                            "auto"
-                          ]
-                        },
-                        "overrides": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "tool": {
-                                "oneOf": [
-                                  {
-                                    "type": "object",
-                                    "properties": {
-                                      "type": {
-                                        "type": "string",
-                                        "enum": [
-                                          "builtin"
-                                        ]
-                                      },
-                                      "name": {
-                                        "type": "string",
-                                        "enum": [
-                                          "read",
-                                          "write",
-                                          "edit",
-                                          "grep",
-                                          "glob",
-                                          "bash",
-                                          "publish_artifacts",
-                                          "write_todos",
-                                          "save_memory",
-                                          "get_memory",
-                                          "search_memories",
-                                          "update_memory",
-                                          "delete_memory",
-                                          "web_search",
-                                          "activate_skill"
-                                        ]
-                                      }
-                                    },
-                                    "required": [
-                                      "type",
-                                      "name"
-                                    ],
-                                    "additionalProperties": false
-                                  },
-                                  {
-                                    "type": "object",
-                                    "properties": {
-                                      "type": {
-                                        "type": "string",
-                                        "enum": [
-                                          "mcp"
-                                        ]
-                                      },
-                                      "connectionId": {
-                                        "type": "string",
-                                        "pattern": "^mcp_[0-9A-Za-z]{16}$"
-                                      },
-                                      "name": {
-                                        "type": "string",
-                                        "minLength": 1
-                                      }
-                                    },
-                                    "required": [
-                                      "type",
-                                      "connectionId",
-                                      "name"
-                                    ],
-                                    "additionalProperties": false
-                                  }
-                                ]
-                              },
-                              "decision": {
-                                "type": "string",
-                                "enum": [
-                                  "full",
-                                  "deny",
-                                  "manual",
-                                  "auto"
-                                ]
-                              }
-                            },
-                            "required": [
-                              "tool",
-                              "decision"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "default": []
-                        }
-                      },
-                      "default": {
-                        "default": "full",
-                        "overrides": []
-                      },
-                      "required": [
-                        "default"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "name": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 80
-                    },
-                    "model": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
-                      "minLength": 1
-                    },
-                    "thinkingLevel": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
-                      "minLength": 1
-                    },
-                    "providerId": {
-                      "type": [
-                        "string",
-                        "null"
-                      ],
-                      "pattern": "^prv_[0-9A-Za-z]{16}$"
-                    },
-                    "autoCompaction": {
-                      "type": "boolean"
-                    },
-                    "compactionReserveTokens": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "maximum": 9007199254740991
-                    },
-                    "memoryInjectionEnabled": {
-                      "type": "boolean"
-                    },
-                    "tools": {
-                      "type": "array",
-                      "items": {
-                        "type": "string",
-                        "enum": [
-                          "read",
-                          "write",
-                          "edit",
-                          "grep",
-                          "glob",
-                          "bash",
-                          "publish_artifacts",
-                          "write_todos",
-                          "save_memory",
-                          "get_memory",
-                          "search_memories",
-                          "update_memory",
-                          "delete_memory",
-                          "web_search"
-                        ]
-                      }
-                    },
-                    "instructions": {
-                      "type": "string",
-                      "maxLength": 3000
-                    },
-                    "metadata": {
-                      "type": "object",
-                      "additionalProperties": {}
-                    },
-                    "mcpConnectionIds": {
-                      "type": "array",
-                      "items": {
-                        "type": "string",
-                        "pattern": "^mcp_[0-9A-Za-z]{16}$"
-                      },
-                      "maxItems": 10
-                    }
-                  },
-                  "required": [
-                    "name",
-                    "model",
-                    "thinkingLevel",
-                    "providerId",
-                    "autoCompaction",
-                    "compactionReserveTokens",
-                    "memoryInjectionEnabled",
-                    "tools",
-                    "instructions",
-                    "metadata",
-                    "mcpConnectionIds"
-                  ]
-                },
-                "sessionId": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "pattern": "^ss_[0-9A-Za-z]{16}$"
-                },
-                "turnId": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "pattern": "^turn_[0-9A-Za-z]{16}$"
-                },
-                "status": {
-                  "type": "string",
-                  "enum": [
-                    "queued",
-                    "running",
-                    "blocked",
-                    "succeeded",
-                    "failed",
-                    "canceled"
-                  ]
-                },
-                "error": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "userId": {
-                  "type": "string"
-                },
-                "metadata": {
-                  "type": "object",
-                  "additionalProperties": {}
-                },
-                "startedAt": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "format": "date-time"
-                },
-                "finishedAt": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "format": "date-time"
-                },
-                "cancelRequestedAt": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "format": "date-time"
-                },
-                "canceledAt": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "format": "date-time"
-                },
-                "createdAt": {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                "updatedAt": {
-                  "type": "string",
-                  "format": "date-time"
-                }
-              },
-              "required": [
-                "id",
-                "taskId",
-                "tenantId",
-                "agentId",
-                "agentConfig",
-                "sessionId",
-                "turnId",
-                "status",
-                "error",
-                "userId",
-                "metadata",
-                "startedAt",
-                "finishedAt",
-                "cancelRequestedAt",
-                "canceledAt",
-                "createdAt",
-                "updatedAt"
-              ]
+              "$ref": "#/components/schemas/TaskRun"
             }
           },
           "nextCursor": {
@@ -7813,6 +7389,99 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "errorCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "invalid_request",
+              "idempotency_conflict",
+              "input_idempotency_conflict",
+              "steer_not_available",
+              "validation_failed",
+              "unauthorized",
+              "not_found",
+              "quota_exceeded",
+              "model_spending_limit_exceeded",
+              "subscription_required",
+              "usage_credit_required",
+              "rate_limited",
+              "internal",
+              "service_unavailable",
+              "checkout_evidence_mismatch",
+              "agent_disabled",
+              "admin_agent_managed",
+              "agent_mcp_connection_not_found",
+              "agent_mcp_connections_invalid",
+              "provider_required",
+              "api_key_limit_reached",
+              "artifact_session_cap_reached",
+              "invalid_cursor",
+              "message_not_found",
+              "prompt_variable_missing",
+              "prompt_variable_unknown",
+              "provider_in_use",
+              "provider_historical_use",
+              "provider_limit_reached",
+              "provider_name_conflict",
+              "provider_not_found",
+              "model_discovery_unsupported",
+              "model_not_found",
+              "model_validation_unavailable",
+              "mcp_connection_limit_reached",
+              "mcp_connection_name_conflict",
+              "mcp_connection_stale_credential_version",
+              "mcp_connection_invalid",
+              "mcp_connection_authentication_failed",
+              "mcp_connection_in_use",
+              "mcp_connection_unreachable",
+              "mcp_connection_discovery_failed",
+              "workspace_not_found",
+              "workspace_in_use",
+              "workspace_busy",
+              "session_busy",
+              "session_turn_unresponsive",
+              "session_fork_unavailable",
+              "session_fork_deleted",
+              "message_id_conflict",
+              "session_version_mismatch",
+              "tool_approval_continuation_settled",
+              "tool_approval_decision_conflict",
+              "function_call_conflict",
+              "skill_invalid_archive",
+              "skill_invalid_markdown",
+              "skill_limit_reached",
+              "skill_name_conflict",
+              "skill_not_found",
+              "skill_too_many_files",
+              "skill_uncompressed_too_large",
+              "task_active_run_exists",
+              "chat_webhook_conflict",
+              "chat_webhook_registration_failed",
+              "merchant_connection_not_found",
+              "merchant_credential_invalid",
+              "merchant_provider_unavailable",
+              "merchant_customer_not_found",
+              "merchant_binding_not_found",
+              "merchant_binding_required",
+              "merchant_account_mismatch",
+              "merchant_event_not_found",
+              "merchant_event_state_conflict",
+              "merchant_customer_unmapped",
+              "forbidden",
+              "insufficient_scope",
+              "merchant_subscription_required",
+              "merchant_balance_required",
+              "merchant_eligibility_unavailable",
+              "tenant_deleting",
+              "tenant_deletion_in_progress",
+              "tenant_deletion_not_ready",
+              "tenant_not_deleting",
+              null
+            ],
+            "description": "Machine-readable reason a run ended `blocked` or `failed`: one of the API error codes, such as `usage_credit_required`, `quota_exceeded` or `provider_required`. `null` for every other run, and for a failure without a code; `error` carries the message."
           }
         },
         "required": [
@@ -7832,7 +7501,8 @@
           "cancelRequestedAt",
           "canceledAt",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "errorCode"
         ]
       },
       "TaskRunMessageList": {
@@ -27647,6 +27317,7 @@
                       "turnId": "turn_3Xp6Mv9QdB1sKe4H",
                       "status": "succeeded",
                       "error": null,
+                      "errorCode": null,
                       "userId": "",
                       "metadata": {
                         "team": "support"
@@ -27746,7 +27417,7 @@
           "task-runs"
         ],
         "summary": "Get a task run",
-        "description": "Returns a task run's current state and the agent configuration captured when it was queued. `status` moves from `queued` to `running` and ends as `succeeded`, `failed`, `canceled`, or `blocked`. `blocked` means the run was not allowed to start, for example because a quota was reached or usage credit ran out; `error` says why. `error` also describes a failed run. `sessionId` and `turnId` stay `null` until the run starts its session, and a run that fails before starting, such as one whose saved agent configuration has no provider and model, never gets them. Every final status sets `finishedAt` and lets the task start another run.",
+        "description": "Returns a task run's current state and the agent configuration captured when it was queued. `status` moves from `queued` to `running` and ends as `succeeded`, `failed`, `canceled`, or `blocked`. `blocked` means the run was not allowed to start, for example because a quota was reached or usage credit ran out; `error` says why and `errorCode` names the reason as an API error code. `error` also describes a failed run, and `errorCode` is set when the failure has a code, such as `provider_required`. `sessionId` and `turnId` stay `null` until the run is admitted and starts its session, so a blocked run never gets them, nor does a run that fails before starting, such as one whose saved agent configuration has no provider and model. Every final status sets `finishedAt` and lets the task start another run.",
         "parameters": [
           {
             "schema": {
@@ -27813,6 +27484,7 @@
                   "turnId": "turn_3Xp6Mv9QdB1sKe4H",
                   "status": "succeeded",
                   "error": null,
+                  "errorCode": null,
                   "userId": "",
                   "metadata": {
                     "team": "support"
