@@ -10,6 +10,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod agent_tools;
 pub mod agents;
 pub mod artifacts;
 pub mod call;

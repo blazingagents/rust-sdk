@@ -1,9 +1,8 @@
 mod support;
 
 use blazing_agents::Error;
-use blazing_agents::agents::{
-    AgentStatus, AgentTool, ApprovalDecision, BuiltinToolName, ToolReference,
-};
+use blazing_agents::agent_tools::BuiltinToolName;
+use blazing_agents::agents::{AgentStatus, AgentTool, ApprovalDecision, ToolReference};
 use blazing_agents::ids::TurnId;
 use blazing_agents::messages::{UserMessage, UserPart};
 use blazing_agents::pagination::Cursor;

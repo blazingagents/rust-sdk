@@ -1,9 +1,9 @@
 mod support;
 
 use blazing_agents::Error;
+use blazing_agents::agent_tools::BuiltinToolName;
 use blazing_agents::agents::{
-    AgentConfig, AgentStatus, AgentTool, ApprovalDecision, ApprovalPolicy, BuiltinToolName,
-    ToolReference,
+    AgentConfig, AgentStatus, AgentTool, ApprovalDecision, ApprovalPolicy, ToolReference,
 };
 use blazing_agents::error::ErrorCode;
 use blazing_agents::files::Upload;
