@@ -726,8 +726,7 @@
                 },
                 "required": [
                   "platform"
-                ],
-                "additionalProperties": false
+                ]
               },
               {
                 "type": "object",
@@ -754,8 +753,7 @@
                 },
                 "required": [
                   "platform"
-                ],
-                "additionalProperties": false
+                ]
               }
             ]
           },
@@ -786,8 +784,7 @@
               "botUserId",
               "teamId",
               "appId"
-            ],
-            "additionalProperties": false
+            ]
           },
           "health": {
             "type": "object",
@@ -824,8 +821,7 @@
                   "required": [
                     "code",
                     "status"
-                  ],
-                  "additionalProperties": false
+                  ]
                 }
               }
             },
@@ -834,8 +830,7 @@
               "tokenValid",
               "identityVerified",
               "checks"
-            ],
-            "additionalProperties": false
+            ]
           },
           "credentialFragment": {
             "type": "string",
@@ -871,8 +866,7 @@
           "createdAt",
           "updatedAt",
           "webhookUrl"
-        ],
-        "additionalProperties": false
+        ]
       },
       "ChatConnectionList": {
         "type": "object",
@@ -886,8 +880,7 @@
         },
         "required": [
           "chatConnections"
-        ],
-        "additionalProperties": false
+        ]
       },
       "ChatDeliveryList": {
         "type": "object",
@@ -908,8 +901,7 @@
         "required": [
           "data",
           "nextCursor"
-        ],
-        "additionalProperties": false
+        ]
       },
       "ChatDelivery": {
         "type": "object",
@@ -991,8 +983,7 @@
           "threadId",
           "createdAt",
           "updatedAt"
-        ],
-        "additionalProperties": false
+        ]
       },
       "TenantChatDeliveryList": {
         "type": "object",
@@ -1013,8 +1004,7 @@
         "required": [
           "data",
           "nextCursor"
-        ],
-        "additionalProperties": false
+        ]
       },
       "TenantChatDelivery": {
         "type": "object",
@@ -1162,8 +1152,7 @@
           "kind",
           "status",
           "attempt"
-        ],
-        "additionalProperties": false
+        ]
       },
       "TenantSettings": {
         "type": "object",
@@ -1830,8 +1819,7 @@
         },
         "required": [
           "authorizationUrl"
-        ],
-        "additionalProperties": false
+        ]
       },
       "McpConnectionList": {
         "type": "object",
@@ -2060,8 +2048,7 @@
             "required": [
               "status",
               "connection"
-            ],
-            "additionalProperties": false
+            ]
           },
           {
             "type": "object",
@@ -2079,8 +2066,7 @@
             "required": [
               "status",
               "connection"
-            ],
-            "additionalProperties": false
+            ]
           }
         ]
       },
@@ -2461,8 +2447,7 @@
         "required": [
           "data",
           "nextCursor"
-        ],
-        "additionalProperties": false
+        ]
       },
       "McpAttachmentList": {
         "type": "object",
@@ -3339,8 +3324,7 @@
             "required": [
               "sessionId",
               "messageId"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "required": [
@@ -3353,8 +3337,7 @@
           "updatedAt",
           "agentConfig",
           "forkedFrom"
-        ],
-        "additionalProperties": false
+        ]
       },
       "SessionMessageList": {
         "type": "object",
@@ -3600,8 +3583,7 @@
             "required": [
               "id",
               "state"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "required": [
@@ -4951,8 +4933,7 @@
           "metadata",
           "createdAt",
           "updatedAt"
-        ],
-        "additionalProperties": false
+        ]
       },
       "PromptList": {
         "type": "object",
@@ -4973,8 +4954,7 @@
         "required": [
           "data",
           "nextCursor"
-        ],
-        "additionalProperties": false
+        ]
       },
       "MerchantConnectionResponse": {
         "type": "object",
@@ -5072,14 +5052,12 @@
               "configVersion",
               "createdAt",
               "updatedAt"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "required": [
           "connection"
-        ],
-        "additionalProperties": false
+        ]
       },
       "MerchantConnectionCreate": {
         "type": "object",
@@ -5222,8 +5200,7 @@
                 "customerId",
                 "createdAt",
                 "updatedAt"
-              ],
-              "additionalProperties": false
+              ]
             }
           },
           "nextCursor": {
@@ -5236,8 +5213,7 @@
         "required": [
           "bindings",
           "nextCursor"
-        ],
-        "additionalProperties": false
+        ]
       },
       "MerchantBindingResponse": {
         "type": "object",
@@ -5267,14 +5243,12 @@
               "customerId",
               "createdAt",
               "updatedAt"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "required": [
           "binding"
-        ],
-        "additionalProperties": false
+        ]
       },
       "MerchantBindingUpsert": {
         "type": "object",
@@ -5479,8 +5453,7 @@
                 "acceptedAt",
                 "workflowIssue",
                 "nextAction"
-              ],
-              "additionalProperties": false
+              ]
             }
           },
           "nextCursor": {
@@ -5493,8 +5466,7 @@
         "required": [
           "events",
           "nextCursor"
-        ],
-        "additionalProperties": false
+        ]
       },
       "MerchantUsageSummary": {
         "type": "object",
@@ -5607,8 +5579,7 @@
         },
         "required": [
           "summary"
-        ],
-        "additionalProperties": false
+        ]
       },
       "MerchantUsageEventResponse": {
         "type": "object",
@@ -5797,14 +5768,12 @@
               "acceptedAt",
               "workflowIssue",
               "nextAction"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "required": [
           "event"
-        ],
-        "additionalProperties": false
+        ]
       },
       "Usage": {
         "type": "object",
