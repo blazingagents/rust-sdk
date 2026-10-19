@@ -9037,6 +9037,7 @@
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "createChatConnection",
         "tags": [
           "chat-connections"
@@ -9344,6 +9345,7 @@
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "listChatConnections",
         "tags": [
           "chat-connections"
@@ -9467,6 +9469,7 @@
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "listChatDeliveries",
         "tags": [
           "chat-connections"
@@ -9621,6 +9624,7 @@
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "listTenantChatDeliveries",
         "tags": [
           "chat-connections"
@@ -9778,6 +9782,7 @@
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "repairChatDelivery",
         "tags": [
           "chat-connections"
@@ -9945,6 +9950,7 @@
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "getChatConnection",
         "tags": [
           "chat-connections"
@@ -10089,6 +10095,7 @@
       "patch": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "renameChatConnection",
         "tags": [
           "chat-connections"
@@ -10308,6 +10315,7 @@
       "delete": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "deleteChatConnection",
         "tags": [
           "chat-connections"
@@ -10405,6 +10413,7 @@
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "rotateChatCredentials",
         "tags": [
           "chat-connections"
@@ -10645,6 +10654,7 @@
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "checkChatHealth",
         "tags": [
           "chat-connections"
@@ -10792,6 +10802,7 @@
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "disableChatConnection",
         "tags": [
           "chat-connections"
@@ -10939,6 +10950,7 @@
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "enableChatConnection",
         "tags": [
           "chat-connections"
@@ -11597,6 +11609,7 @@
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "createProvider",
         "tags": [
           "providers"
@@ -11763,6 +11776,7 @@
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "listProviders",
         "tags": [
           "providers"
@@ -11850,6 +11864,7 @@
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "listProviderModels",
         "tags": [
           "providers"
@@ -11986,6 +12001,7 @@
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "listThinkingLevels",
         "tags": [
           "providers"
@@ -12110,6 +12126,7 @@
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "getProvider",
         "tags": [
           "providers"
@@ -12220,6 +12237,7 @@
       "patch": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "updateProvider",
         "tags": [
           "providers"
@@ -12369,6 +12387,7 @@
       "delete": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "deleteProvider",
         "tags": [
           "providers"
@@ -13355,6 +13374,7 @@
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "createMcpConnection",
         "tags": [
           "mcp-connections"
@@ -13652,6 +13672,7 @@
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "listMcpConnections",
         "tags": [
           "mcp-connections"
@@ -13816,6 +13837,7 @@
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "testMcpConnection",
         "tags": [
           "mcp-connections"
@@ -13933,6 +13955,7 @@
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "reconnectMcpConnection",
         "tags": [
           "mcp-connections"
@@ -14231,6 +14254,7 @@
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "getMcpConnection",
         "tags": [
           "mcp-connections"
@@ -14346,6 +14370,7 @@
       "patch": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "updateMcpConnection",
         "tags": [
           "mcp-connections"
@@ -14497,6 +14522,7 @@
       "delete": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "deleteMcpConnection",
         "tags": [
           "mcp-connections"
@@ -23814,6 +23840,7 @@
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "getMerchantConnection",
         "tags": [
           "merchant"
@@ -23906,6 +23933,7 @@
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "createMerchantConnection",
         "tags": [
           "merchant"
@@ -24041,6 +24069,7 @@
       "patch": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "updateMerchantConnection",
         "tags": [
           "merchant"
@@ -24208,6 +24237,7 @@
       "delete": {
         "x-access": "write",
         "x-scope": "tenant",
+        "x-credential-bearing": true,
         "operationId": "retireMerchantConnection",
         "tags": [
           "merchant"
@@ -28345,5 +28375,158 @@
         }
       }
     }
+  },
+  "x-agent-tools": {
+    "tags": [
+      "files",
+      "planning",
+      "memory",
+      "web",
+      "file_read",
+      "file_write",
+      "execute"
+    ],
+    "groups": [
+      {
+        "tag": "files",
+        "name": "File operations",
+        "description": "Read, write, edit, search, and run shell commands in the attached Workspace."
+      },
+      {
+        "tag": "planning",
+        "name": "Task planning",
+        "description": "Create and manage a structured todo list to plan and track multi-step work."
+      },
+      {
+        "tag": "memory",
+        "name": "Memory",
+        "description": "Save, recall, search, update, and delete durable notes owned by this Agent."
+      },
+      {
+        "tag": "web",
+        "name": "Web",
+        "description": "Search the public web for current information."
+      }
+    ],
+    "tools": [
+      {
+        "name": "read",
+        "description": "Read a file from the Workspace.",
+        "requiresWorkspace": true,
+        "tags": [
+          "files",
+          "file_read"
+        ]
+      },
+      {
+        "name": "write",
+        "description": "Create or overwrite a file in the Workspace.",
+        "requiresWorkspace": true,
+        "tags": [
+          "files",
+          "file_write"
+        ]
+      },
+      {
+        "name": "edit",
+        "description": "Replace exact text in a Workspace file.",
+        "requiresWorkspace": true,
+        "tags": [
+          "files",
+          "file_write"
+        ]
+      },
+      {
+        "name": "grep",
+        "description": "Search Workspace file contents with a regular expression.",
+        "requiresWorkspace": true,
+        "tags": [
+          "files",
+          "file_read"
+        ]
+      },
+      {
+        "name": "glob",
+        "description": "Find Workspace files by path pattern.",
+        "requiresWorkspace": true,
+        "tags": [
+          "files",
+          "file_read"
+        ]
+      },
+      {
+        "name": "bash",
+        "description": "Run shell commands in the Workspace.",
+        "requiresWorkspace": true,
+        "tags": [
+          "files",
+          "execute"
+        ]
+      },
+      {
+        "name": "publish_artifacts",
+        "description": "Publish Workspace files as downloadable Artifacts.",
+        "requiresWorkspace": true,
+        "tags": [
+          "files"
+        ]
+      },
+      {
+        "name": "write_todos",
+        "description": "Plan and track multi-step work with a todo list.",
+        "requiresWorkspace": false,
+        "tags": [
+          "planning"
+        ]
+      },
+      {
+        "name": "save_memory",
+        "description": "Save a durable note.",
+        "requiresWorkspace": false,
+        "tags": [
+          "memory"
+        ]
+      },
+      {
+        "name": "get_memory",
+        "description": "Read one saved note.",
+        "requiresWorkspace": false,
+        "tags": [
+          "memory"
+        ]
+      },
+      {
+        "name": "search_memories",
+        "description": "Search saved notes.",
+        "requiresWorkspace": false,
+        "tags": [
+          "memory"
+        ]
+      },
+      {
+        "name": "update_memory",
+        "description": "Update a saved note.",
+        "requiresWorkspace": false,
+        "tags": [
+          "memory"
+        ]
+      },
+      {
+        "name": "delete_memory",
+        "description": "Delete a saved note.",
+        "requiresWorkspace": false,
+        "tags": [
+          "memory"
+        ]
+      },
+      {
+        "name": "web_search",
+        "description": "Search the public web for current results. Each search consumes Usage credit.",
+        "requiresWorkspace": false,
+        "tags": [
+          "web"
+        ]
+      }
+    ]
   }
 }
