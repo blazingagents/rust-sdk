@@ -408,7 +408,7 @@ impl fmt::Debug for McpReconnect {
 /// Request state of [`McpConnections::list`].
 #[derive(Clone, Debug)]
 pub struct ListMcpConnections;
-impl_request!(ListMcpConnections => McpConnectionList; encode = none; decode = credential_safe_json);
+impl_request!(ListMcpConnections => McpConnectionList; encode = none; decode = json);
 
 /// Request state of [`McpConnections::create`].
 #[derive(Clone, Debug, Serialize)]
@@ -416,13 +416,13 @@ impl_request!(ListMcpConnections => McpConnectionList; encode = none; decode = c
 pub struct CreateMcpConnection {
     connection: NewMcpConnection,
 }
-impl_request!(CreateMcpConnection => McpConnection; encode = json; decode = credential_safe_json;
+impl_request!(CreateMcpConnection => McpConnection; encode = json; decode = json;
     sensitive = (|request: &Self| request.connection.secrets()));
 
 /// Request state of [`McpConnections::get`].
 #[derive(Clone, Debug)]
 pub struct GetMcpConnection;
-impl_request!(GetMcpConnection => McpConnection; encode = none; decode = credential_safe_json);
+impl_request!(GetMcpConnection => McpConnection; encode = none; decode = json);
 
 /// Request state of [`McpConnections::update`].
 #[derive(Clone, Debug, Serialize)]
@@ -430,7 +430,7 @@ impl_request!(GetMcpConnection => McpConnection; encode = none; decode = credent
 pub struct UpdateMcpConnection {
     name: String,
 }
-impl_request!(UpdateMcpConnection => McpConnection; encode = json; decode = credential_safe_json);
+impl_request!(UpdateMcpConnection => McpConnection; encode = json; decode = json);
 
 /// Request state of [`McpConnections::delete`].
 #[derive(Clone, Debug)]
@@ -440,7 +440,7 @@ impl_request!(DeleteMcpConnection => (); encode = none; decode = none);
 /// Request state of [`McpConnections::test`].
 #[derive(Clone, Debug)]
 pub struct TestMcpConnection;
-impl_request!(TestMcpConnection => McpConnectionTest; encode = none; decode = credential_safe_json);
+impl_request!(TestMcpConnection => McpConnectionTest; encode = none; decode = json);
 
 /// Request state of [`McpConnections::reconnect`].
 #[derive(Clone, Debug, Serialize)]
@@ -448,7 +448,7 @@ impl_request!(TestMcpConnection => McpConnectionTest; encode = none; decode = cr
 pub struct ReconnectMcpConnection {
     auth: McpReconnect,
 }
-impl_request!(ReconnectMcpConnection => McpConnectionReconnectResult; encode = json; decode = credential_safe_json;
+impl_request!(ReconnectMcpConnection => McpConnectionReconnectResult; encode = json; decode = json;
     sensitive = (|request: &Self| request.auth.secrets()));
 
 /// An MCP connection. Its secrets are never returned.

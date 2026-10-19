@@ -1,23 +1,18 @@
-use std::path::PathBuf;
-
-use blazing_agents::agents::{
+use blazing_agents::agent_tools::{
     AGENT_TOOL_GROUPS, AGENT_TOOLS, AgentToolFileAccessTag, AgentToolGroupTag,
 };
 use serde_json::{Value, json};
 
-fn typescript_catalog() -> Value {
-    let path = std::env::var_os("AGENT_TOOLS_JSON").map_or_else(
-        || PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../typescript-sdk/agent-tools.json"),
-        PathBuf::from,
-    );
-    let text = std::fs::read_to_string(&path)
-        .unwrap_or_else(|error| panic!("read {}: {error}", path.display()));
-    serde_json::from_str(&text).expect("agent-tools.json is JSON")
+fn spec_catalog() -> Value {
+    let text = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/spec/openapi.json"))
+        .expect("the vendored spec is readable");
+    let spec: Value = serde_json::from_str(&text).expect("the vendored spec is JSON");
+    spec["x-agent-tools"].clone()
 }
 
 #[test]
-fn catalog_matches_the_typescript_sdk() {
-    let catalog = typescript_catalog();
+fn catalog_matches_the_vendored_spec() {
+    let catalog = spec_catalog();
     let groups: Vec<Value> = AGENT_TOOL_GROUPS
         .iter()
         .map(|group| {

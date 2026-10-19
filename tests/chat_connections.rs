@@ -811,6 +811,52 @@ async fn a_response_that_echoes_credentials_fails_the_call() {
 }
 
 #[tokio::test]
+async fn delivery_lists_are_credential_bearing_so_an_echoed_token_fails_the_call() {
+    let (server, client) = mock().await;
+    let mut leaked = delivery("cd_1");
+    leaked["botToken"] = json!("xoxb-leaked");
+    let page = json!({ "data": [leaked], "nextCursor": null });
+    Mock::given(method("GET"))
+        .and(path("/v1/chat-connections/cc_1/deliveries"))
+        .respond_with(json(200, page.clone()))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/v1/chat-deliveries"))
+        .respond_with(json(200, page))
+        .mount(&server)
+        .await;
+
+    let connection = client
+        .chat_connections()
+        .deliveries("cc_1")
+        .await
+        .unwrap_err();
+    let tenant = client.chat_deliveries().list().await.unwrap_err();
+
+    assert!(
+        matches!(
+            connection,
+            Error::CredentialEcho {
+                operation_id: "listChatDeliveries",
+                ..
+            }
+        ),
+        "{connection:?}"
+    );
+    assert!(
+        matches!(
+            tenant,
+            Error::CredentialEcho {
+                operation_id: "listTenantChatDeliveries",
+                ..
+            }
+        ),
+        "{tenant:?}"
+    );
+}
+
+#[tokio::test]
 async fn a_create_response_that_echoes_the_token_fails_the_call() {
     let (server, client) = mock().await;
     let mut body = chat_connection("cc_1");

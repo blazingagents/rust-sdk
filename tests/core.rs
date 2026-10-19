@@ -134,6 +134,22 @@ async fn a_credential_echo_reports_the_operation_and_request_id() {
 }
 
 #[tokio::test]
+async fn an_operation_the_spec_does_not_mark_credential_bearing_decodes_a_credential_field() {
+    let (server, client) = mock().await;
+    let mut body = prompt("prompt_1");
+    body["apiKey"] = json!("not-a-secret-here");
+    Mock::given(method("GET"))
+        .and(path("/v1/prompts/prompt_1"))
+        .respond_with(json(200, body))
+        .mount(&server)
+        .await;
+
+    let prompt = client.prompts().get("prompt_1").await.unwrap();
+
+    assert_eq!(prompt.id.as_str(), "prompt_1");
+}
+
+#[tokio::test]
 async fn pages_yields_each_page_and_ends_after_the_last() {
     let (server, client) = mock().await;
     Mock::given(method("GET"))

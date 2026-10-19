@@ -127,6 +127,7 @@ pub(crate) async fn send<R: Request>(call: Call<R>) -> Result<WithMeta<R::Output
         meta: meta.clone(),
         sensitive,
         operation_id: route.op_id,
+        credential_bearing: route.credential_bearing,
         handle: handle.clone(),
         options: raw_options,
     };
@@ -439,35 +440,30 @@ impl Raw {
             .map_err(|error| read_error(meta, error))
     }
 
-    pub(crate) async fn json<T: DeserializeOwned>(self) -> Result<T> {
+    /// Decodes the JSON body. For a credential-bearing operation, first checks
+    /// that the body carries no credential field and echoes no submitted secret.
+    pub(crate) async fn json<T: DeserializeOwned>(mut self) -> Result<T> {
         let operation_id = self.operation_id;
         let request_id = self.meta.request_id.clone();
+        let credential_bearing = self.credential_bearing;
+        let sensitive = std::mem::take(&mut self.sensitive);
         let bytes = self.bytes().await?;
-        serde_json::from_slice(&bytes).map_err(|source| Error::Decode {
+        let decode_error = |source| Error::Decode {
             operation_id,
-            request_id,
+            request_id: request_id.clone(),
             source,
-        })
-    }
-
-    /// Decodes JSON after checking that the body carries no credential field and
-    /// echoes no submitted secret.
-    pub(crate) async fn credential_safe_json<T: DeserializeOwned>(self) -> Result<T> {
-        let operation_id = self.operation_id;
-        let request_id = self.meta.request_id.clone();
-        let sensitive = self.sensitive.clone();
-        let value: Value = self.json().await?;
+        };
+        if !credential_bearing {
+            return serde_json::from_slice(&bytes).map_err(decode_error);
+        }
+        let value: Value = serde_json::from_slice(&bytes).map_err(decode_error)?;
         if contains_credential_material(&value, &sensitive) {
             return Err(Error::CredentialEcho {
                 operation_id,
                 request_id,
             });
         }
-        serde_json::from_value(value).map_err(|source| Error::Decode {
-            operation_id,
-            request_id,
-            source,
-        })
+        serde_json::from_value(value).map_err(decode_error)
     }
 
     pub(crate) async fn download(self) -> Result<Download> {

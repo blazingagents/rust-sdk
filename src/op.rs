@@ -364,6 +364,10 @@ impl Operation for Op<'_> {
         }
     }
 
+    fn credential_bearing(self) -> bool {
+        false
+    }
+
     fn path(self) -> Result<String, &'static str> {
         match self {
             Op::ListAgents => Ok(String::from("/v1/agents")),
@@ -867,6 +871,42 @@ impl Operation for TenantOp<'_> {
             TenantOp::UpdateTenantSpendingLimit => "PUT",
             TenantOp::GetUsageOverview => "GET",
         }
+    }
+
+    fn credential_bearing(self) -> bool {
+        matches!(
+            self,
+            TenantOp::ListChatConnections
+                | TenantOp::CreateChatConnection
+                | TenantOp::DeleteChatConnection { .. }
+                | TenantOp::GetChatConnection { .. }
+                | TenantOp::RenameChatConnection { .. }
+                | TenantOp::RotateChatCredentials { .. }
+                | TenantOp::ListChatDeliveries { .. }
+                | TenantOp::RepairChatDelivery { .. }
+                | TenantOp::DisableChatConnection { .. }
+                | TenantOp::EnableChatConnection { .. }
+                | TenantOp::CheckChatHealth { .. }
+                | TenantOp::ListTenantChatDeliveries
+                | TenantOp::ListMcpConnections
+                | TenantOp::CreateMcpConnection
+                | TenantOp::DeleteMcpConnection { .. }
+                | TenantOp::GetMcpConnection { .. }
+                | TenantOp::UpdateMcpConnection { .. }
+                | TenantOp::ReconnectMcpConnection { .. }
+                | TenantOp::TestMcpConnection { .. }
+                | TenantOp::RetireMerchantConnection
+                | TenantOp::GetMerchantConnection
+                | TenantOp::UpdateMerchantConnection
+                | TenantOp::CreateMerchantConnection
+                | TenantOp::ListProviders
+                | TenantOp::CreateProvider
+                | TenantOp::DeleteProvider { .. }
+                | TenantOp::GetProvider { .. }
+                | TenantOp::UpdateProvider { .. }
+                | TenantOp::ListProviderModels { .. }
+                | TenantOp::ListThinkingLevels { .. }
+        )
     }
 
     fn path(self) -> Result<String, &'static str> {
