@@ -1,0 +1,6 @@
+# Response properties the SDK models do not read, checked by tests/spec_fields.rs.
+# One per line: `Schema.property: reason`, or `operationId: reason` to skip an
+# operation that has no public method.
+
+claimChatFunctionCall: sent only inside a chat stream's function runner, which reads `claimed`
+resolveChatFunctionCall: sent only inside a chat stream's function runner, which reads `accepted`
