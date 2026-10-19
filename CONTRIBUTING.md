@@ -8,8 +8,8 @@
 | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | Lints; warnings fail |
 | `cargo cov` | Unit and integration tests under coverage (an alias for `cargo llvm-cov` in `.cargo/config.toml`); fails under 99% of lines or of functions. Needs `cargo install cargo-llvm-cov` and `rustup component add llvm-tools-preview` |
 | `cargo test --workspace --doc` | Doc tests, which `cargo cov` does not run |
-| `cargo xtask spec --check` | Fails when `src/op.rs` or `src/error/code.rs` differ from what `spec/openapi.json` generates, or when an end-user `Op` is constructed in a tenant-only `impl` block |
-| `cargo xtask spec` | Regenerates those two files |
+| `cargo xtask spec --check` | Fails when `src/op.rs`, `src/error/code.rs` or `src/agent_tools.rs` differ from what `spec/openapi.json` generates, or when an end-user `Op` is constructed in a tenant-only `impl` block |
+| `cargo xtask spec` | Regenerates those three files |
 | `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps` | Rustdoc; broken links fail |
 | `cargo +1.85 test --workspace --locked` | The MSRV build |
 | `cargo test -p blazing-agents --no-default-features --features native-tls,schemars` | The OpenSSL build |
@@ -35,10 +35,13 @@ The exception is a guard that turns an SDK bug into an error instead of a
 wrong request, such as `Patch::Keep` refusing to serialize when a field lacks
 `skip_serializing_if`. Keep the guard and leave it untested.
 
-`tests/agent_tools.rs` checks the built-in tool catalog against
-`../typescript-sdk/agent-tools.json`, so `cargo cov` needs the TypeScript SDK
-checked out beside this repository, or `AGENT_TOOLS_JSON` set to that file's
-path.
+`tests/spec_fields.rs` checks that every property of every JSON response in
+`spec/openapi.json` maps to a model field. It sends a response with every
+property through each SDK method, then replaces one property at a time with a
+value of the wrong type: a modeled field fails the call, and an unmodeled one
+is reported. Add the field, or list the property in
+`tests/spec_field_omissions.txt` with the reason it is left out. A new
+operation with a JSON response needs an entry in the test's `methods()`.
 
 Coverage ignores only `xtask/`, the spec code generator, which runs at
 development time and is checked by `cargo xtask spec --check`. Generated
@@ -58,7 +61,11 @@ over `spec/openapi.json` and run `cargo xtask spec`.
   `#[deny(dead_code)]`. A method sends a request only by constructing a
   variant, so an operation without a method fails the build with
   `error: variant X is never constructed`. Never suppress that error; add the
-  method.
+  method. Each variant also reports whether the spec marks it
+  `x-credential-bearing`; the transport then refuses a JSON response that
+  carries a credential field or echoes a submitted secret.
+- `src/agent_tools.rs` is generated from the spec's `x-agent-tools`: the
+  built-in tool catalog and `BuiltinToolName`.
 - The scope is enforced by the send path. `Call::new` takes any `&Client<S>`
   and only an `Op`; `Call::tenant` takes `&Client<Tenant>` and only a
   `TenantOp`. A `TenantOp` in a generic `impl<S: Scope>` block, or an `Op`
@@ -76,7 +83,8 @@ over `spec/openapi.json` and run `cargo xtask spec`.
   `impl_request!` macro. `src/http.rs` is the transport. `src/patch.rs` holds
   the private `Patch<T>` used for nullable PATCH and PUT fields.
 - Generated and shared files (`Cargo.toml`, `Cargo.lock`, `src/lib.rs`,
-  `src/call.rs`, `src/client.rs`, `src/http.rs`, `src/op.rs`) change only in
+  `src/call.rs`, `src/client.rs`, `src/http.rs`, `src/op.rs`,
+  `src/agent_tools.rs`) change only in
   foundation work, never in a resource worker's PR.
 
 ## Filling in a resource module
@@ -102,8 +110,9 @@ over `spec/openapi.json` and run `cargo xtask spec`.
    argument. Lists get their own `limit` setter, because maximums differ.
 4. Credentials. A request that sends a secret passes
    `sensitive = (|request: &Self| vec![request.secret.clone()])` to
-   `impl_request!`, so errors redact it. A response that must never carry a
-   credential decodes with `decode = credential_safe_json`.
+   `impl_request!`, so errors redact it. Whether a response is checked for an
+   echoed credential comes from the spec's `x-credential-bearing`, not from
+   the module.
 5. Pages whose shape is not `{ data, nextCursor }` implement `Paginated` in
    the module. A list that accepts `cursor` or `after` stores one position
    and keeps the direction in `set_cursor`.
@@ -123,7 +132,7 @@ Done means every command in the table passes and
 
 - Never write `allow(dead_code)` or `expect(dead_code)` under `src/`. The
   dead-code lint is the coverage gate.
-- Never hand-edit `src/op.rs` or `src/error/code.rs`.
+- Never hand-edit `src/op.rs`, `src/error/code.rs` or `src/agent_tools.rs`.
 - Never write a test under `src/`. Test through the public API from `tests/`;
   see the test rule above for what to do when a test needs a private value.
 - Comments explain a non-obvious why. Code says what.

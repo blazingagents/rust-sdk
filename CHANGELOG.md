@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- The built-in tool catalog moved from `agents` to the new `agent_tools`
+  module, generated from the API contract: `BuiltinToolName`,
+  `AgentToolGroupTag`, `AgentToolFileAccessTag`, `AgentToolGroup`,
+  `AGENT_TOOL_GROUPS`, `AgentToolDefinition` and `AGENT_TOOLS`. Change
+  `use blazing_agents::agents::{AGENT_TOOLS, BuiltinToolName}` to
+  `use blazing_agents::agent_tools::{AGENT_TOOLS, BuiltinToolName}`.
+- Every operation the API contract marks credential-bearing now fails with
+  `Error::CredentialEcho` when its response carries a credential field or
+  echoes a submitted secret. `chat_connections().deliveries()`,
+  `chat_deliveries().list()` and `chat_connections().repair_delivery()` are
+  newly checked.
+
 ## 0.1.0 (2026-10-17)
 
 - Initial release.

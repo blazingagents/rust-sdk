@@ -7,7 +7,7 @@ README.md is the repository's brief for Tenants: what it is, features, installat
 ## Commands
 
 - `cargo fmt --all --check`, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, `cargo cov` (tests under coverage; fails under 99% of lines or functions), `cargo test --workspace --doc`, `cargo xtask spec --check` and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps` are the gate; CI runs them plus the 1.85 MSRV build, the `native-tls` build and `cargo package -p blazing-agents --locked`. Run them before every commit.
-- `cargo xtask spec` regenerates `src/op.rs` and `src/error/code.rs` from `spec/openapi.json`. Never edit those files by hand.
+- `cargo xtask spec` regenerates `src/op.rs`, `src/error/code.rs` and `src/agent_tools.rs` from `spec/openapi.json`. Never edit those files by hand.
 - `src/op.rs` is under `#[deny(dead_code)]`: an operation with no SDK method fails the build naming its variant. Never write `allow(dead_code)` or `expect(dead_code)` under `src/`; add the method instead.
 - Tests use the public API only, from `tests/` with the mock server in `tests/support/mod.rs`. Never write `#[cfg(test)]`, `cfg!(test)` or `#[test]` under `src/` or in any file the library compiles; `.github/scripts/public-api-tests.sh` fails CI on one. When a test seems to need a private value, either rewrite it against the public client, or, if it really needs that value, add a public way to get it (with rustdoc) and use that. Delete code no public call can reach instead of testing it, except a guard that turns an SDK bug into an error (such as `Patch::Keep` refusing to serialize).
 - `CONTRIBUTING.md` holds the layout and the recipe for filling in a resource module; `src/prompts.rs` and `tests/prompts.rs` are the exemplar.
