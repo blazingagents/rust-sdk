@@ -34,6 +34,8 @@ crate::open_enum! {
         ServiceUnavailable = "service_unavailable",
         /// `checkout_evidence_mismatch`
         CheckoutEvidenceMismatch = "checkout_evidence_mismatch",
+        /// `subscription_already_paid`
+        SubscriptionAlreadyPaid = "subscription_already_paid",
         /// `agent_disabled`
         AgentDisabled = "agent_disabled",
         /// `admin_agent_managed`
