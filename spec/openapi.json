@@ -130,6 +130,7 @@
                   "internal",
                   "service_unavailable",
                   "checkout_evidence_mismatch",
+                  "subscription_already_paid",
                   "agent_disabled",
                   "admin_agent_managed",
                   "agent_mcp_connection_not_found",
@@ -4444,6 +4445,7 @@
                   "internal",
                   "service_unavailable",
                   "checkout_evidence_mismatch",
+                  "subscription_already_paid",
                   "agent_disabled",
                   "admin_agent_managed",
                   "agent_mcp_connection_not_found",
@@ -7945,7 +7947,7 @@
           }
         ],
         "summary": "Create a checkout",
-        "description": "Creates a hosted checkout attempt for the tenant and returns its URL. Only a dashboard JWT may call this.",
+        "description": "Creates a hosted checkout attempt for the tenant and returns its URL. A tenant that already pays, or whose earlier checkout Polar reports as paid, is refused with `subscription_already_paid`; checkout never changes a Plan. Only a dashboard JWT may call this.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8006,6 +8008,16 @@
           },
           "404": {
             "description": "Not found in this tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The tenant already pays (`subscription_already_paid`), or its earlier checkout's evidence does not match (`checkout_evidence_mismatch`)",
             "content": {
               "application/json": {
                 "schema": {
