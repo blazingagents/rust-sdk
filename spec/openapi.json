@@ -18815,7 +18815,8 @@
             "description": "Too many requests",
             "x-error-codes": [
               "quota_exceeded",
-              "rate_limited"
+              "rate_limited",
+              "model_spending_limit_exceeded"
             ],
             "headers": {
               "Retry-After": {
@@ -18829,6 +18830,19 @@
                 "description": "Sent with `session_turn_unresponsive`, and with `rate_limited` when the limit names a wait: the whole seconds to wait before sending the request again. Retrying earlier fails the same way."
               }
             },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "An upstream service failed",
+            "x-error-codes": [
+              "mcp_connection_discovery_failed"
+            ],
             "content": {
               "application/json": {
                 "schema": {
@@ -19559,7 +19573,8 @@
             "description": "Too many requests",
             "x-error-codes": [
               "quota_exceeded",
-              "rate_limited"
+              "rate_limited",
+              "model_spending_limit_exceeded"
             ],
             "headers": {
               "Retry-After": {
@@ -19573,6 +19588,19 @@
                 "description": "Sent with `session_turn_unresponsive`, and with `rate_limited` when the limit names a wait: the whole seconds to wait before sending the request again. Retrying earlier fails the same way."
               }
             },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "An upstream service failed",
+            "x-error-codes": [
+              "mcp_connection_discovery_failed"
+            ],
             "content": {
               "application/json": {
                 "schema": {
@@ -20370,7 +20398,8 @@
             "description": "Too many requests",
             "x-error-codes": [
               "quota_exceeded",
-              "rate_limited"
+              "rate_limited",
+              "model_spending_limit_exceeded"
             ],
             "headers": {
               "Retry-After": {
@@ -20384,6 +20413,19 @@
                 "description": "Sent with `session_turn_unresponsive`, and with `rate_limited` when the limit names a wait: the whole seconds to wait before sending the request again. Retrying earlier fails the same way."
               }
             },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "An upstream service failed",
+            "x-error-codes": [
+              "mcp_connection_discovery_failed"
+            ],
             "content": {
               "application/json": {
                 "schema": {
