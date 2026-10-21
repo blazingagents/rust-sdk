@@ -131,6 +131,7 @@
                   "service_unavailable",
                   "checkout_evidence_mismatch",
                   "subscription_already_paid",
+                  "subscription_not_cancelled",
                   "agent_disabled",
                   "admin_agent_managed",
                   "agent_mcp_connection_not_found",
@@ -364,6 +365,13 @@
               "active",
               "inactive"
             ]
+          },
+          "subscriptionCancelsAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
           }
         },
         "required": [
@@ -373,7 +381,8 @@
           "name",
           "createdAt",
           "updatedAt",
-          "subscriptionStatus"
+          "subscriptionStatus",
+          "subscriptionCancelsAt"
         ],
         "additionalProperties": false
       },
@@ -1226,6 +1235,34 @@
           "deletion",
           "monetizationEnabled"
         ]
+      },
+      "SubscriptionRenewal": {
+        "type": "object",
+        "properties": {
+          "cancelsAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "cancelsAt"
+        ],
+        "additionalProperties": false
+      },
+      "SubscriptionUpdate": {
+        "type": "object",
+        "properties": {
+          "cancelAtPeriodEnd": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cancelAtPeriodEnd"
+        ],
+        "additionalProperties": false
       },
       "ModelSpendingLimitStatus": {
         "type": "object",
@@ -4446,6 +4483,7 @@
                   "service_unavailable",
                   "checkout_evidence_mismatch",
                   "subscription_already_paid",
+                  "subscription_not_cancelled",
                   "agent_disabled",
                   "admin_agent_managed",
                   "agent_mcp_connection_not_found",
@@ -7375,6 +7413,7 @@
               "service_unavailable",
               "checkout_evidence_mismatch",
               "subscription_already_paid",
+              "subscription_not_cancelled",
               "agent_disabled",
               "admin_agent_managed",
               "agent_mcp_connection_not_found",
@@ -7834,7 +7873,7 @@
           }
         ],
         "summary": "Get the caller's tenant",
-        "description": "JWT-only. Returns the tenant record. An API-key-authenticated request is rejected here with generic 401 `unauthorized`: the credential type is insufficient for this resource.",
+        "description": "JWT-only. Returns the tenant record, with `subscriptionCancelsAt` set while an active Subscription is set to end at that date (`PATCH /v1/subscription`). An API-key-authenticated request is rejected here with generic 401 `unauthorized`: the credential type is insufficient for this resource.",
         "responses": {
           "200": {
             "description": "The tenant record",
@@ -8347,7 +8386,7 @@
           }
         ],
         "summary": "Schedule tenant deletion",
-        "description": "Marks the tenant deleting: new executions block immediately and queued Task runs are cancelled; work already running finishes. Permanent deletion is scheduled 24 hours out on the durable `tenantDeletion` workflow and can be cancelled until then. The response reports the scheduled deletion. Only a dashboard JWT may call this route.",
+        "description": "Marks the tenant deleting: new executions block immediately and queued Task runs are cancelled; work already running finishes. Permanent deletion is scheduled 24 hours out on the durable `tenantDeletion` workflow and can be cancelled until then. Every other route stays open in that window. The response reports the scheduled deletion. A tenant whose active Subscription still renews is refused with `subscription_not_cancelled`; cancel it first with `PATCH /v1/subscription`. Only a dashboard JWT may call this route.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8390,6 +8429,16 @@
           },
           "404": {
             "description": "Not found in this tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The active Subscription still renews (`subscription_not_cancelled`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10761,6 +10810,83 @@
             "x-error-codes": [
               "chat_webhook_registration_failed"
             ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subscription": {
+      "patch": {
+        "tags": [
+          "dashboard",
+          "billing"
+        ],
+        "security": [
+          {
+            "DashboardJwt": []
+          }
+        ],
+        "summary": "Cancel or resume the subscription",
+        "description": "`cancelAtPeriodEnd: true` sets the tenant's active Subscription to end at its next billing date, with no refund; the Plan stays active until then. `false` resumes a Subscription set to end, so it renews again. Repeating either is harmless. The response reports `cancelsAt`, when the Subscription stops renewing, or null while it renews; `GET /v1/me` reports the same as `subscriptionCancelsAt`. A tenant must cancel before `DELETE /v1/tenant` is accepted. Only a dashboard JWT may call this route.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "When the Subscription ends",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionRenewal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found in this tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Billing provider unavailable",
             "content": {
               "application/json": {
                 "schema": {

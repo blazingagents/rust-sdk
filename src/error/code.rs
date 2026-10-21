@@ -36,6 +36,8 @@ crate::open_enum! {
         CheckoutEvidenceMismatch = "checkout_evidence_mismatch",
         /// `subscription_already_paid`
         SubscriptionAlreadyPaid = "subscription_already_paid",
+        /// `subscription_not_cancelled`
+        SubscriptionNotCancelled = "subscription_not_cancelled",
         /// `agent_disabled`
         AgentDisabled = "agent_disabled",
         /// `admin_agent_managed`
