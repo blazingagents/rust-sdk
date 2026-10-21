@@ -138,6 +138,8 @@ crate::open_enum! {
         ChatWebhookRegistrationFailed = "chat_webhook_registration_failed",
         /// `merchant_connection_not_found`
         MerchantConnectionNotFound = "merchant_connection_not_found",
+        /// `merchant_connection_in_use`
+        MerchantConnectionInUse = "merchant_connection_in_use",
         /// `merchant_credential_invalid`
         MerchantCredentialInvalid = "merchant_credential_invalid",
         /// `merchant_provider_unavailable`
