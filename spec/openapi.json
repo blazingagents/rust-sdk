@@ -23633,7 +23633,7 @@
           "merchant"
         ],
         "summary": "Create a merchant connection",
-        "description": "Connects your Polar or Dodo account so your end users' model-token usage is sent to it. Blazing Agents checks the credential with your provider first, and afterwards shows only its last few characters. Creating a connection replaces your current one; events already recorded against the old connection keep being delivered. Customer bindings belong to a connection, so link your users again after you replace it. An enabled `guard` needs at least one entry in `productIds` or a `meterId`. Monetization stays off until you set `monetizationEnabled` on your tenant.",
+        "description": "Connects your Polar or Dodo account so your end users' model-token usage is sent to it. Blazing Agents checks the credential with your provider first, and afterwards shows only its last few characters. Creating a connection replaces your current one; events already recorded against the old connection keep being delivered. Customer bindings belong to a connection, so link your users again after you replace it. An enabled `guard` needs at least one entry in `productIds` or a `meterId`, and each of them must exist at your provider, or the request fails with `validation_failed` and an issue coded `merchant_guard_id_unknown` for each unknown ID. Monetization stays off until you set `monetizationEnabled` on your tenant.",
         "requestBody": {
           "required": true,
           "content": {
@@ -23769,7 +23769,7 @@
           "merchant"
         ],
         "summary": "Update the merchant connection",
-        "description": "Changes your current merchant connection's status or guard, or rotates its credential. Fields you leave out keep their current value. A new `credential` is checked with your provider and must belong to the same merchant account; to switch accounts, create a new connection instead. A `guard` replaces the whole guard, and an enabled guard needs at least one entry in `productIds` or a `meterId`.",
+        "description": "Changes your current merchant connection's status or guard, or rotates its credential. Fields you leave out keep their current value. A new `credential` is checked with your provider and must belong to the same merchant account; to switch accounts, create a new connection instead. A `guard` replaces the whole guard, and an enabled guard needs at least one entry in `productIds` or a `meterId`. Every product and meter of an enabled guard must exist at your provider, or the update fails with `validation_failed` and an issue coded `merchant_guard_id_unknown` for each unknown ID.",
         "requestBody": {
           "required": true,
           "content": {
@@ -23937,7 +23937,7 @@
           "merchant"
         ],
         "summary": "Retire the merchant connection",
-        "description": "Retires your current merchant connection. New usage is no longer recorded against it, but events already recorded keep being delivered with its credential. Create a new connection to start again.",
+        "description": "Retires your current merchant connection. New usage is no longer recorded against it, but events already recorded keep being delivered with its credential. Blazing Agents deletes the credential once none of those events is `pending`, `failed` or `uncertain` and no request admitted on the connection is still running. Create a new connection to start again.",
         "responses": {
           "204": {
             "description": "The connection was retired"
