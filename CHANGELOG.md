@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Memory docs say a general memory is seen by unscoped turns only; a turn made through `for_user` sees only its end user's memories.
+
 ### Removed
 
 - `MerchantUsageEvent::workflow_issue` and `MerchantWorkflowIssue`. The API
