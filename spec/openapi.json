@@ -4662,12 +4662,6 @@
                   "live"
                 ]
               },
-              "status": {
-                "type": "string",
-                "enum": [
-                  "active"
-                ]
-              },
               "merchantAccountId": {
                 "type": "string",
                 "minLength": 1
@@ -4723,7 +4717,6 @@
               "id",
               "provider",
               "environment",
-              "status",
               "merchantAccountId",
               "keyFragment",
               "guard",
@@ -5152,15 +5145,7 @@
                     "type": "integer",
                     "minimum": 0
                   },
-                  "uncertain": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
                   "failed": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "unmapped": {
                     "type": "integer",
                     "minimum": 0
                   },
@@ -5180,9 +5165,7 @@
                 "required": [
                   "pending",
                   "accepted",
-                  "uncertain",
                   "failed",
-                  "unmapped",
                   "incomplete",
                   "expired",
                   "discarded"
@@ -20116,10 +20099,8 @@
                           "type": "string",
                           "enum": [
                             "accepted",
-                            "delivered",
                             "committed",
-                            "not_placed",
-                            "uncertain"
+                            "not_placed"
                           ]
                         },
                         "turnId": {
@@ -20441,10 +20422,8 @@
                             "type": "string",
                             "enum": [
                               "accepted",
-                              "delivered",
                               "committed",
-                              "not_placed",
-                              "uncertain"
+                              "not_placed"
                             ]
                           },
                           "turnId": {
@@ -22645,7 +22624,6 @@
                     "id": "mch_6Wd3Lp8RtY2kVn5Q",
                     "provider": "polar",
                     "environment": "sandbox",
-                    "status": "active",
                     "merchantAccountId": "8f2c1d9e-4b7a-4f3e-9c21-5a6b7d8e9f01",
                     "keyFragment": "x7Qa",
                     "guard": {
@@ -22753,7 +22731,6 @@
                     "id": "mch_6Wd3Lp8RtY2kVn5Q",
                     "provider": "polar",
                     "environment": "sandbox",
-                    "status": "active",
                     "merchantAccountId": "8f2c1d9e-4b7a-4f3e-9c21-5a6b7d8e9f01",
                     "keyFragment": "x7Qa",
                     "guard": {
@@ -22906,7 +22883,6 @@
                     "id": "mch_6Wd3Lp8RtY2kVn5Q",
                     "provider": "polar",
                     "environment": "sandbox",
-                    "status": "active",
                     "merchantAccountId": "8f2c1d9e-4b7a-4f3e-9c21-5a6b7d8e9f01",
                     "keyFragment": "x7Qa",
                     "guard": {
@@ -23753,9 +23729,7 @@
                     "counts": {
                       "pending": 2,
                       "accepted": 318,
-                      "uncertain": 0,
                       "failed": 1,
-                      "unmapped": 0,
                       "incomplete": 0,
                       "expired": 0,
                       "discarded": 4
