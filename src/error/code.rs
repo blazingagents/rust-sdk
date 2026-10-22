@@ -32,14 +32,14 @@ crate::open_enum! {
         Internal = "internal",
         /// `service_unavailable`
         ServiceUnavailable = "service_unavailable",
-        /// `checkout_evidence_mismatch`
-        CheckoutEvidenceMismatch = "checkout_evidence_mismatch",
         /// `subscription_already_paid`
         SubscriptionAlreadyPaid = "subscription_already_paid",
         /// `subscription_not_cancelled`
         SubscriptionNotCancelled = "subscription_not_cancelled",
         /// `agent_disabled`
         AgentDisabled = "agent_disabled",
+        /// `agent_busy`
+        AgentBusy = "agent_busy",
         /// `admin_agent_managed`
         AdminAgentManaged = "admin_agent_managed",
         /// `agent_mcp_connection_not_found`
@@ -148,8 +148,6 @@ crate::open_enum! {
         MerchantCustomerNotFound = "merchant_customer_not_found",
         /// `merchant_binding_not_found`
         MerchantBindingNotFound = "merchant_binding_not_found",
-        /// `merchant_binding_required`
-        MerchantBindingRequired = "merchant_binding_required",
         /// `merchant_account_mismatch`
         MerchantAccountMismatch = "merchant_account_mismatch",
         /// `merchant_event_not_found`

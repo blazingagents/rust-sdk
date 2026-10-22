@@ -267,11 +267,11 @@ async fn update_omits_unset_fields_and_sends_null_to_clear() {
 }
 
 #[tokio::test]
-async fn delete_accepts_202_with_an_empty_body() {
+async fn delete_accepts_204_with_an_empty_body() {
     let (server, client) = mock().await;
     Mock::given(method("DELETE"))
         .and(path("/v1/workspaces/ws_3Vb8Ny6HpU1cGf4M"))
-        .respond_with(ResponseTemplate::new(202))
+        .respond_with(ResponseTemplate::new(204))
         .expect(1)
         .mount(&server)
         .await;

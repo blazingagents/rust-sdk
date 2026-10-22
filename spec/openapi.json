@@ -27,11 +27,11 @@
     },
     {
       "name": "billing",
-      "description": "Plan catalog, checkout and checkout reconciliation."
+      "description": "Plan catalog and checkout."
     },
     {
       "name": "chat-connections",
-      "description": "Chat platform Connections (Slack, Telegram) bound to an Agent, with delivery inspection and repair."
+      "description": "Chat platform Connections (Slack, Telegram) bound to an Agent."
     },
     {
       "name": "dashboard",
@@ -129,10 +129,10 @@
                   "rate_limited",
                   "internal",
                   "service_unavailable",
-                  "checkout_evidence_mismatch",
                   "subscription_already_paid",
                   "subscription_not_cancelled",
                   "agent_disabled",
+                  "agent_busy",
                   "admin_agent_managed",
                   "agent_mcp_connection_not_found",
                   "agent_mcp_connections_invalid",
@@ -187,7 +187,6 @@
                   "merchant_provider_unavailable",
                   "merchant_customer_not_found",
                   "merchant_binding_not_found",
-                  "merchant_binding_required",
                   "merchant_account_mismatch",
                   "merchant_event_not_found",
                   "merchant_event_state_conflict",
@@ -493,85 +492,13 @@
       "Checkout": {
         "type": "object",
         "properties": {
-          "attempt": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^ca_[0-9A-Za-z]{16}$"
-              },
-              "plan": {
-                "type": "string",
-                "enum": [
-                  "developer",
-                  "pro"
-                ]
-              },
-              "status": {
-                "type": "string",
-                "enum": [
-                  "open"
-                ]
-              },
-              "expiresAt": {
-                "type": "string",
-                "format": "date-time"
-              }
-            },
-            "required": [
-              "id",
-              "plan",
-              "status",
-              "expiresAt"
-            ],
-            "additionalProperties": false
-          },
           "checkoutUrl": {
             "type": "string",
             "format": "uri"
           }
         },
         "required": [
-          "attempt",
           "checkoutUrl"
-        ],
-        "additionalProperties": false
-      },
-      "CheckoutReconciliation": {
-        "type": "object",
-        "properties": {
-          "plan": {
-            "type": "string",
-            "enum": [
-              "developer",
-              "pro"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "active",
-              "failed",
-              "canceled",
-              "expired"
-            ]
-          },
-          "subscriptionStatus": {
-            "type": "string",
-            "enum": [
-              "active",
-              "inactive"
-            ]
-          },
-          "returnPath": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "plan",
-          "status",
-          "subscriptionStatus"
         ],
         "additionalProperties": false
       },
@@ -893,278 +820,6 @@
           "chatConnections"
         ]
       },
-      "ChatDeliveryList": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ChatDelivery"
-            }
-          },
-          "nextCursor": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "data",
-          "nextCursor"
-        ]
-      },
-      "ChatDelivery": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^cd_[0-9A-Za-z]{16}$"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "reply",
-              "card"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "confirmed",
-              "failed",
-              "ambiguous"
-            ]
-          },
-          "attempt": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "credentialVersion": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "representation": {
-            "type": "string"
-          },
-          "diagnostic": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "receipts": {},
-          "sessionId": {
-            "type": "string"
-          },
-          "messageId": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "approvalId": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "threadId": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "status",
-          "attempt",
-          "credentialVersion",
-          "representation",
-          "diagnostic",
-          "sessionId",
-          "messageId",
-          "approvalId",
-          "threadId",
-          "createdAt",
-          "updatedAt"
-        ]
-      },
-      "TenantChatDeliveryList": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TenantChatDelivery"
-            }
-          },
-          "nextCursor": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "required": [
-          "data",
-          "nextCursor"
-        ]
-      },
-      "TenantChatDelivery": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^cd_[0-9A-Za-z]{16}$"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "reply",
-              "card"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "confirmed",
-              "failed",
-              "ambiguous"
-            ]
-          },
-          "attempt": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "credentialVersion": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "representation": {
-            "type": "string"
-          },
-          "diagnostic": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "receipts": {},
-          "sessionId": {
-            "type": "string"
-          },
-          "messageId": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "approvalId": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "threadId": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          },
-          "connectionId": {
-            "type": "string",
-            "pattern": "^cc_[0-9A-Za-z]{16}$"
-          },
-          "agentId": {
-            "type": "string",
-            "pattern": "^ag_[0-9A-Za-z]{16}$"
-          },
-          "platform": {
-            "type": "string",
-            "enum": [
-              "slack",
-              "telegram"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "status",
-          "attempt",
-          "credentialVersion",
-          "representation",
-          "diagnostic",
-          "sessionId",
-          "messageId",
-          "approvalId",
-          "threadId",
-          "createdAt",
-          "updatedAt",
-          "connectionId",
-          "agentId",
-          "platform"
-        ],
-        "additionalProperties": false
-      },
-      "ChatDeliveryResult": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^cd_[0-9A-Za-z]{16}$"
-          },
-          "sessionId": {
-            "type": "string"
-          },
-          "threadId": {
-            "type": "string"
-          },
-          "connectionId": {
-            "type": "string",
-            "pattern": "^cc_[0-9A-Za-z]{16}$"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "reply",
-              "card"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "confirmed",
-              "failed",
-              "ambiguous"
-            ]
-          },
-          "attempt": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
-        "required": [
-          "id",
-          "sessionId",
-          "threadId",
-          "connectionId",
-          "kind",
-          "status",
-          "attempt"
-        ]
-      },
       "TenantSettings": {
         "type": "object",
         "properties": {
@@ -1289,10 +944,6 @@
                 "type": "number",
                 "minimum": 0
               },
-              "reservedUsd": {
-                "type": "number",
-                "minimum": 0
-              },
               "availableUsd": {
                 "type": "number",
                 "minimum": 0
@@ -1302,7 +953,6 @@
               "startsAt",
               "endsAt",
               "spentUsd",
-              "reservedUsd",
               "availableUsd"
             ],
             "additionalProperties": false
@@ -1837,18 +1487,6 @@
         ]
       },
       "McpConnectionOauthConnect": {
-        "type": "object",
-        "properties": {
-          "authorizationUrl": {
-            "type": "string",
-            "format": "uri"
-          }
-        },
-        "required": [
-          "authorizationUrl"
-        ]
-      },
-      "McpOauthAuthorizationLaunch": {
         "type": "object",
         "properties": {
           "authorizationUrl": {
@@ -4482,10 +4120,10 @@
                   "rate_limited",
                   "internal",
                   "service_unavailable",
-                  "checkout_evidence_mismatch",
                   "subscription_already_paid",
                   "subscription_not_cancelled",
                   "agent_disabled",
+                  "agent_busy",
                   "admin_agent_managed",
                   "agent_mcp_connection_not_found",
                   "agent_mcp_connections_invalid",
@@ -4540,7 +4178,6 @@
                   "merchant_provider_unavailable",
                   "merchant_customer_not_found",
                   "merchant_binding_not_found",
-                  "merchant_binding_required",
                   "merchant_account_mismatch",
                   "merchant_event_not_found",
                   "merchant_event_state_conflict",
@@ -5028,8 +4665,7 @@
               "status": {
                 "type": "string",
                 "enum": [
-                  "active",
-                  "disconnected"
+                  "active"
                 ]
               },
               "merchantAccountId": {
@@ -5170,14 +4806,6 @@
             "type": "string",
             "minLength": 1,
             "description": "A replacement credential. It must belong to the same merchant account as the current one."
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "active",
-              "disconnected"
-            ],
-            "description": "`active` sends usage events to your provider. While `disconnected`, deliveries fail and can be retried after you set it back to `active`, and turns are refused if the guard is on."
           },
           "guard": {
             "type": "object",
@@ -5403,8 +5031,6 @@
                     "pending",
                     "accepted",
                     "failed",
-                    "uncertain",
-                    "unmapped",
                     "incomplete",
                     "discarded",
                     "expired"
@@ -5463,7 +5089,6 @@
                     "none",
                     "wait",
                     "retry",
-                    "bind_and_release",
                     "investigate",
                     "discard"
                   ]
@@ -5718,8 +5343,6 @@
                   "pending",
                   "accepted",
                   "failed",
-                  "uncertain",
-                  "unmapped",
                   "incomplete",
                   "discarded",
                   "expired"
@@ -5778,7 +5401,6 @@
                   "none",
                   "wait",
                   "retry",
-                  "bind_and_release",
                   "investigate",
                   "discard"
                 ]
@@ -7397,14 +7019,10 @@
             "enum": [
               "invalid_request",
               "idempotency_conflict",
-              "session_fork_deleted",
-              "session_fork_unavailable",
               "input_idempotency_conflict",
               "steer_not_available",
               "validation_failed",
               "unauthorized",
-              "forbidden",
-              "insufficient_scope",
               "not_found",
               "quota_exceeded",
               "model_spending_limit_exceeded",
@@ -7413,10 +7031,10 @@
               "rate_limited",
               "internal",
               "service_unavailable",
-              "checkout_evidence_mismatch",
               "subscription_already_paid",
               "subscription_not_cancelled",
               "agent_disabled",
+              "agent_busy",
               "admin_agent_managed",
               "agent_mcp_connection_not_found",
               "agent_mcp_connections_invalid",
@@ -7425,7 +7043,6 @@
               "artifact_session_cap_reached",
               "invalid_cursor",
               "message_not_found",
-              "message_id_conflict",
               "prompt_variable_missing",
               "prompt_variable_unknown",
               "provider_in_use",
@@ -7449,6 +7066,9 @@
               "workspace_busy",
               "session_busy",
               "session_turn_unresponsive",
+              "session_fork_unavailable",
+              "session_fork_deleted",
+              "message_id_conflict",
               "session_version_mismatch",
               "tool_approval_continuation_settled",
               "tool_approval_decision_conflict",
@@ -7469,11 +7089,12 @@
               "merchant_provider_unavailable",
               "merchant_customer_not_found",
               "merchant_binding_not_found",
-              "merchant_binding_required",
               "merchant_account_mismatch",
               "merchant_event_not_found",
               "merchant_event_state_conflict",
               "merchant_customer_unmapped",
+              "forbidden",
+              "insufficient_scope",
               "merchant_subscription_required",
               "merchant_balance_required",
               "merchant_eligibility_unavailable",
@@ -7722,81 +7343,6 @@
             }
           }
         }
-      },
-      "post": {
-        "tags": [
-          "dashboard",
-          "mcp-connections"
-        ],
-        "security": [
-          {
-            "DashboardJwt": []
-          }
-        ],
-        "summary": "Approve an MCP OAuth authorization",
-        "description": "Exchanges a setup token for a one-time launch URL that hands the Connection's OAuth approval to the bound Tenant admin's browser. Only a dashboard JWT may call this.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "setupToken": {
-                    "type": "string",
-                    "pattern": "^[A-Za-z0-9_-]{43}$"
-                  }
-                },
-                "required": [
-                  "setupToken"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The launch authorization URL",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/McpOauthAuthorizationLaunch"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid credential",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found in this tenant",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/v1/mcp/oauth/callback": {
@@ -7876,7 +7422,7 @@
           }
         ],
         "summary": "Get the caller's tenant",
-        "description": "JWT-only. Returns the tenant record, with `subscriptionCancelsAt` set while an active Subscription is set to end at that date (`PATCH /v1/subscription`). An API-key-authenticated request is rejected here with generic 401 `unauthorized`: the credential type is insufficient for this resource.",
+        "description": "JWT-only. Returns the tenant record, with `subscriptionCancelsAt` set while an active Subscription is set to end at that date (`PATCH /v1/subscription`). While the tenant has no active Subscription, the request first refreshes it from the billing provider once, so a payment shows without waiting for the webhook; if the provider is unavailable the stored state answers. An API-key-authenticated request is rejected here with generic 401 `unauthorized`: the credential type is insufficient for this resource.",
         "responses": {
           "200": {
             "description": "The tenant record",
@@ -7990,7 +7536,7 @@
           }
         ],
         "summary": "Create a checkout",
-        "description": "Creates a hosted checkout attempt for the tenant and returns its URL. A tenant that already pays, or whose earlier checkout Polar reports as paid, is refused with `subscription_already_paid`; checkout never changes a Plan. Only a dashboard JWT may call this.",
+        "description": "Creates a hosted checkout for the tenant and returns its URL. A tenant that already pays is refused with `subscription_already_paid`; checkout never changes a Plan. Polar refuses a second subscription at payment and expires an unpaid checkout after 24 hours. After payment the hosted page returns to the dashboard, which waits for `GET /v1/me` to report `subscriptionStatus: active`. Only a dashboard JWT may call this.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8020,7 +7566,7 @@
         },
         "responses": {
           "200": {
-            "description": "The checkout attempt and hosted URL",
+            "description": "The hosted checkout URL",
             "content": {
               "application/json": {
                 "schema": {
@@ -8060,7 +7606,7 @@
             }
           },
           "409": {
-            "description": "The tenant already pays (`subscription_already_paid`), or its earlier checkout's evidence does not match (`checkout_evidence_mismatch`)",
+            "description": "The tenant already pays (`subscription_already_paid`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -8071,94 +7617,6 @@
           },
           "503": {
             "description": "Checkout provider unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/checkouts/{checkoutId}/reconcile": {
-      "post": {
-        "tags": [
-          "dashboard",
-          "billing"
-        ],
-        "security": [
-          {
-            "DashboardJwt": []
-          }
-        ],
-        "summary": "Reconcile a checkout",
-        "description": "Re-checks a checkout attempt against the billing provider and reconciles the tenant's subscription state. Only a dashboard JWT may call this.",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 1
-            },
-            "required": true,
-            "name": "checkoutId",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The reconciled checkout state",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CheckoutReconciliation"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid credential",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found in this tenant",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Checkout evidence does not match the tenant",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Billing provider unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -9169,487 +8627,6 @@
         }
       }
     },
-    "/v1/chat-connections/{id}/deliveries": {
-      "get": {
-        "x-access": "read",
-        "x-scope": "tenant",
-        "x-credential-bearing": true,
-        "operationId": "listChatDeliveries",
-        "tags": [
-          "chat-connections"
-        ],
-        "summary": "List chat deliveries",
-        "description": "Lists the replies and approval cards the connection has sent or tried to send, newest first. Each record shows its status, attempt number, diagnostic code, and any message receipts the platform returned. Message bodies, tool arguments, and credentials are not included. Pass `nextCursor` as `cursor` to fetch older records.",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "pattern": "^cc_[0-9A-Za-z]{16}$",
-              "description": "ID of the chat connection."
-            },
-            "required": true,
-            "description": "ID of the chat connection.",
-            "name": "id",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "description": "`nextCursor` from the previous page, to fetch older records."
-            },
-            "required": false,
-            "description": "`nextCursor` from the previous page, to fetch older records.",
-            "name": "cursor",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 100,
-              "description": "Maximum number of records to return, 1 to 100. Defaults to 100."
-            },
-            "required": false,
-            "description": "Maximum number of records to return, 1 to 100. Defaults to 100.",
-            "name": "limit",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A page of chat deliveries",
-            "content": {
-              "application/json": {
-                "example": {
-                  "data": [
-                    {
-                      "id": "cd_2Nf7Lp4WxB9kTc3M",
-                      "kind": "reply",
-                      "status": "confirmed",
-                      "attempt": 1,
-                      "credentialVersion": 1,
-                      "representation": "native",
-                      "diagnostic": null,
-                      "receipts": [
-                        {
-                          "attempt": 1,
-                          "messageId": "412"
-                        }
-                      ],
-                      "sessionId": "ss_5Jm1Qe8RvC3yHd6X",
-                      "messageId": "412",
-                      "approvalId": null,
-                      "threadId": "telegram:5012345678",
-                      "createdAt": "2026-07-10T10:05:00.000Z",
-                      "updatedAt": "2026-07-10T10:05:02.000Z"
-                    }
-                  ],
-                  "nextCursor": null
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ChatDeliveryList"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The request is invalid",
-            "x-error-codes": [
-              "invalid_request",
-              "validation_failed",
-              "invalid_cursor"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The credential is missing or invalid",
-            "x-error-codes": [
-              "unauthorized"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "402": {
-            "description": "An active subscription or usage credit is required",
-            "x-error-codes": [
-              "subscription_required"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller is not allowed to make this request",
-            "x-error-codes": [
-              "forbidden"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The resource was not found",
-            "x-error-codes": [
-              "not_found"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/chat-deliveries": {
-      "get": {
-        "x-access": "read",
-        "x-scope": "tenant",
-        "x-credential-bearing": true,
-        "operationId": "listTenantChatDeliveries",
-        "tags": [
-          "chat-connections"
-        ],
-        "summary": "List your tenant's chat deliveries",
-        "description": "Lists your tenant's failed and ambiguous chat deliveries across all Chat Connections, newest first. These are the replies and approval cards that need attention. Filter further with `since` (an inclusive `createdAt` lower bound), and pass `nextCursor` as `cursor` to fetch older records. For pending or confirmed deliveries, list a connection's deliveries instead.",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "default": "failed,ambiguous",
-              "description": "`failed`, `ambiguous`, or both, comma-separated.",
-              "example": "failed,ambiguous"
-            },
-            "required": false,
-            "description": "`failed`, `ambiguous`, or both, comma-separated.",
-            "name": "status",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "description": "Only deliveries created at or after this ISO 8601 date-time.",
-              "example": "2026-09-20T00:00:00Z"
-            },
-            "required": false,
-            "description": "Only deliveries created at or after this ISO 8601 date-time.",
-            "name": "since",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "description": "`nextCursor` from the previous page, to fetch older records."
-            },
-            "required": false,
-            "description": "`nextCursor` from the previous page, to fetch older records.",
-            "name": "cursor",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 50,
-              "description": "Maximum number of records to return."
-            },
-            "required": false,
-            "description": "Maximum number of records to return.",
-            "name": "limit",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A page of your tenant's chat deliveries",
-            "content": {
-              "application/json": {
-                "example": {
-                  "data": [
-                    {
-                      "id": "cd_2Nf7Lp4WxB9kTc3M",
-                      "kind": "reply",
-                      "status": "confirmed",
-                      "attempt": 1,
-                      "credentialVersion": 1,
-                      "representation": "native",
-                      "diagnostic": null,
-                      "receipts": [
-                        {
-                          "attempt": 1,
-                          "messageId": "412"
-                        }
-                      ],
-                      "sessionId": "ss_5Jm1Qe8RvC3yHd6X",
-                      "messageId": "412",
-                      "approvalId": null,
-                      "threadId": "telegram:5012345678",
-                      "createdAt": "2026-07-10T10:05:00.000Z",
-                      "updatedAt": "2026-07-10T10:05:02.000Z",
-                      "connectionId": "cc_6Wd3Hs8KqP1vRt5N",
-                      "agentId": "ag_4kP9sT2vXq7LmN3a",
-                      "platform": "telegram"
-                    }
-                  ],
-                  "nextCursor": null
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/TenantChatDeliveryList"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The request is invalid",
-            "x-error-codes": [
-              "invalid_request",
-              "validation_failed",
-              "invalid_cursor"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The credential is missing or invalid",
-            "x-error-codes": [
-              "unauthorized"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "402": {
-            "description": "An active subscription or usage credit is required",
-            "x-error-codes": [
-              "subscription_required"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller is not allowed to make this request",
-            "x-error-codes": [
-              "forbidden"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/chat-connections/{id}/deliveries/{deliveryId}/repair": {
-      "post": {
-        "x-access": "write",
-        "x-scope": "tenant",
-        "x-credential-bearing": true,
-        "operationId": "repairChatDelivery",
-        "tags": [
-          "chat-connections"
-        ],
-        "summary": "Repair a chat delivery",
-        "description": "Sends a stuck reply or approval card again, without running a turn or tool. Use it when the previous send stopped before its outcome was known. Send `expectedAttempt` equal to the delivery's current `attempt`, and set both `previousSenderStopped` and `acceptDuplicateRisk` to `true`. The connection must be enabled. Repair can make a message appear twice. Check `status` in the response: a successful request does not by itself mean the message was delivered.",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "pattern": "^cc_[0-9A-Za-z]{16}$",
-              "description": "ID of the chat connection."
-            },
-            "required": true,
-            "description": "ID of the chat connection.",
-            "name": "id",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "pattern": "^cd_[0-9A-Za-z]{16}$",
-              "description": "ID of the delivery."
-            },
-            "required": true,
-            "description": "ID of the delivery.",
-            "name": "deliveryId",
-            "in": "path"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "example": {
-                "expectedAttempt": 1,
-                "previousSenderStopped": true,
-                "acceptDuplicateRisk": true
-              },
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "expectedAttempt": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 99,
-                    "description": "The delivery's current `attempt`, from list chat deliveries. The repair is refused if it has changed."
-                  },
-                  "previousSenderStopped": {
-                    "type": "boolean",
-                    "enum": [
-                      true
-                    ],
-                    "description": "Confirms that the sender of the previous attempt has stopped."
-                  },
-                  "acceptDuplicateRisk": {
-                    "type": "boolean",
-                    "enum": [
-                      true
-                    ],
-                    "description": "Confirms you accept that the message may appear twice, because the platform may already have it."
-                  }
-                },
-                "required": [
-                  "expectedAttempt",
-                  "previousSenderStopped",
-                  "acceptDuplicateRisk"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The delivery outcome",
-            "content": {
-              "application/json": {
-                "example": {
-                  "id": "cd_2Nf7Lp4WxB9kTc3M",
-                  "sessionId": "ss_5Jm1Qe8RvC3yHd6X",
-                  "threadId": "telegram:5012345678",
-                  "connectionId": "cc_6Wd3Hs8KqP1vRt5N",
-                  "kind": "reply",
-                  "status": "confirmed",
-                  "attempt": 2
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ChatDeliveryResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The request is invalid",
-            "x-error-codes": [
-              "invalid_request",
-              "validation_failed"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The credential is missing or invalid",
-            "x-error-codes": [
-              "unauthorized"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "402": {
-            "description": "An active subscription or usage credit is required",
-            "x-error-codes": [
-              "subscription_required"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller is not allowed to make this request",
-            "x-error-codes": [
-              "forbidden",
-              "insufficient_scope"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The resource was not found",
-            "x-error-codes": [
-              "not_found"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v1/chat-connections/{id}": {
       "get": {
         "x-access": "read",
@@ -10512,7 +9489,7 @@
           "chat-connections"
         ],
         "summary": "Disable a chat connection",
-        "description": "Stops the connection from accepting new messages and approval clicks. Work already accepted can finish. While disabled, Slack URL verification still succeeds, other messages are acknowledged and dropped, and deliveries cannot be repaired.",
+        "description": "Stops the connection from accepting new messages and approval clicks. Work already accepted can finish. While disabled, Slack URL verification still succeeds, and other messages are acknowledged and dropped.",
         "parameters": [
           {
             "schema": {
@@ -10910,7 +9887,7 @@
           "tenant"
         ],
         "summary": "Get the tenant model spending limit",
-        "description": "An estimated USD allowance for model tokens, priced from the built-in model price list. It excludes platform compute, storage, workspace and network charges, and a request that costs more than estimated can exceed it. While a limit applies, models without a price are refused. Resets happen at midnight UTC on the schedule anchored to resetStartDate; a future date applies the limit at once until then. Saving takes effect immediately and keeps the spending already counted in the current period. Money held for work whose usage is never reported is released at the next reset. Requires a tenant API key; a user-scoped request gets forbidden.",
+        "description": "A USD allowance for model tokens, priced from the built-in model price list or the provider's reported cost. It excludes platform compute, storage, workspace and network charges. Each running turn may finish one model request past the limit. While a limit applies, models without a price are refused, and a turn stops when a response has no reported cost. Resets happen at midnight UTC on the schedule anchored to resetStartDate; a future date applies the limit at once until then. Saving takes effect immediately and keeps the spending already counted in the current period. Requires a tenant API key; a user-scoped request gets forbidden.",
         "responses": {
           "200": {
             "description": "Model spending configuration and current UTC period",
@@ -10989,7 +9966,7 @@
           "tenant"
         ],
         "summary": "Set the tenant model spending limit",
-        "description": "An estimated USD allowance for model tokens, priced from the built-in model price list. It excludes platform compute, storage, workspace and network charges, and a request that costs more than estimated can exceed it. While a limit applies, models without a price are refused. Resets happen at midnight UTC on the schedule anchored to resetStartDate; a future date applies the limit at once until then. Saving takes effect immediately and keeps the spending already counted in the current period. Money held for work whose usage is never reported is released at the next reset. Requires a tenant API key; a user-scoped request gets forbidden.",
+        "description": "A USD allowance for model tokens, priced from the built-in model price list or the provider's reported cost. It excludes platform compute, storage, workspace and network charges. Each running turn may finish one model request past the limit. While a limit applies, models without a price are refused, and a turn stops when a response has no reported cost. Resets happen at midnight UTC on the schedule anchored to resetStartDate; a future date applies the limit at once until then. Saving takes effect immediately and keeps the spending already counted in the current period. Requires a tenant API key; a user-scoped request gets forbidden.",
         "requestBody": {
           "required": true,
           "content": {
@@ -11124,7 +10101,7 @@
           "agents"
         ],
         "summary": "Get an agent model spending limit",
-        "description": "An estimated USD allowance for model tokens, priced from the built-in model price list. It excludes platform compute, storage, workspace and network charges, and a request that costs more than estimated can exceed it. While a limit applies, models without a price are refused. Resets happen at midnight UTC on the schedule anchored to resetStartDate; a future date applies the limit at once until then. Saving takes effect immediately and keeps the spending already counted in the current period. Money held for work whose usage is never reported is released at the next reset. Requires a tenant API key; a user-scoped request gets forbidden.",
+        "description": "A USD allowance for model tokens, priced from the built-in model price list or the provider's reported cost. It excludes platform compute, storage, workspace and network charges. Each running turn may finish one model request past the limit. While a limit applies, models without a price are refused, and a turn stops when a response has no reported cost. Resets happen at midnight UTC on the schedule anchored to resetStartDate; a future date applies the limit at once until then. Saving takes effect immediately and keeps the spending already counted in the current period. Requires a tenant API key; a user-scoped request gets forbidden.",
         "parameters": [
           {
             "schema": {
@@ -11230,7 +10207,7 @@
           "agents"
         ],
         "summary": "Set an agent model spending limit",
-        "description": "An estimated USD allowance for model tokens, priced from the built-in model price list. It excludes platform compute, storage, workspace and network charges, and a request that costs more than estimated can exceed it. While a limit applies, models without a price are refused. Resets happen at midnight UTC on the schedule anchored to resetStartDate; a future date applies the limit at once until then. Saving takes effect immediately and keeps the spending already counted in the current period. Money held for work whose usage is never reported is released at the next reset. Requires a tenant API key; a user-scoped request gets forbidden.",
+        "description": "A USD allowance for model tokens, priced from the built-in model price list or the provider's reported cost. It excludes platform compute, storage, workspace and network charges. Each running turn may finish one model request past the limit. While a limit applies, models without a price are refused, and a turn stops when a response has no reported cost. Resets happen at midnight UTC on the schedule anchored to resetStartDate; a future date applies the limit at once until then. Saving takes effect immediately and keeps the spending already counted in the current period. Requires a tenant API key; a user-scoped request gets forbidden.",
         "parameters": [
           {
             "schema": {
@@ -13037,7 +12014,7 @@
           "workspaces"
         ],
         "summary": "Delete a workspace",
-        "description": "Permanently deletes a workspace and all its files. Every agent needs a workspace, so move attached agents to another workspace first: while any agent uses it, the request returns `409 workspace_in_use` with their IDs in `details.agentIds`. Returns `202` after cleanup is accepted for processing.",
+        "description": "Permanently deletes a workspace and all its files. Every agent needs a workspace, so move attached agents to another workspace first: while any agent uses it, the request returns `409 workspace_in_use` with their IDs in `details.agentIds`. Returns `204` once the workspace is deleted.",
         "parameters": [
           {
             "schema": {
@@ -13052,8 +12029,8 @@
           }
         ],
         "responses": {
-          "202": {
-            "description": "Deletion accepted for processing"
+          "204": {
+            "description": "The workspace was deleted"
           },
           "400": {
             "description": "The request is invalid",
@@ -13126,19 +12103,6 @@
             "description": "The request conflicts with the resource's current state",
             "x-error-codes": [
               "workspace_in_use"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "The service is temporarily unavailable",
-            "x-error-codes": [
-              "service_unavailable"
             ],
             "content": {
               "application/json": {
@@ -13556,7 +12520,7 @@
           }
         ],
         "summary": "Start OAuth connect for a connection",
-        "description": "Starts OAuth sign-in for a connection that needs authorization and returns a dashboard URL that continues it. Returns not_found when the connection is missing or does not need authorization. Only a dashboard session may call this.",
+        "description": "Starts OAuth sign-in for a connection that needs authorization and returns the one-time URL that opens the provider sign-in. Returns not_found when the connection is missing or does not need authorization. Only a dashboard session may call this.",
         "parameters": [
           {
             "schema": {
@@ -13572,7 +12536,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Dashboard URL that continues OAuth sign-in",
+            "description": "One-time URL that opens the provider sign-in",
             "content": {
               "application/json": {
                 "schema": {
@@ -16041,7 +15005,7 @@
           "agents"
         ],
         "summary": "Delete an agent",
-        "description": "Permanently deletes an agent. Its workspace is kept. Set `includeArtifacts` to choose whether its artifacts are deleted too. The platform-managed agent cannot be deleted.",
+        "description": "Permanently deletes an agent. Its workspace is kept. Set `includeArtifacts` to choose whether its artifacts are deleted too. The platform-managed agent cannot be deleted. An agent cannot be deleted while it has a running turn or a queued or running task run: the call returns `409 agent_busy`, so stop that work or wait for it to finish, then delete again.",
         "parameters": [
           {
             "schema": {
@@ -16144,7 +15108,8 @@
           "409": {
             "description": "The request conflicts with the resource's current state",
             "x-error-codes": [
-              "admin_agent_managed"
+              "admin_agent_managed",
+              "agent_busy"
             ],
             "content": {
               "application/json": {
@@ -21319,7 +20284,7 @@
           "sessions"
         ],
         "summary": "List steer receipts",
-        "description": "Lists steer receipts in arrival order. committed means the message is saved in history; not_placed means the agent never read it, so send it as ordinary chat; uncertain means it may have reached the agent, so never resend it automatically. The running turn stream reports a steer the agent read as data-ba-steer-consumed.",
+        "description": "Lists steer receipts in arrival order. accepted means a running turn still holds the message, so wait. committed means the message is saved in history. not_placed means it was not saved because its turn ended or its owner was lost, so send it again as ordinary chat; if the turn read it and then failed, a resend may repeat tool effects, as any resend can. The running turn stream reports a steer the agent read as data-ba-steer-consumed.",
         "parameters": [
           {
             "schema": {
@@ -23762,7 +22727,7 @@
           "merchant"
         ],
         "summary": "Create a merchant connection",
-        "description": "Connects your Polar or Dodo account so your end users' model-token usage is sent to it. Blazing Agents checks the credential with your provider first, and afterwards shows only its last few characters. Creating a connection replaces your current one; events already recorded against the old connection keep being delivered. While a request admitted on the current connection is still running, it cannot be replaced and the request fails with `merchant_connection_in_use`. Customer bindings belong to a connection, so link your users again after you replace it. An enabled `guard` needs at least one entry in `productIds` or a `meterId`, and each of them must exist at your provider, or the request fails with `validation_failed` and an issue coded `merchant_guard_id_unknown` for each unknown ID. Monetization stays off until you set `monetizationEnabled` on your tenant.",
+        "description": "Connects your Polar or Dodo account so your end users' model-token usage is sent to it. Blazing Agents checks the credential with your provider first, and afterwards shows only its last few characters. Creating a connection replaces your current one: the old connection is retired like `DELETE /v1/merchant-connection` does, its `failed` events are discarded and its credential is deleted at once. While a request admitted on the current connection is still running or one of its usage events is `pending`, it cannot be replaced and the request fails with `merchant_connection_in_use`. Customer bindings belong to a connection, so link your users again after you replace it. An enabled `guard` needs at least one entry in `productIds` or a `meterId`, and each of them must exist at your provider, or the request fails with `validation_failed` and an issue coded `merchant_guard_id_unknown` for each unknown ID. Monetization stays off until you set `monetizationEnabled` on your tenant.",
         "requestBody": {
           "required": true,
           "content": {
@@ -23911,7 +22876,7 @@
           "merchant"
         ],
         "summary": "Update the merchant connection",
-        "description": "Changes your current merchant connection's status or guard, or rotates its credential. Fields you leave out keep their current value. A new `credential` is checked with your provider and must belong to the same merchant account; to switch accounts, create a new connection instead. A `guard` replaces the whole guard, and an enabled guard needs at least one entry in `productIds` or a `meterId`. Every product and meter of an enabled guard must exist at your provider, or the update fails with `validation_failed` and an issue coded `merchant_guard_id_unknown` for each unknown ID.",
+        "description": "Changes your current merchant connection's guard, or rotates its credential. Fields you leave out keep their current value. A new `credential` is checked with your provider and must belong to the same merchant account; to switch accounts, create a new connection instead. A `guard` replaces the whole guard, and an enabled guard needs at least one entry in `productIds` or a `meterId`. Every product and meter of an enabled guard must exist at your provider, or the update fails with `validation_failed` and an issue coded `merchant_guard_id_unknown` for each unknown ID.",
         "requestBody": {
           "required": true,
           "content": {
@@ -24079,7 +23044,7 @@
           "merchant"
         ],
         "summary": "Retire the merchant connection",
-        "description": "Retires your current merchant connection. While a request admitted on the connection is still running, the connection cannot be retired and the request fails with `merchant_connection_in_use`; try again once those requests finish. New usage is no longer recorded against a retired connection, but events already recorded keep being delivered with its credential. Blazing Agents deletes the credential once none of those events is `pending`, `failed` or `uncertain`. Create a new connection to start again.",
+        "description": "Retires your current merchant connection. While a request admitted on the connection is still running or one of its usage events is `pending`, the connection cannot be retired and the request fails with `merchant_connection_in_use`; try again once those requests finish and those events are delivered. A `pending` event whose automatic delivery gave up also blocks until you retry it. When the connection is retired, its `failed` events are discarded and Blazing Agents deletes its credential at once, so nothing more is delivered through it. New usage is no longer recorded against a retired connection. Create a new connection to start again.",
         "responses": {
           "204": {
             "description": "The connection was retired"
@@ -24313,7 +23278,7 @@
           "merchant"
         ],
         "summary": "Set a merchant binding",
-        "description": "Links one of your end users to a customer in your billing provider, or changes the customer an existing link points to. Blazing Agents checks that the customer exists first. Usage for that user is then sent to this customer. Events already held as `unmapped` stay held until you release them.",
+        "description": "Links one of your end users to a customer in your billing provider, or changes the customer an existing link points to. Blazing Agents checks that the customer exists first. Usage for that user is then sent to this customer.",
         "parameters": [
           {
             "schema": {
@@ -24462,7 +23427,7 @@
           "merchant"
         ],
         "summary": "Delete a merchant binding",
-        "description": "Removes the link between one of your end users and their customer on your current merchant connection. Usage for that user is then held as `unmapped` until you link them again.",
+        "description": "Removes the link between one of your end users and their customer on your current merchant connection. Usage for that user is then recorded as `discarded` and never billed, even after you link them again.",
         "parameters": [
           {
             "schema": {
@@ -24560,7 +23525,7 @@
           "merchant"
         ],
         "summary": "List merchant usage events",
-        "description": "Lists the usage events Blazing Agents records for your billing provider, one per turn, newest first. Each event has a delivery `status` and a suggested `nextAction`: `wait`, `retry`, `bind_and_release`, `investigate`, `discard`, or `none`. `workflowIssue` is set when automatic delivery has given up on a `pending` event. Pass `nextCursor` as `cursor` to get the next page; it is `null` on the last page.",
+        "description": "Lists the usage events Blazing Agents records for your billing provider, one per turn, newest first. Each event has a delivery `status` and a suggested `nextAction`: `wait`, `retry`, `investigate`, `discard`, or `none`. `workflowIssue` is set when automatic delivery has given up on a `pending` event. Pass `nextCursor` as `cursor` to get the next page; it is `null` on the last page.",
         "parameters": [
           {
             "schema": {
@@ -24569,8 +23534,6 @@
                 "pending",
                 "accepted",
                 "failed",
-                "uncertain",
-                "unmapped",
                 "incomplete",
                 "discarded",
                 "expired"
@@ -24679,15 +23642,15 @@
                       "turnStatus": "succeeded",
                       "startedAt": "2026-07-10T10:12:00.000Z",
                       "occurredAt": "2026-07-10T10:12:09.000Z",
-                      "status": "unmapped",
+                      "status": "discarded",
                       "payload": null,
                       "attemptCount": 0,
                       "attemptGeneration": 0,
                       "lastAttemptAt": null,
-                      "lastErrorCode": null,
+                      "lastErrorCode": "MERCHANT_CUSTOMER_UNMAPPED",
                       "acceptedAt": null,
                       "workflowIssue": null,
-                      "nextAction": "bind_and_release"
+                      "nextAction": "none"
                     }
                   ],
                   "nextCursor": null
@@ -24792,7 +23755,7 @@
                       "accepted": 318,
                       "uncertain": 0,
                       "failed": 1,
-                      "unmapped": 3,
+                      "unmapped": 0,
                       "incomplete": 0,
                       "expired": 0,
                       "discarded": 4
@@ -24886,7 +23849,7 @@
           "merchant"
         ],
         "summary": "Get a merchant usage event",
-        "description": "Returns one usage event with its delivery `status`, suggested `nextAction`, and the exact `payload` sent to your provider. `payload` is `null` for `unmapped` and `incomplete` events, and can be `null` for `discarded` ones.",
+        "description": "Returns one usage event with its delivery `status`, suggested `nextAction`, and the exact `payload` sent to your provider. `payload` is `null` for `incomplete` events, and can be `null` for `discarded` ones.",
         "parameters": [
           {
             "schema": {
@@ -25039,7 +24002,7 @@
           "merchant"
         ],
         "summary": "Retry a merchant usage event",
-        "description": "Sends a `failed` or `uncertain` event to your provider again, or a `pending` event that automatic delivery gave up on. The event goes back to `pending` with the same payload. Retrying is safe: your provider drops duplicates by the event ID. Fix the cause of a `failed` event, such as a revoked credential, before you retry it.",
+        "description": "Sends a `failed` event to your provider again, or a `pending` event that automatic delivery gave up on. The event goes back to `pending` with the same payload. Retrying is safe: your provider drops duplicates by the event ID. Fix the cause of a `failed` event, such as a revoked credential, before you retry it.",
         "parameters": [
           {
             "schema": {
@@ -25197,175 +24160,6 @@
         }
       }
     },
-    "/v1/merchant-usage-events/{eventId}/release": {
-      "post": {
-        "x-access": "write",
-        "x-scope": "tenant",
-        "operationId": "releaseMerchantUsageEvent",
-        "tags": [
-          "merchant"
-        ],
-        "summary": "Release a merchant usage event",
-        "description": "Sends an `unmapped` event to your provider after you link its user to a customer. Link the user on your current merchant connection with `PUT /v1/merchant-connection/bindings/{userId}` first. The event takes that customer, gets its payload, and goes to `pending`.",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "pattern": "^mev_[0-9A-Za-z]{16}$",
-              "description": "ID of the merchant usage event."
-            },
-            "required": true,
-            "description": "ID of the merchant usage event.",
-            "name": "eventId",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The event, pending delivery",
-            "content": {
-              "application/json": {
-                "example": {
-                  "event": {
-                    "id": "mev_2Hs8Kq4ZpX6cWm1T",
-                    "turnId": "turn_5Nf7Gb2VcL9xRk3P",
-                    "connectionId": "mch_6Wd3Lp8RtY2kVn5Q",
-                    "provider": "polar",
-                    "userId": "app:user-42",
-                    "customerId": "cus_9aB3dE5fG7hJ",
-                    "agentId": "ag_4kP9sT2vXq7LmN3a",
-                    "sessionId": "ss_7Yt2Mv5QbN8dKs4W",
-                    "model": "openai/gpt-6-luna",
-                    "modelProvider": "openrouter",
-                    "inputTokens": 1840,
-                    "outputTokens": 612,
-                    "totalTokens": 2452,
-                    "turnStatus": "succeeded",
-                    "startedAt": "2026-07-10T10:12:00.000Z",
-                    "occurredAt": "2026-07-10T10:12:09.000Z",
-                    "status": "pending",
-                    "payload": {
-                      "events": [
-                        {
-                          "customer_id": "cus_9aB3dE5fG7hJ",
-                          "external_id": "mev_2Hs8Kq4ZpX6cWm1T",
-                          "metadata": {
-                            "agent_id": "ag_4kP9sT2vXq7LmN3a",
-                            "ba_event_id": "mev_2Hs8Kq4ZpX6cWm1T",
-                            "input_tokens": 1840,
-                            "model": "openai/gpt-6-luna",
-                            "model_provider": "openrouter",
-                            "output_tokens": 612,
-                            "session_id": "ss_7Yt2Mv5QbN8dKs4W",
-                            "status": "succeeded",
-                            "total_tokens": 2452,
-                            "turn_id": "turn_5Nf7Gb2VcL9xRk3P"
-                          },
-                          "name": "ba.model_tokens.v1",
-                          "timestamp": "2026-07-10T10:12:09.000Z"
-                        }
-                      ]
-                    },
-                    "attemptCount": 1,
-                    "attemptGeneration": 1,
-                    "lastAttemptAt": "2026-07-10T10:12:10.000Z",
-                    "lastErrorCode": null,
-                    "acceptedAt": null,
-                    "workflowIssue": null,
-                    "nextAction": "wait"
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/MerchantUsageEventResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The request is invalid",
-            "x-error-codes": [
-              "invalid_request",
-              "validation_failed"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The credential is missing or invalid",
-            "x-error-codes": [
-              "unauthorized"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "402": {
-            "description": "An active subscription or usage credit is required",
-            "x-error-codes": [
-              "subscription_required"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller is not allowed to make this request",
-            "x-error-codes": [
-              "forbidden",
-              "insufficient_scope"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The resource was not found",
-            "x-error-codes": [
-              "merchant_event_not_found",
-              "merchant_connection_not_found"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The request conflicts with the resource's current state",
-            "x-error-codes": [
-              "merchant_event_state_conflict",
-              "merchant_binding_required"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v1/merchant-usage-events/{eventId}/discard": {
       "post": {
         "x-access": "write",
@@ -25375,7 +24169,7 @@
           "merchant"
         ],
         "summary": "Discard a merchant usage event",
-        "description": "Marks an `unmapped`, `incomplete`, `failed`, `uncertain`, or `expired` event as `discarded`, so Blazing Agents stops trying to deliver it. The event stays in the list. Correct an `expired` event in your provider directly.",
+        "description": "Marks an `incomplete`, `failed`, or `expired` event as `discarded`, so Blazing Agents stops trying to deliver it. The event stays in the list. Correct an `expired` event in your provider directly.",
         "parameters": [
           {
             "schema": {
@@ -28053,7 +26847,7 @@
           "billing"
         ],
         "summary": "Receive a Polar billing webhook",
-        "description": "Inbound Polar webhook. The Standard Webhooks signature headers (`webhook-id`, `webhook-signature`, `webhook-timestamp`) are verified against the endpoint secret before the event is stored and reconciled; the body is the Polar event envelope. Duplicate deliveries are acknowledged idempotently. Public; the signature is the credential.",
+        "description": "Inbound Polar webhook. The Standard Webhooks signature headers (`webhook-id`, `webhook-signature`, `webhook-timestamp`) are verified against the endpoint secret before the event is acted on; the body is the Polar event envelope. Only `customer.state_changed` has an effect: BA re-reads the Tenant's Polar Customer State and records it, and every other event is acknowledged and ignored. Polar retries a failed delivery. Public; the signature is the credential.",
         "security": [],
         "parameters": [
           {
@@ -28095,7 +26889,7 @@
         },
         "responses": {
           "202": {
-            "description": "The event was accepted or already seen"
+            "description": "The event was handled or ignored"
           },
           "400": {
             "description": "Invalid signature or event payload",

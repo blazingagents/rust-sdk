@@ -58,15 +58,6 @@ fn methods() -> Vec<(&'static str, Method)> {
             )))
         }),
         ("listChatConnections", |c| send(c.chat_connections().list())),
-        ("listChatDeliveries", |c| {
-            send(c.chat_connections().deliveries("cc_1"))
-        }),
-        ("listTenantChatDeliveries", |c| {
-            send(c.chat_deliveries().list())
-        }),
-        ("repairChatDelivery", |c| {
-            send(c.chat_connections().repair_delivery("cc_1", "cd_1", 1))
-        }),
         ("getChatConnection", |c| {
             send(c.chat_connections().get("cc_1"))
         }),
@@ -262,9 +253,6 @@ fn methods() -> Vec<(&'static str, Method)> {
         ("retryMerchantUsageEvent", |c| {
             send(c.merchant_usage_events().retry("mev_1"))
         }),
-        ("releaseMerchantUsageEvent", |c| {
-            send(c.merchant_usage_events().release("mev_1"))
-        }),
         ("discardMerchantUsageEvent", |c| {
             send(c.merchant_usage_events().discard("mev_1"))
         }),
@@ -303,11 +291,9 @@ struct Instance {
 /// Properties the spec leaves free-form. Any JSON fits them, so no value can
 /// show whether a field reads them; the test checks this list instead.
 const FREE_FORM: &[&str] = &[
-    "ChatDelivery.receipts",
     "SessionMessageList.data[].metadata",
     "SkillCopyResultList[].error.details",
     "TaskRunMessageList.data[].metadata",
-    "TenantChatDelivery.receipts",
     "listSessionInputs:response.data[].message.metadata",
     "submitSessionInput:response.data.message.metadata",
 ];

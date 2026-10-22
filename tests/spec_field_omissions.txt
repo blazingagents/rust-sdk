@@ -4,3 +4,6 @@
 
 claimChatFunctionCall: sent only inside a chat stream's function runner, which reads `claimed`
 resolveChatFunctionCall: sent only inside a chat stream's function runner, which reads `accepted`
+MerchantConnectionResponse.connection.status: always `active`; removed from the SDK, and the platform drops it next
+MerchantUsageSummary.summary.counts.uncertain: always 0; removed from the SDK, and the platform drops it next
+MerchantUsageSummary.summary.counts.unmapped: always 0; removed from the SDK, and the platform drops it next

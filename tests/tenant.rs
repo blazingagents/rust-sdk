@@ -31,8 +31,7 @@ fn spending_limit_status() -> serde_json::Value {
             "startsAt": "2026-10-01T00:00:00.000Z",
             "endsAt": "2026-11-01T00:00:00.000Z",
             "spentUsd": 1.5,
-            "reservedUsd": 0.5,
-            "availableUsd": 8.0
+            "availableUsd": 8.5
         },
         "nextResetAt": "2026-11-01T00:00:00.000Z"
     })
@@ -142,8 +141,7 @@ async fn get_spending_limit_decodes_the_status_with_and_without_a_limit() {
     assert_eq!(period.starts_at.to_string(), "2026-10-01T00:00:00Z");
     assert_eq!(period.ends_at.to_string(), "2026-11-01T00:00:00Z");
     assert_eq!(period.spent_usd, 1.5);
-    assert_eq!(period.reserved_usd, 0.5);
-    assert_eq!(period.available_usd, 8.0);
+    assert_eq!(period.available_usd, 8.5);
     assert_eq!(
         status.next_reset_at.unwrap().to_string(),
         "2026-11-01T00:00:00Z"

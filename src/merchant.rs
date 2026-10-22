@@ -94,7 +94,10 @@ impl MerchantConnectionResource<'_> {
         )
     }
 
-    /// Retires the merchant connection.
+    /// Retires the merchant connection. While a turn admitted on it is running
+    /// or one of its usage events is `pending`, the request fails with
+    /// `merchant_connection_in_use`; retry once they finish. Retiring discards
+    /// its `failed` events and deletes its credential.
     pub fn retire(&self) -> Call<RetireMerchantConnection> {
         Call::tenant(
             self.client,
@@ -181,21 +184,6 @@ impl MerchantUsageEvents<'_> {
         )
     }
 
-    /// Releases a held usage event for billing.
-    pub fn release(
-        &self,
-        event_id: impl Into<MerchantUsageEventId>,
-    ) -> Call<ReleaseMerchantUsageEvent> {
-        let event_id = event_id.into();
-        Call::tenant(
-            self.client,
-            TenantOp::ReleaseMerchantUsageEvent {
-                event_id: event_id.as_str(),
-            },
-            ReleaseMerchantUsageEvent,
-        )
-    }
-
     /// Retries a failed usage event.
     pub fn retry(
         &self,
@@ -242,16 +230,6 @@ crate::open_enum! {
 }
 
 crate::open_enum! {
-    /// Whether the merchant connection sends usage to the provider.
-    pub enum MerchantConnectionStatus {
-        /// `active`
-        Active = "active",
-        /// `disconnected`
-        Disconnected = "disconnected",
-    }
-}
-
-crate::open_enum! {
     /// Where a merchant usage event stands.
     pub enum MerchantUsageEventStatus {
         /// `pending`
@@ -260,10 +238,6 @@ crate::open_enum! {
         Accepted = "accepted",
         /// `failed`
         Failed = "failed",
-        /// `uncertain`
-        Uncertain = "uncertain",
-        /// `unmapped`
-        Unmapped = "unmapped",
         /// `incomplete`
         Incomplete = "incomplete",
         /// `discarded`
@@ -306,8 +280,6 @@ crate::open_enum! {
         Wait = "wait",
         /// `retry`
         Retry = "retry",
-        /// `bind_and_release`
-        BindAndRelease = "bind_and_release",
         /// `investigate`
         Investigate = "investigate",
         /// `discard`
@@ -349,8 +321,6 @@ pub struct UpdateMerchantConnection {
     #[serde(skip_serializing_if = "Option::is_none")]
     credential: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    status: Option<MerchantConnectionStatus>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     guard: Option<MerchantGuard>,
 }
 impl_request!(UpdateMerchantConnection => MerchantConnection; encode = json;
@@ -361,12 +331,6 @@ impl Call<UpdateMerchantConnection> {
     /// A replacement credential for the same merchant account.
     pub fn credential(self, credential: impl Into<String>) -> Self {
         self.map(|request| request.credential = Some(credential.into()))
-    }
-
-    /// `disconnected` pauses deliveries and refuses guarded turns;
-    /// `active` resumes them.
-    pub fn status(self, status: MerchantConnectionStatus) -> Self {
-        self.map(|request| request.status = Some(status))
     }
 
     /// The complete guard configuration, replacing the current one.
@@ -453,11 +417,6 @@ impl_request!(GetMerchantUsageEvent => MerchantUsageEvent; encode = none; decode
 pub struct DiscardMerchantUsageEvent;
 impl_request!(DiscardMerchantUsageEvent => MerchantUsageEvent; encode = none; decode = (decode_event));
 
-/// Request state of [`MerchantUsageEvents::release`].
-#[derive(Clone, Debug)]
-pub struct ReleaseMerchantUsageEvent;
-impl_request!(ReleaseMerchantUsageEvent => MerchantUsageEvent; encode = none; decode = (decode_event));
-
 /// Request state of [`MerchantUsageEvents::retry`].
 #[derive(Clone, Debug)]
 pub struct RetryMerchantUsageEvent;
@@ -541,8 +500,6 @@ pub struct MerchantConnection {
     pub provider: MerchantProvider,
     /// The provider environment.
     pub environment: MerchantEnvironment,
-    /// Whether the connection sends usage to the provider.
-    pub status: MerchantConnectionStatus,
     /// The account the credential belongs to at the provider.
     pub merchant_account_id: String,
     /// The last characters of the credential, for display.
@@ -736,17 +693,14 @@ pub struct MerchantUsageCounts {
     pub pending: u64,
     /// Events the provider accepted.
     pub accepted: u64,
-    /// Events whose delivery outcome is unknown.
-    pub uncertain: u64,
     /// Events whose delivery failed.
     pub failed: u64,
-    /// Events without a bound customer.
-    pub unmapped: u64,
     /// Events that could not be built.
     pub incomplete: u64,
     /// Events that missed Dodo's one-hour window.
     pub expired: u64,
-    /// Events the tenant dropped.
+    /// Events never billed: the tenant discarded them, or their end user had
+    /// no customer binding.
     pub discarded: u64,
 }
 

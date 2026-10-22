@@ -80,8 +80,8 @@ impl<S: Scope> Workspaces<'_, S> {
 
     /// Permanently deletes a workspace and all its files. Move attached agents
     /// to another workspace first: while any agent uses it the request fails
-    /// with `workspace_in_use`. The server accepts the deletion and removes the
-    /// files in the background.
+    /// with `workspace_in_use`. The workspace and its files are deleted when
+    /// the call returns.
     pub fn delete(&self, workspace_id: impl Into<WorkspaceId>) -> Call<DeleteWorkspace> {
         let workspace_id = workspace_id.into();
         Call::new(

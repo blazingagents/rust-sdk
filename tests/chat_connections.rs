@@ -2,15 +2,13 @@ mod support;
 
 use blazing_agents::Error;
 use blazing_agents::chat_connections::{
-    ChatConfiguration, ChatCredentials, ChatDeliveryListStatus, ChatDeliveryStatus,
-    ChatHealthCheckStatus, ChatPlatform, NewChatConnection, NewSlackConnection,
-    NewTelegramConnection, SlackCredentials, TelegramCredentials,
+    ChatConfiguration, ChatCredentials, ChatHealthCheckStatus, ChatPlatform, NewChatConnection,
+    NewSlackConnection, NewTelegramConnection, SlackCredentials, TelegramCredentials,
 };
-use blazing_agents::ids::{ChatConnectionId, ChatDeliveryId};
-use futures_util::TryStreamExt;
+use blazing_agents::ids::ChatConnectionId;
 use serde_json::json;
 use support::{api_error, json, json_body, mock, requests};
-use wiremock::matchers::{method, path, query_param, query_param_is_missing};
+use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
 fn chat_connection(id: &str) -> serde_json::Value {
@@ -42,24 +40,6 @@ fn chat_connection(id: &str) -> serde_json::Value {
         "createdAt": "2026-07-10T10:00:00.000Z",
         "updatedAt": "2026-07-10T10:15:00.000Z",
         "webhookUrl": "https://api.blazingagents.com/hooks/chat/cc_1"
-    })
-}
-
-fn delivery(id: &str) -> serde_json::Value {
-    json!({
-        "id": id,
-        "kind": "reply",
-        "status": "failed",
-        "attempt": 2,
-        "credentialVersion": 3,
-        "representation": "Your refund is on its way.",
-        "diagnostic": "channel_not_found",
-        "sessionId": "ss_9Pm2Vb6HxR4kTq8W",
-        "messageId": "msg_1",
-        "approvalId": null,
-        "threadId": "1720684800.000100",
-        "createdAt": "2026-07-10T10:00:00.000Z",
-        "updatedAt": "2026-07-10T10:15:00.000Z"
     })
 }
 
@@ -486,243 +466,6 @@ async fn rotate_credentials_sends_the_platform_tagged_body() {
 }
 
 #[tokio::test]
-async fn deliveries_sends_the_limit_and_decodes() {
-    let (server, client) = mock().await;
-    let mut body = delivery("cd_1");
-    body["status"] = json!("status_added_next_year");
-    body["addedNextYear"] = json!(true);
-    Mock::given(method("GET"))
-        .and(path("/v1/chat-connections/cc_1/deliveries"))
-        .and(query_param("limit", "10"))
-        .and(query_param_is_missing("cursor"))
-        .respond_with(json(200, json!({ "data": [body], "nextCursor": null })))
-        .mount(&server)
-        .await;
-
-    let page = client
-        .chat_connections()
-        .deliveries("cc_1")
-        .limit(10)
-        .await
-        .unwrap();
-
-    assert_eq!(page.data.len(), 1);
-    assert_eq!(page.next_cursor, None);
-    let delivery = &page.data[0];
-    assert_eq!(delivery.id, ChatDeliveryId::from("cd_1"));
-    assert!(matches!(
-        delivery.status,
-        ChatDeliveryStatus::Unrecognized(_)
-    ));
-    assert_eq!(delivery.status.as_str(), "status_added_next_year");
-    assert_eq!(delivery.diagnostic.as_deref(), Some("channel_not_found"));
-    assert_eq!(delivery.receipts, None);
-    assert_eq!(delivery.approval_id, None);
-}
-
-#[tokio::test]
-async fn delivery_items_walk_every_page() {
-    let (server, client) = mock().await;
-    Mock::given(method("GET"))
-        .and(path("/v1/chat-connections/cc_1/deliveries"))
-        .and(query_param_is_missing("cursor"))
-        .respond_with(json(
-            200,
-            json!({ "data": [delivery("cd_1"), delivery("cd_2")], "nextCursor": "c2" }),
-        ))
-        .mount(&server)
-        .await;
-    Mock::given(method("GET"))
-        .and(path("/v1/chat-connections/cc_1/deliveries"))
-        .and(query_param("cursor", "c2"))
-        .respond_with(json(
-            200,
-            json!({ "data": [delivery("cd_3")], "nextCursor": null }),
-        ))
-        .mount(&server)
-        .await;
-
-    let items = client.chat_connections().deliveries("cc_1").items();
-    assert!(requests(&server).await.is_empty());
-    let ids: Vec<String> = items
-        .map_ok(|delivery| delivery.id.to_string())
-        .try_collect()
-        .await
-        .unwrap();
-
-    assert_eq!(ids, ["cd_1", "cd_2", "cd_3"]);
-    let sent = requests(&server).await;
-    assert_eq!(sent.len(), 2);
-    assert_eq!(sent[1].url.query(), Some("cursor=c2"));
-}
-
-#[tokio::test]
-async fn repair_delivery_sends_the_confirmation_flags() {
-    let (server, client) = mock().await;
-    Mock::given(method("POST"))
-        .and(path("/v1/chat-connections/cc_1/deliveries/cd_1/repair"))
-        .respond_with(json(
-            200,
-            json!({
-                "id": "cd_1",
-                "sessionId": "ss_9Pm2Vb6HxR4kTq8W",
-                "threadId": "1720684800.000100",
-                "connectionId": "cc_1",
-                "kind": "reply",
-                "status": "confirmed",
-                "attempt": 3
-            }),
-        ))
-        .mount(&server)
-        .await;
-
-    let result = client
-        .chat_connections()
-        .repair_delivery("cc_1", "cd_1", 2)
-        .await
-        .unwrap();
-
-    let sent = requests(&server).await;
-    assert_eq!(
-        json_body(&sent[0]),
-        json!({
-            "expectedAttempt": 2,
-            "previousSenderStopped": true,
-            "acceptDuplicateRisk": true
-        })
-    );
-    assert_eq!(result.status, ChatDeliveryStatus::Confirmed);
-    assert_eq!(result.attempt, 3);
-    assert_eq!(result.connection_id, ChatConnectionId::from("cc_1"));
-}
-
-#[tokio::test]
-async fn tenant_deliveries_send_status_since_and_limit() {
-    let (server, client) = mock().await;
-    Mock::given(method("GET"))
-        .and(path("/v1/chat-deliveries"))
-        .and(query_param("status", "failed,ambiguous"))
-        .and(query_param("since", "2026-09-20T00:00:00Z"))
-        .and(query_param("limit", "25"))
-        .respond_with(json(
-            200,
-            json!({
-                "data": [{
-                    "id": "cd_1",
-                    "kind": "card",
-                    "status": "ambiguous",
-                    "attempt": 1,
-                    "credentialVersion": 3,
-                    "representation": "Approve deployment?",
-                    "diagnostic": null,
-                    "receipts": { "ts": "1720684800.000100" },
-                    "sessionId": "ss_9Pm2Vb6HxR4kTq8W",
-                    "messageId": null,
-                    "approvalId": "ap_3Nk8QwE2sLx5Rm7T",
-                    "threadId": "1720684800.000100",
-                    "createdAt": "2026-09-20T10:00:00.000Z",
-                    "updatedAt": "2026-09-20T10:05:00.000Z",
-                    "connectionId": "cc_1",
-                    "agentId": "ag_4kP9sT2vXq7LmN3a",
-                    "platform": "slack",
-                    "addedNextYear": 42
-                }],
-                "nextCursor": null
-            }),
-        ))
-        .mount(&server)
-        .await;
-
-    let page = client
-        .chat_deliveries()
-        .list()
-        .status([
-            ChatDeliveryListStatus::Failed,
-            ChatDeliveryListStatus::Ambiguous,
-        ])
-        .since("2026-09-20T00:00:00Z".parse().unwrap())
-        .limit(25)
-        .await
-        .unwrap();
-
-    assert_eq!(page.data.len(), 1);
-    let delivery = &page.data[0];
-    assert_eq!(delivery.status, ChatDeliveryStatus::Ambiguous);
-    assert_eq!(delivery.connection_id, ChatConnectionId::from("cc_1"));
-    assert_eq!(delivery.platform, ChatPlatform::Slack);
-    assert_eq!(
-        delivery.receipts,
-        Some(json!({ "ts": "1720684800.000100" }))
-    );
-    assert!(delivery.approval_id.is_some());
-}
-
-#[tokio::test]
-async fn tenant_deliveries_omit_an_empty_status_filter() {
-    let (server, client) = mock().await;
-    Mock::given(method("GET"))
-        .and(path("/v1/chat-deliveries"))
-        .and(query_param_is_missing("status"))
-        .and(query_param_is_missing("since"))
-        .and(query_param_is_missing("limit"))
-        .and(query_param_is_missing("cursor"))
-        .respond_with(json(200, json!({ "data": [], "nextCursor": null })))
-        .mount(&server)
-        .await;
-
-    client
-        .chat_deliveries()
-        .list()
-        .status(std::iter::empty::<ChatDeliveryListStatus>())
-        .await
-        .unwrap();
-}
-
-#[tokio::test]
-async fn tenant_delivery_items_walk_every_page() {
-    let (server, client) = mock().await;
-    let tenant_delivery = |id: &str| {
-        let mut value = delivery(id);
-        value["connectionId"] = json!("cc_1");
-        value["agentId"] = json!("ag_4kP9sT2vXq7LmN3a");
-        value["platform"] = json!("telegram");
-        value
-    };
-    Mock::given(method("GET"))
-        .and(path("/v1/chat-deliveries"))
-        .and(query_param_is_missing("cursor"))
-        .respond_with(json(
-            200,
-            json!({ "data": [tenant_delivery("cd_1")], "nextCursor": "c2" }),
-        ))
-        .mount(&server)
-        .await;
-    Mock::given(method("GET"))
-        .and(path("/v1/chat-deliveries"))
-        .and(query_param("cursor", "c2"))
-        .respond_with(json(
-            200,
-            json!({ "data": [tenant_delivery("cd_2")], "nextCursor": null }),
-        ))
-        .mount(&server)
-        .await;
-
-    let ids: Vec<String> = client
-        .chat_deliveries()
-        .list()
-        .items()
-        .map_ok(|delivery| delivery.id.to_string())
-        .try_collect()
-        .await
-        .unwrap();
-
-    assert_eq!(ids, ["cd_1", "cd_2"]);
-    let sent = requests(&server).await;
-    assert_eq!(sent.len(), 2);
-    assert_eq!(sent[1].url.query(), Some("cursor=c2"));
-}
-
-#[tokio::test]
 async fn submitted_credentials_are_redacted_from_errors() {
     let (server, client) = mock().await;
     Mock::given(method("POST"))
@@ -807,52 +550,6 @@ async fn a_response_that_echoes_credentials_fails_the_call() {
             }
         ),
         "{error:?}"
-    );
-}
-
-#[tokio::test]
-async fn delivery_lists_are_credential_bearing_so_an_echoed_token_fails_the_call() {
-    let (server, client) = mock().await;
-    let mut leaked = delivery("cd_1");
-    leaked["botToken"] = json!("xoxb-leaked");
-    let page = json!({ "data": [leaked], "nextCursor": null });
-    Mock::given(method("GET"))
-        .and(path("/v1/chat-connections/cc_1/deliveries"))
-        .respond_with(json(200, page.clone()))
-        .mount(&server)
-        .await;
-    Mock::given(method("GET"))
-        .and(path("/v1/chat-deliveries"))
-        .respond_with(json(200, page))
-        .mount(&server)
-        .await;
-
-    let connection = client
-        .chat_connections()
-        .deliveries("cc_1")
-        .await
-        .unwrap_err();
-    let tenant = client.chat_deliveries().list().await.unwrap_err();
-
-    assert!(
-        matches!(
-            connection,
-            Error::CredentialEcho {
-                operation_id: "listChatDeliveries",
-                ..
-            }
-        ),
-        "{connection:?}"
-    );
-    assert!(
-        matches!(
-            tenant,
-            Error::CredentialEcho {
-                operation_id: "listTenantChatDeliveries",
-                ..
-            }
-        ),
-        "{tenant:?}"
     );
 }
 

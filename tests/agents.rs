@@ -652,8 +652,7 @@ async fn spending_limits_get_set_and_clear() {
             "startsAt": "2026-10-01T00:00:00.000Z",
             "endsAt": "2026-11-01T00:00:00.000Z",
             "spentUsd": 4.12,
-            "reservedUsd": 0.55,
-            "availableUsd": 20.33
+            "availableUsd": 20.88
         },
         "nextResetAt": "2026-11-01T00:00:00.000Z"
     });
@@ -692,7 +691,7 @@ async fn spending_limits_get_set_and_clear() {
     assert_eq!(limit.reset_start_date, "2026-10-01");
     assert_eq!(limit.reset_interval, ResetInterval::Monthly);
     let period = status.period.unwrap();
-    assert_eq!(period.available_usd, 20.33);
+    assert_eq!(period.available_usd, 20.88);
     assert_eq!(
         status.next_reset_at.map(|at| at.to_string()),
         Some("2026-11-01T00:00:00Z".to_owned())
