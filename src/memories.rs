@@ -177,7 +177,8 @@ impl_request!(CreateMemory => Memory; encode = json; decode = (unwrap_memory));
 
 impl Call<CreateMemory> {
     /// The end user the memory belongs to. Fixed after creation; an empty or
-    /// omitted value creates a general memory every turn of the agent sees.
+    /// omitted value creates a general memory, which unscoped turns see. A turn
+    /// made through `for_user` sees only its end user's memories.
     pub fn user_id(self, user_id: impl Into<String>) -> Self {
         self.map(|request| request.user_id = Some(user_id.into()))
     }
@@ -213,7 +214,7 @@ pub struct Memory {
     /// The agent the memory belongs to.
     pub agent_id: AgentId,
     /// The end user the memory belongs to, or an empty string for a general
-    /// memory every turn of the agent sees.
+    /// memory, which only unscoped turns see.
     pub user_id: String,
     /// The remembered text.
     pub text: String,
