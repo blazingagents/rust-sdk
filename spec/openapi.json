@@ -5070,18 +5070,6 @@
                   ],
                   "format": "date-time"
                 },
-                "workflowIssue": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "enum": [
-                    "error",
-                    "cancelled",
-                    "recovery_exhausted",
-                    null
-                  ]
-                },
                 "nextAction": {
                   "type": "string",
                   "enum": [
@@ -5117,7 +5105,6 @@
                 "lastAttemptAt",
                 "lastErrorCode",
                 "acceptedAt",
-                "workflowIssue",
                 "nextAction"
               ]
             }
@@ -5372,18 +5359,6 @@
                 ],
                 "format": "date-time"
               },
-              "workflowIssue": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "enum": [
-                  "error",
-                  "cancelled",
-                  "recovery_exhausted",
-                  null
-                ]
-              },
               "nextAction": {
                 "type": "string",
                 "enum": [
@@ -5419,7 +5394,6 @@
               "lastAttemptAt",
               "lastErrorCode",
               "acceptedAt",
-              "workflowIssue",
               "nextAction"
             ]
           }
@@ -9089,7 +9063,7 @@
           "chat-connections"
         ],
         "summary": "Rotate chat connection credentials",
-        "description": "Replaces a connection's credentials. Send `platform` matching the connection and the complete credentials for the same bot installation: Slack needs `botToken` and `signingSecret`, and Telegram needs `botToken`. The new credentials are checked with the chat platform and must identify the same bot. The enabled state and sessions are kept. On an enabled Telegram connection, Blazing Agents re-registers the webhook with a new secret. If that fails, the new credentials are still saved and the request returns an error; call enable to retry.",
+        "description": "Replaces a connection's credentials. Send `platform` matching the connection and the complete credentials for the same bot installation: Slack needs `botToken` and `signingSecret`, and Telegram needs `botToken`. The new credentials are checked with the chat platform and must identify the same bot. The enabled state and sessions are kept. On an enabled Telegram connection, Blazing Agents re-registers the webhook with a new secret. If that fails, the new credentials are still saved and the request returns an error; call enable to retry. [Manage and troubleshoot](https://docs.blazingagents.com/platform/chat-integrations#manage-and-troubleshoot) covers what happens to running turns and waiting messages.",
         "parameters": [
           {
             "schema": {
@@ -9478,7 +9452,7 @@
           "chat-connections"
         ],
         "summary": "Disable a chat connection",
-        "description": "Stops the connection from accepting new messages and approval clicks. Work already accepted can finish. While disabled, Slack URL verification still succeeds, and other messages are acknowledged and dropped.",
+        "description": "Stops the connection from accepting new messages and approval clicks. [Manage and troubleshoot](https://docs.blazingagents.com/platform/chat-integrations#manage-and-troubleshoot) covers what happens to running turns and waiting messages.",
         "parameters": [
           {
             "schema": {
@@ -12200,7 +12174,7 @@
                         "type": "string",
                         "maxLength": 2048,
                         "format": "uri",
-                        "description": "Streamable HTTP URL of the MCP server. Use `http` or `https`, with no credentials, query, or fragment."
+                        "description": "Streamable HTTP URL of the MCP server. Use `https`, with no credentials, query, or fragment."
                       },
                       "authType": {
                         "type": "string",
@@ -12230,7 +12204,7 @@
                         "type": "string",
                         "maxLength": 2048,
                         "format": "uri",
-                        "description": "Streamable HTTP URL of the MCP server. Use `http` or `https`, with no credentials, query, or fragment."
+                        "description": "Streamable HTTP URL of the MCP server. Use `https`, with no credentials, query, or fragment."
                       },
                       "authType": {
                         "type": "string",
@@ -12290,7 +12264,7 @@
                         "type": "string",
                         "maxLength": 2048,
                         "format": "uri",
-                        "description": "Streamable HTTP URL of the MCP server. Use `http` or `https`, with no credentials, query, or fragment."
+                        "description": "Streamable HTTP URL of the MCP server. Use `https`, with no credentials, query, or fragment."
                       },
                       "name": {
                         "type": "string",
@@ -12341,7 +12315,7 @@
                         "type": "string",
                         "maxLength": 2048,
                         "format": "uri",
-                        "description": "Streamable HTTP URL of the MCP server. Use `http` or `https`, with no credentials, query, or fragment."
+                        "description": "Streamable HTTP URL of the MCP server. Use `https`, with no credentials, query, or fragment."
                       },
                       "name": {
                         "type": "string",
@@ -12794,7 +12768,7 @@
                         "type": "string",
                         "maxLength": 2048,
                         "format": "uri",
-                        "description": "Streamable HTTP URL of the MCP server. Use `http` or `https`, with no credentials, query, or fragment."
+                        "description": "Streamable HTTP URL of the MCP server. Use `https`, with no credentials, query, or fragment."
                       }
                     },
                     "required": [
@@ -12824,7 +12798,7 @@
                         "type": "string",
                         "maxLength": 2048,
                         "format": "uri",
-                        "description": "Streamable HTTP URL of the MCP server. Use `http` or `https`, with no credentials, query, or fragment."
+                        "description": "Streamable HTTP URL of the MCP server. Use `https`, with no credentials, query, or fragment."
                       }
                     },
                     "required": [
@@ -12869,7 +12843,7 @@
                         "type": "string",
                         "maxLength": 2048,
                         "format": "uri",
-                        "description": "Streamable HTTP URL of the MCP server. Use `http` or `https`, with no credentials, query, or fragment."
+                        "description": "Streamable HTTP URL of the MCP server. Use `https`, with no credentials, query, or fragment."
                       }
                     },
                     "required": [
@@ -12913,7 +12887,7 @@
                         "type": "string",
                         "maxLength": 2048,
                         "format": "uri",
-                        "description": "Streamable HTTP URL of the MCP server. Use `http` or `https`, with no credentials, query, or fragment."
+                        "description": "Streamable HTTP URL of the MCP server. Use `https`, with no credentials, query, or fragment."
                       }
                     },
                     "required": [
@@ -24167,7 +24141,7 @@
           "merchant"
         ],
         "summary": "List merchant usage events",
-        "description": "Lists the usage events Blazing Agents records for your billing provider, one per turn, newest first. Each event has a delivery `status` and a suggested `nextAction`: `wait`, `retry`, `investigate`, `discard`, or `none`. `workflowIssue` is set when automatic delivery has given up on a `pending` event. Pass `nextCursor` as `cursor` to get the next page; it is `null` on the last page.",
+        "description": "Lists the usage events Blazing Agents records for your billing provider, one per turn, newest first. Each event has a delivery `status` and a suggested `nextAction`: `wait`, `retry`, `investigate`, `discard`, or `none`. A `pending` event whose automatic delivery has given up has `nextAction` `retry`. Pass `nextCursor` as `cursor` to get the next page; it is `null` on the last page.",
         "parameters": [
           {
             "schema": {
@@ -24264,7 +24238,6 @@
                       "lastAttemptAt": "2026-07-10T10:12:10.000Z",
                       "lastErrorCode": null,
                       "acceptedAt": "2026-07-10T10:12:10.000Z",
-                      "workflowIssue": null,
                       "nextAction": "none"
                     },
                     {
@@ -24291,7 +24264,6 @@
                       "lastAttemptAt": null,
                       "lastErrorCode": "MERCHANT_CUSTOMER_UNMAPPED",
                       "acceptedAt": null,
-                      "workflowIssue": null,
                       "nextAction": "none"
                     }
                   ],
@@ -24554,7 +24526,6 @@
                     "lastAttemptAt": "2026-07-10T10:12:10.000Z",
                     "lastErrorCode": null,
                     "acceptedAt": "2026-07-10T10:12:10.000Z",
-                    "workflowIssue": null,
                     "nextAction": "none"
                   }
                 },
@@ -24707,7 +24678,6 @@
                     "lastAttemptAt": "2026-07-10T10:12:10.000Z",
                     "lastErrorCode": null,
                     "acceptedAt": null,
-                    "workflowIssue": null,
                     "nextAction": "wait"
                   }
                 },
@@ -24874,7 +24844,6 @@
                     "lastAttemptAt": "2026-07-10T10:12:10.000Z",
                     "lastErrorCode": "MERCHANT_CREDENTIAL_REJECTED",
                     "acceptedAt": null,
-                    "workflowIssue": null,
                     "nextAction": "none"
                   }
                 },
