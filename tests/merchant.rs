@@ -3,8 +3,8 @@ mod support;
 use blazing_agents::Error;
 use blazing_agents::ids::{MerchantConnectionId, MerchantUsageEventId};
 use blazing_agents::merchant::{
-    MerchantConnectionStatus, MerchantEnvironment, MerchantGuard, MerchantNextAction,
-    MerchantProvider, MerchantTurnStatus, MerchantUsageEventStatus, MerchantWorkflowIssue,
+    MerchantEnvironment, MerchantGuard, MerchantNextAction, MerchantProvider, MerchantTurnStatus,
+    MerchantUsageEventStatus, MerchantWorkflowIssue,
 };
 use blazing_agents::providers::ProviderType;
 use futures_util::TryStreamExt;
@@ -18,7 +18,6 @@ fn merchant_connection() -> serde_json::Value {
         "id": "mch_2Kd8QwE5sLx7Rm9T",
         "provider": "polar",
         "environment": "sandbox",
-        "status": "active",
         "merchantAccountId": "acct_123",
         "keyFragment": "x9Tz",
         "guard": { "enabled": true, "productIds": ["prod_1"], "meterId": null },
@@ -115,7 +114,6 @@ async fn get_returns_the_connection() {
     );
     assert_eq!(connection.provider, MerchantProvider::Polar);
     assert_eq!(connection.environment, MerchantEnvironment::Sandbox);
-    assert_eq!(connection.status, MerchantConnectionStatus::Active);
     assert_eq!(connection.merchant_account_id, "acct_123");
     assert_eq!(connection.key_fragment, "x9Tz");
     assert!(connection.guard.enabled);
@@ -194,7 +192,7 @@ async fn create_sends_only_the_set_fields() {
             }
         })
     );
-    assert_eq!(created.status, MerchantConnectionStatus::Active);
+    assert_eq!(created.config_version, 4);
 }
 
 #[tokio::test]
@@ -218,7 +216,7 @@ async fn update_sends_only_the_set_fields() {
     client
         .merchant_connection()
         .update()
-        .status(MerchantConnectionStatus::Disconnected)
+        .guard(MerchantGuard::new(false))
         .await
         .unwrap();
     client
@@ -230,7 +228,10 @@ async fn update_sends_only_the_set_fields() {
         .unwrap();
 
     let sent = requests(&server).await;
-    assert_eq!(json_body(&sent[0]), json!({ "status": "disconnected" }));
+    assert_eq!(
+        json_body(&sent[0]),
+        json!({ "guard": { "enabled": false, "productIds": [], "meterId": null } })
+    );
     assert_eq!(
         json_body(&sent[1]),
         json!({
@@ -479,9 +480,9 @@ async fn get_event_unwraps_the_envelope() {
 }
 
 #[tokio::test]
-async fn discard_release_and_retry_post_to_their_paths() {
+async fn discard_and_retry_post_to_their_paths() {
     let (server, client) = mock().await;
-    for action in ["discard", "release", "retry"] {
+    for action in ["discard", "retry"] {
         Mock::given(method("POST"))
             .and(path(format!("/v1/merchant-usage-events/mev_1/{action}")))
             .respond_with(json(200, json!({ "event": event("mev_1") })))
@@ -495,15 +496,9 @@ async fn discard_release_and_retry_post_to_their_paths() {
         .discard("mev_1")
         .await
         .unwrap();
-    let released = client
-        .merchant_usage_events()
-        .release("mev_1")
-        .await
-        .unwrap();
     let retried = client.merchant_usage_events().retry("mev_1").await.unwrap();
 
     assert_event(&discarded, "mev_1");
-    assert_event(&released, "mev_1");
     assert_event(&retried, "mev_1");
 }
 
@@ -522,9 +517,7 @@ async fn summary_sends_days_and_decodes() {
                     "counts": {
                         "pending": 3,
                         "accepted": 90,
-                        "uncertain": 1,
                         "failed": 4,
-                        "unmapped": 2,
                         "incomplete": 0,
                         "expired": 0,
                         "discarded": 1
@@ -553,7 +546,7 @@ async fn summary_sends_days_and_decodes() {
         .unwrap();
 
     assert_eq!(summary.counts.accepted, 90);
-    assert_eq!(summary.counts.unmapped, 2);
+    assert_eq!(summary.counts.failed, 4);
     assert_eq!(
         summary.last_accepted_at.unwrap().to_string(),
         "2026-07-10T10:05:00Z"

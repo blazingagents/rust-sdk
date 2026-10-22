@@ -116,10 +116,6 @@ id!(
     ChatConnectionId
 );
 id!(
-    /// A chat delivery ID (`cd_…`).
-    ChatDeliveryId
-);
-id!(
     /// A merchant usage event ID (`mev_…`).
     MerchantUsageEventId
 );

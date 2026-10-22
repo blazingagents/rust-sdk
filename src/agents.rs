@@ -106,7 +106,9 @@ impl<S: Scope> Agents<'_, S> {
 
     /// Permanently deletes an agent, its sessions, tasks, memories, skills and
     /// linked prompts. `include_artifacts` chooses whether its artifacts are
-    /// deleted too. Its workspace, provider and MCP connections stay.
+    /// deleted too. Its workspace, provider and MCP connections stay. While it
+    /// has a running turn or a queued or running task run the request fails
+    /// with `agent_busy`; stop that work or wait for it, then delete again.
     pub fn delete(
         &self,
         agent_id: impl Into<AgentId>,

@@ -724,18 +724,16 @@ pub struct SessionInput {
 crate::open_enum! {
     /// The state of a steer receipt.
     pub enum InputState {
-        /// `accepted` — queued for the turn.
+        /// `accepted` — stored for a turn that is still live; it may still be
+        /// placed and committed, so wait.
         Accepted = "accepted",
-        /// `delivered` — handed to the turn.
-        Delivered = "delivered",
-        /// `committed` — saved in the session's history.
+        /// `committed` — saved with the turn's accepted history.
         Committed = "committed",
-        /// `not_placed` — never reached the agent; safe to resend as an
-        /// ordinary [`Client::chat`] message.
+        /// `not_placed` — not committed: its turn ended, or its owner was
+        /// lost (reason `owner_lost`), without saving it. Send it again as an
+        /// ordinary [`Client::chat`] message. If the turn read it and then
+        /// failed, a resend may repeat tool effects, as any resend can.
         NotPlaced = "not_placed",
-        /// `uncertain` — the agent may have read it; never resend it
-        /// automatically.
-        Uncertain = "uncertain",
     }
 }
 

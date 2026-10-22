@@ -70,9 +70,7 @@ pub struct SpendingLimitPeriod {
     pub ends_at: Timestamp,
     /// USD already spent.
     pub spent_usd: f64,
-    /// USD reserved by in-flight work.
-    pub reserved_usd: f64,
-    /// USD still available.
+    /// USD left before the limit: the amount minus the spend, never below 0.
     pub available_usd: f64,
 }
 

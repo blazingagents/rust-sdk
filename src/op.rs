@@ -692,18 +692,12 @@ pub(crate) enum TenantOp<'a> {
     RenameChatConnection { id: &'a str },
     /// `POST /v1/chat-connections/{id}/credentials` (`rotateChatCredentials`)
     RotateChatCredentials { id: &'a str },
-    /// `GET /v1/chat-connections/{id}/deliveries` (`listChatDeliveries`)
-    ListChatDeliveries { id: &'a str },
-    /// `POST /v1/chat-connections/{id}/deliveries/{deliveryId}/repair` (`repairChatDelivery`)
-    RepairChatDelivery { id: &'a str, delivery_id: &'a str },
     /// `POST /v1/chat-connections/{id}/disable` (`disableChatConnection`)
     DisableChatConnection { id: &'a str },
     /// `POST /v1/chat-connections/{id}/enable` (`enableChatConnection`)
     EnableChatConnection { id: &'a str },
     /// `POST /v1/chat-connections/{id}/health` (`checkChatHealth`)
     CheckChatHealth { id: &'a str },
-    /// `GET /v1/chat-deliveries` (`listTenantChatDeliveries`)
-    ListTenantChatDeliveries,
     /// `GET /v1/mcp-connections` (`listMcpConnections`)
     ListMcpConnections,
     /// `POST /v1/mcp-connections` (`createMcpConnection`)
@@ -740,8 +734,6 @@ pub(crate) enum TenantOp<'a> {
     GetMerchantUsageEvent { event_id: &'a str },
     /// `POST /v1/merchant-usage-events/{eventId}/discard` (`discardMerchantUsageEvent`)
     DiscardMerchantUsageEvent { event_id: &'a str },
-    /// `POST /v1/merchant-usage-events/{eventId}/release` (`releaseMerchantUsageEvent`)
-    ReleaseMerchantUsageEvent { event_id: &'a str },
     /// `POST /v1/merchant-usage-events/{eventId}/retry` (`retryMerchantUsageEvent`)
     RetryMerchantUsageEvent { event_id: &'a str },
     /// `GET /v1/providers` (`listProviders`)
@@ -781,12 +773,9 @@ impl Operation for TenantOp<'_> {
             TenantOp::GetChatConnection { .. } => "getChatConnection",
             TenantOp::RenameChatConnection { .. } => "renameChatConnection",
             TenantOp::RotateChatCredentials { .. } => "rotateChatCredentials",
-            TenantOp::ListChatDeliveries { .. } => "listChatDeliveries",
-            TenantOp::RepairChatDelivery { .. } => "repairChatDelivery",
             TenantOp::DisableChatConnection { .. } => "disableChatConnection",
             TenantOp::EnableChatConnection { .. } => "enableChatConnection",
             TenantOp::CheckChatHealth { .. } => "checkChatHealth",
-            TenantOp::ListTenantChatDeliveries => "listTenantChatDeliveries",
             TenantOp::ListMcpConnections => "listMcpConnections",
             TenantOp::CreateMcpConnection => "createMcpConnection",
             TenantOp::DeleteMcpConnection { .. } => "deleteMcpConnection",
@@ -805,7 +794,6 @@ impl Operation for TenantOp<'_> {
             TenantOp::GetMerchantUsageSummary => "getMerchantUsageSummary",
             TenantOp::GetMerchantUsageEvent { .. } => "getMerchantUsageEvent",
             TenantOp::DiscardMerchantUsageEvent { .. } => "discardMerchantUsageEvent",
-            TenantOp::ReleaseMerchantUsageEvent { .. } => "releaseMerchantUsageEvent",
             TenantOp::RetryMerchantUsageEvent { .. } => "retryMerchantUsageEvent",
             TenantOp::ListProviders => "listProviders",
             TenantOp::CreateProvider => "createProvider",
@@ -832,12 +820,9 @@ impl Operation for TenantOp<'_> {
             TenantOp::GetChatConnection { .. } => "GET",
             TenantOp::RenameChatConnection { .. } => "PATCH",
             TenantOp::RotateChatCredentials { .. } => "POST",
-            TenantOp::ListChatDeliveries { .. } => "GET",
-            TenantOp::RepairChatDelivery { .. } => "POST",
             TenantOp::DisableChatConnection { .. } => "POST",
             TenantOp::EnableChatConnection { .. } => "POST",
             TenantOp::CheckChatHealth { .. } => "POST",
-            TenantOp::ListTenantChatDeliveries => "GET",
             TenantOp::ListMcpConnections => "GET",
             TenantOp::CreateMcpConnection => "POST",
             TenantOp::DeleteMcpConnection { .. } => "DELETE",
@@ -856,7 +841,6 @@ impl Operation for TenantOp<'_> {
             TenantOp::GetMerchantUsageSummary => "GET",
             TenantOp::GetMerchantUsageEvent { .. } => "GET",
             TenantOp::DiscardMerchantUsageEvent { .. } => "POST",
-            TenantOp::ReleaseMerchantUsageEvent { .. } => "POST",
             TenantOp::RetryMerchantUsageEvent { .. } => "POST",
             TenantOp::ListProviders => "GET",
             TenantOp::CreateProvider => "POST",
@@ -882,12 +866,9 @@ impl Operation for TenantOp<'_> {
                 | TenantOp::GetChatConnection { .. }
                 | TenantOp::RenameChatConnection { .. }
                 | TenantOp::RotateChatCredentials { .. }
-                | TenantOp::ListChatDeliveries { .. }
-                | TenantOp::RepairChatDelivery { .. }
                 | TenantOp::DisableChatConnection { .. }
                 | TenantOp::EnableChatConnection { .. }
                 | TenantOp::CheckChatHealth { .. }
-                | TenantOp::ListTenantChatDeliveries
                 | TenantOp::ListMcpConnections
                 | TenantOp::CreateMcpConnection
                 | TenantOp::DeleteMcpConnection { .. }
@@ -934,15 +915,6 @@ impl Operation for TenantOp<'_> {
                 "/v1/chat-connections/{}/credentials",
                 segment(id, "id")?
             )),
-            TenantOp::ListChatDeliveries { id } => Ok(format!(
-                "/v1/chat-connections/{}/deliveries",
-                segment(id, "id")?
-            )),
-            TenantOp::RepairChatDelivery { id, delivery_id } => Ok(format!(
-                "/v1/chat-connections/{}/deliveries/{}/repair",
-                segment(id, "id")?,
-                segment(delivery_id, "deliveryId")?
-            )),
             TenantOp::DisableChatConnection { id } => Ok(format!(
                 "/v1/chat-connections/{}/disable",
                 segment(id, "id")?
@@ -955,7 +927,6 @@ impl Operation for TenantOp<'_> {
                 "/v1/chat-connections/{}/health",
                 segment(id, "id")?
             )),
-            TenantOp::ListTenantChatDeliveries => Ok(String::from("/v1/chat-deliveries")),
             TenantOp::ListMcpConnections => Ok(String::from("/v1/mcp-connections")),
             TenantOp::CreateMcpConnection => Ok(String::from("/v1/mcp-connections")),
             TenantOp::DeleteMcpConnection { id } => {
@@ -997,10 +968,6 @@ impl Operation for TenantOp<'_> {
             )),
             TenantOp::DiscardMerchantUsageEvent { event_id } => Ok(format!(
                 "/v1/merchant-usage-events/{}/discard",
-                segment(event_id, "eventId")?
-            )),
-            TenantOp::ReleaseMerchantUsageEvent { event_id } => Ok(format!(
-                "/v1/merchant-usage-events/{}/release",
                 segment(event_id, "eventId")?
             )),
             TenantOp::RetryMerchantUsageEvent { event_id } => Ok(format!(

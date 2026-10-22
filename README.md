@@ -17,7 +17,7 @@ The official Rust SDK provides an asynchronous client for the Blazing Agents
 - Typed request builders and response models; unknown fields and enum values
   still decode.
 - Agent, Workspace, Skill, Provider, MCP connection, Prompt, Memory, Session,
-  Artifact, Task, Chat Connection and delivery, Merchant, Usage, and Tenant
+  Artifact, Task, Chat Connection, Merchant, Usage, and Tenant
   management.
 - Chat streams of AI SDK UI message stream events, ready to relay to
   `useChat`, with message batches, tool approvals and backend functions.

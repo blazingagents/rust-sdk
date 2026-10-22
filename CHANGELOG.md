@@ -1,5 +1,57 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- Chat delivery listing and repair: `Client::chat_deliveries`,
+  `ChatDeliveries`, `chat_connections().deliveries()`,
+  `chat_connections().repair_delivery()`, `ChatDelivery`,
+  `TenantChatDelivery`, `ChatDeliveryResult`, `ChatDeliveryKind`,
+  `ChatDeliveryStatus`, `ChatDeliveryListStatus` and `ids::ChatDeliveryId`.
+  The API no longer keeps a delivery outbox: the turn that answers a Slack or
+  Telegram message posts the reply itself, and a reply that still fails stays
+  in the session transcript. Delete calls to these methods; read the reply
+  from the session with `sessions().messages()`.
+- `merchant_usage_events().release()`, `MerchantUsageEventStatus::Unmapped`,
+  `MerchantNextAction::BindAndRelease`, `MerchantUsageCounts::unmapped` and
+  `ErrorCode::MerchantBindingRequired`. Usage from an end user with no
+  customer binding is now recorded once as `discarded`, with
+  `last_error_code` `MERCHANT_CUSTOMER_UNMAPPED`, and is never billed later.
+  Bind the end user before their first turn, or enable the connection's guard
+  so their turn is refused with `ErrorCode::MerchantCustomerUnmapped`.
+- `MerchantConnectionStatus`, `MerchantConnection::status` and
+  `merchant_connection().update().status()`. A connection has no
+  `disconnected` state; to pause billing, replace
+  `.update().status(MerchantConnectionStatus::Disconnected)` with
+  `tenant().update().monetization_enabled(false)`.
+- `MerchantUsageEventStatus::Uncertain` and `MerchantUsageCounts::uncertain`.
+  An event whose delivery keeps failing ends `failed`, and
+  `merchant_usage_events().retry()` is safe because providers drop
+  duplicates by the event ID. Match `Failed` where you matched `Uncertain`.
+- `InputState::Delivered` and `InputState::Uncertain`. A steer receipt is
+  `accepted`, `committed` or `not_placed`. Treat `Delivered` as `Accepted`
+  (wait), and `Uncertain` as `NotPlaced` (send the message again with
+  `Client::chat`).
+- `SpendingLimitPeriod::reserved_usd`. Spending is no longer reserved before
+  a model request: the platform checks the spend before each request and
+  adds the cost after it, and `available_usd` is the amount minus the spend.
+  Delete reads of `reserved_usd`.
+- `ErrorCode::CheckoutEvidenceMismatch`. The API never returns it; delete
+  match arms or comparisons that name it.
+
+### Added
+
+- `ErrorCode::AgentBusy`. `agents().delete()` fails with it while the agent
+  has a running turn or a queued or running task run.
+
+### Changed
+
+- `workspaces().delete()` returns once the workspace and its files are
+  deleted (the API answers `204`, not `202`).
+- `merchant_connection().retire()` fails with `merchant_connection_in_use`
+  while a turn on the connection runs or one of its events is `pending`.
+
 ## 0.3.0 (2026-10-19)
 
 - `TaskRun::error_code` is the `ErrorCode` a `blocked` or `failed` run ended

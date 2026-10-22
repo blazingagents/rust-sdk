@@ -1,5 +1,5 @@
-//! Chat platform connections (Slack, Telegram) and their deliveries. Tenant only;
-//! start from [`Client::chat_connections`] and [`Client::chat_deliveries`].
+//! Chat platform connections (Slack, Telegram). Tenant only; start from
+//! [`Client::chat_connections`].
 //!
 //! ```compile_fail
 //! # fn example(client: blazing_agents::UserClient) {
@@ -15,9 +15,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::call::{Call, impl_request};
 use crate::client::{Client, Tenant};
-use crate::ids::{AgentId, ApprovalId, ChatConnectionId, ChatDeliveryId, SessionId, TenantId};
+use crate::ids::{AgentId, ChatConnectionId, TenantId};
 use crate::op::TenantOp;
-use crate::pagination::{Cursor, Page};
 use crate::types::Timestamp;
 
 /// Chat connection operations. Returned by [`Client::chat_connections`].
@@ -26,21 +25,10 @@ pub struct ChatConnections<'a> {
     client: &'a Client<Tenant>,
 }
 
-/// Tenant-wide chat delivery operations. Returned by [`Client::chat_deliveries`].
-#[derive(Clone, Copy, Debug)]
-pub struct ChatDeliveries<'a> {
-    client: &'a Client<Tenant>,
-}
-
 impl Client<Tenant> {
     /// Chat connection operations.
     pub fn chat_connections(&self) -> ChatConnections<'_> {
         ChatConnections { client: self }
-    }
-
-    /// Tenant-wide chat delivery operations.
-    pub fn chat_deliveries(&self) -> ChatDeliveries<'_> {
-        ChatDeliveries { client: self }
     }
 }
 
@@ -108,7 +96,8 @@ impl ChatConnections<'_> {
         )
     }
 
-    /// Resumes deliveries on a chat connection.
+    /// Starts accepting new messages on a chat connection. Messages sent while
+    /// it was disabled are not replayed.
     pub fn enable(
         &self,
         chat_connection_id: impl Into<ChatConnectionId>,
@@ -123,7 +112,8 @@ impl ChatConnections<'_> {
         )
     }
 
-    /// Pauses deliveries on a chat connection.
+    /// Stops a chat connection from accepting new messages. Work already
+    /// accepted can finish.
     pub fn disable(
         &self,
         chat_connection_id: impl Into<ChatConnectionId>,
@@ -168,59 +158,6 @@ impl ChatConnections<'_> {
             RotateChatCredentials { credentials },
         )
     }
-
-    /// Lists one chat connection's deliveries.
-    pub fn deliveries(
-        &self,
-        chat_connection_id: impl Into<ChatConnectionId>,
-    ) -> Call<ListChatDeliveries> {
-        let chat_connection_id = chat_connection_id.into();
-        Call::tenant(
-            self.client,
-            TenantOp::ListChatDeliveries {
-                id: chat_connection_id.as_str(),
-            },
-            ListChatDeliveries::default(),
-        )
-    }
-
-    /// Resends a failed or ambiguous delivery. `expected_attempt` is the
-    /// delivery's current [`attempt`](ChatDelivery::attempt), 0 to 99, and the
-    /// repair is refused if it has changed. Calling it confirms the sender of
-    /// the previous attempt has stopped, and that you accept the message may
-    /// appear twice because the platform may already have it.
-    pub fn repair_delivery(
-        &self,
-        chat_connection_id: impl Into<ChatConnectionId>,
-        delivery_id: impl Into<ChatDeliveryId>,
-        expected_attempt: u64,
-    ) -> Call<RepairChatDelivery> {
-        let chat_connection_id = chat_connection_id.into();
-        let delivery_id = delivery_id.into();
-        Call::tenant(
-            self.client,
-            TenantOp::RepairChatDelivery {
-                id: chat_connection_id.as_str(),
-                delivery_id: delivery_id.as_str(),
-            },
-            RepairChatDelivery {
-                expected_attempt,
-                previous_sender_stopped: true,
-                accept_duplicate_risk: true,
-            },
-        )
-    }
-}
-
-impl ChatDeliveries<'_> {
-    /// Lists failed and ambiguous deliveries across chat connections.
-    pub fn list(&self) -> Call<ListTenantChatDeliveries> {
-        Call::tenant(
-            self.client,
-            TenantOp::ListTenantChatDeliveries,
-            ListTenantChatDeliveries::default(),
-        )
-    }
 }
 
 crate::open_enum! {
@@ -234,30 +171,6 @@ crate::open_enum! {
 }
 
 crate::open_enum! {
-    /// What a chat delivery carries.
-    pub enum ChatDeliveryKind {
-        /// `reply`
-        Reply = "reply",
-        /// `card`
-        Card = "card",
-    }
-}
-
-crate::open_enum! {
-    /// Where a chat delivery stands.
-    pub enum ChatDeliveryStatus {
-        /// `pending`
-        Pending = "pending",
-        /// `confirmed`
-        Confirmed = "confirmed",
-        /// `failed`
-        Failed = "failed",
-        /// `ambiguous`
-        Ambiguous = "ambiguous",
-    }
-}
-
-crate::open_enum! {
     /// The outcome of one health check.
     pub enum ChatHealthCheckStatus {
         /// `pass`
@@ -266,26 +179,6 @@ crate::open_enum! {
         Fail = "fail",
         /// `unknown`
         Unknown = "unknown",
-    }
-}
-
-/// A status the tenant-wide delivery list can filter to.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum ChatDeliveryListStatus {
-    /// `failed`
-    Failed,
-    /// `ambiguous`
-    Ambiguous,
-}
-
-impl ChatDeliveryListStatus {
-    /// The wire value.
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Failed => "failed",
-            Self::Ambiguous => "ambiguous",
-        }
     }
 }
 
@@ -658,74 +551,6 @@ pub struct RotateChatCredentials {
 impl_request!(RotateChatCredentials => ChatConnection; encode = json; decode = json;
     sensitive = (|request: &Self| request.credentials.secrets()));
 
-/// Request state of [`ChatConnections::deliveries`].
-#[derive(Clone, Debug, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ListChatDeliveries {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    cursor: Option<Cursor>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    limit: Option<u8>,
-}
-impl_request!(ListChatDeliveries => Page<ChatDelivery>; encode = query; decode = json; paginate);
-
-impl Call<ListChatDeliveries> {
-    /// Deliveries per page, 1 to 100. Defaults to 100.
-    pub fn limit(self, limit: u8) -> Self {
-        self.map(|request| request.limit = Some(limit))
-    }
-}
-
-/// Request state of [`ChatConnections::repair_delivery`].
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RepairChatDelivery {
-    expected_attempt: u64,
-    previous_sender_stopped: bool,
-    accept_duplicate_risk: bool,
-}
-impl_request!(RepairChatDelivery => ChatDeliveryResult; encode = json; decode = json);
-
-/// Request state of [`ChatDeliveries::list`].
-#[derive(Clone, Debug, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ListTenantChatDeliveries {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    status: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    since: Option<Timestamp>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    cursor: Option<Cursor>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    limit: Option<u8>,
-}
-impl_request!(ListTenantChatDeliveries => Page<TenantChatDelivery>; encode = query; decode = json; paginate);
-
-impl Call<ListTenantChatDeliveries> {
-    /// Only deliveries with these statuses, sent comma-separated. An empty
-    /// iterator leaves the filter out.
-    pub fn status(self, status: impl IntoIterator<Item = ChatDeliveryListStatus>) -> Self {
-        self.map(|request| {
-            let status = status
-                .into_iter()
-                .map(|status| status.as_str().to_owned())
-                .collect::<Vec<_>>()
-                .join(",");
-            request.status = (!status.is_empty()).then_some(status);
-        })
-    }
-
-    /// Only deliveries created at or after this instant.
-    pub fn since(self, since: Timestamp) -> Self {
-        self.map(|request| request.since = Some(since))
-    }
-
-    /// Deliveries per page, 1 to 100. Defaults to 50.
-    pub fn limit(self, limit: u8) -> Self {
-        self.map(|request| request.limit = Some(limit))
-    }
-}
-
 /// A chat connection. Its credentials are never returned.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -880,103 +705,4 @@ pub struct ChatHealthCheck {
 pub struct ChatConnectionList {
     /// The connections.
     pub chat_connections: Vec<ChatConnection>,
-}
-
-/// One delivery of a chat connection.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[non_exhaustive]
-#[serde(rename_all = "camelCase")]
-pub struct ChatDelivery {
-    /// The delivery's ID.
-    pub id: ChatDeliveryId,
-    /// What the delivery carries.
-    pub kind: ChatDeliveryKind,
-    /// Where the delivery stands.
-    pub status: ChatDeliveryStatus,
-    /// How many sends have been tried.
-    pub attempt: u64,
-    /// The credential version the delivery used.
-    pub credential_version: u64,
-    /// What the delivery sent, as text.
-    pub representation: String,
-    /// Why the delivery failed, when it did.
-    pub diagnostic: Option<String>,
-    /// The platform's receipts, in its own shape.
-    #[serde(default)]
-    pub receipts: Option<serde_json::Value>,
-    /// The session the message belongs to.
-    pub session_id: SessionId,
-    /// The message's ID, when one exists.
-    pub message_id: Option<String>,
-    /// The approval the message answers, when it is one.
-    pub approval_id: Option<ApprovalId>,
-    /// The platform thread the delivery belongs to.
-    pub thread_id: String,
-    /// When the delivery was created.
-    pub created_at: Timestamp,
-    /// When the delivery last changed.
-    pub updated_at: Timestamp,
-}
-
-/// One delivery in the tenant-wide list, with its connection.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[non_exhaustive]
-#[serde(rename_all = "camelCase")]
-pub struct TenantChatDelivery {
-    /// The delivery's ID.
-    pub id: ChatDeliveryId,
-    /// What the delivery carries.
-    pub kind: ChatDeliveryKind,
-    /// Where the delivery stands.
-    pub status: ChatDeliveryStatus,
-    /// How many sends have been tried.
-    pub attempt: u64,
-    /// The credential version the delivery used.
-    pub credential_version: u64,
-    /// What the delivery sent, as text.
-    pub representation: String,
-    /// Why the delivery failed, when it did.
-    pub diagnostic: Option<String>,
-    /// The platform's receipts, in its own shape.
-    #[serde(default)]
-    pub receipts: Option<serde_json::Value>,
-    /// The session the message belongs to.
-    pub session_id: SessionId,
-    /// The message's ID, when one exists.
-    pub message_id: Option<String>,
-    /// The approval the message answers, when it is one.
-    pub approval_id: Option<ApprovalId>,
-    /// The platform thread the delivery belongs to.
-    pub thread_id: String,
-    /// When the delivery was created.
-    pub created_at: Timestamp,
-    /// When the delivery last changed.
-    pub updated_at: Timestamp,
-    /// The connection the delivery went through.
-    pub connection_id: ChatConnectionId,
-    /// The agent that produced the message.
-    pub agent_id: AgentId,
-    /// The chat platform.
-    pub platform: ChatPlatform,
-}
-
-/// The outcome of repairing a delivery.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[non_exhaustive]
-#[serde(rename_all = "camelCase")]
-pub struct ChatDeliveryResult {
-    /// The delivery's ID.
-    pub id: ChatDeliveryId,
-    /// The session the message belongs to.
-    pub session_id: SessionId,
-    /// The platform thread the delivery belongs to.
-    pub thread_id: String,
-    /// The connection the delivery went through.
-    pub connection_id: ChatConnectionId,
-    /// What the delivery carries.
-    pub kind: ChatDeliveryKind,
-    /// Where the delivery stands after the repair.
-    pub status: ChatDeliveryStatus,
-    /// How many sends have been tried.
-    pub attempt: u64,
 }
