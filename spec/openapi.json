@@ -96,7 +96,13 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "ba_ token",
-        "description": "Tenant API key minted by POST /v1/apikeys; sent as `Authorization: Bearer ba_read_…` or `ba_full_…`. A read-only key may call operations declared `x-access: read` or `run`; a full key also covers `write`."
+        "description": "Tenant API key from `POST /v1/apikeys`, sent as `Authorization: Bearer ba_read_…` or `ba_full_…`. Each key has one access level, `read` or `full`, chosen when the key is created; it never changes. A full key may call every operation whose `security` lists `ApiKey`. A read-only key may call operations declared `x-access: read` or `run`, so it can read your setup and run your agents but not change them. An operation that can refuse a read-only key lists `insufficient_scope` under its `403` response. Add `EndUserScope` to act for one of your end users."
+      },
+      "EndUserScope": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-BA-User-Id",
+        "description": "Optional end-user scope, sent beside a tenant API key. The SDKs send it for a client made with `forUser` (`for_user` in Python and Rust, `ForUser` in Go). The value is your own ID for the end user: 1 to 256 printable ASCII characters, with no space at either end. Only operations whose `security` lists `EndUserScope` accept it; they declare `x-scope: end-user`. The scope narrows the request to that end user. Lists and reads return only records whose `userId` is that user, records you create get that `userId`, and records with no user, such as general memories, stay hidden. Every agent, session, workspace, skill, task, or other record you name must belong to that user; providers and MCP connections belong to the tenant and stay usable. A run also needs the agent's workspace to belong to that user. Errors: `400 invalid_request` for an invalid value, or for a `userId` field or query parameter that names a different user; `403 forbidden` on an operation without `EndUserScope`, with a dashboard sign-in, or when you change or run a task that was not created with this end-user scope; `404` with the record's not-found code, such as `not_found`, `workspace_not_found`, or `skill_not_found`, when a record you name belongs to another user or to no user; `404 workspace_not_found` when a run's agent has a workspace that does not belong to that user."
       },
       "DashboardJwt": {
         "type": "http",
@@ -7830,7 +7836,7 @@
           }
         ],
         "summary": "Schedule tenant deletion",
-        "description": "Marks the tenant deleting: new executions block immediately and queued Task runs are cancelled; work already running finishes. Permanent deletion is scheduled 24 hours out on the durable `tenantDeletion` workflow and can be cancelled until then. Every other route stays open in that window. The response reports the scheduled deletion. A tenant whose active Subscription still renews is refused with `subscription_not_cancelled`; cancel it first with `PATCH /v1/subscription`. Only a dashboard JWT may call this route.",
+        "description": "Marks the tenant deleting: new executions block immediately and queued Task runs are cancelled; work already running finishes. Permanent deletion runs 24 hours later and can be cancelled until then. Every other route stays open in that window. The response reports the scheduled deletion. A tenant whose active Subscription still renews is refused with `subscription_not_cancelled`; cancel it first with `PATCH /v1/subscription`. Only a dashboard JWT may call this route.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8140,7 +8146,7 @@
           }
         ],
         "summary": "Cancel a scheduled tenant deletion",
-        "description": "Cancels a deletion scheduled by `DELETE /v1/tenant` while its 24-hour window is still open. Runs queued for cancellation stay cancelled; the scheduled cleanup workflow never runs. Returns `tenant_not_deleting` when nothing is scheduled and `tenant_deletion_in_progress` once the deadline has passed. Only a dashboard JWT may call this route.",
+        "description": "Cancels a deletion scheduled by `DELETE /v1/tenant` while its 24-hour window is still open. Runs queued for cancellation stay cancelled; the scheduled deletion never runs. Returns `tenant_not_deleting` when nothing is scheduled and `tenant_deletion_in_progress` once the deadline has passed. Only a dashboard JWT may call this route.",
         "responses": {
           "204": {
             "description": "Cancelled"
@@ -11497,7 +11503,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "get": {
         "x-access": "read",
@@ -11632,7 +11650,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/workspaces/{workspaceId}": {
@@ -11753,7 +11783,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "put": {
         "x-access": "write",
@@ -11987,7 +12029,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "delete": {
         "x-access": "write",
@@ -12095,7 +12149,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/mcp-connections": {
@@ -13892,7 +13958,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "get": {
         "x-access": "read",
@@ -14069,7 +14147,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/mcp-attachments": {
@@ -14185,7 +14275,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/mcp-attachments/{mcpConnectionId}": {
@@ -14342,7 +14444,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}": {
@@ -14481,7 +14595,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "put": {
         "x-access": "write",
@@ -14978,7 +15104,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "delete": {
         "x-access": "write",
@@ -15102,7 +15240,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/disable": {
@@ -15255,7 +15405,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/enable": {
@@ -15408,7 +15570,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/avatar": {
@@ -15600,7 +15774,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "delete": {
         "x-access": "write",
@@ -15751,7 +15937,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/skills": {
@@ -15946,7 +16144,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "get": {
         "x-access": "read",
@@ -16089,7 +16299,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/skills/upload": {
@@ -16289,7 +16511,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/skills/{skillId}": {
@@ -16439,7 +16673,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "delete": {
         "x-access": "write",
@@ -16559,7 +16805,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/skills/{skillId}/files": {
@@ -16700,7 +16958,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "put": {
         "x-access": "write",
@@ -16900,7 +17170,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "delete": {
         "x-access": "write",
@@ -17057,7 +17339,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/skills/{skillId}/copies": {
@@ -17254,7 +17548,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/generation": {
@@ -17508,7 +17814,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/sessions": {
@@ -17649,7 +17967,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "post": {
         "x-access": "run",
@@ -17942,7 +18272,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/sessions/latest": {
@@ -18092,7 +18434,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/sessions/{sessionId}": {
@@ -18246,7 +18600,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "delete": {
         "x-access": "write",
@@ -18393,7 +18759,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "post": {
         "x-access": "run",
@@ -18700,7 +19078,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/sessions/{sessionId}/fork": {
@@ -18973,7 +19363,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/sessions/{sessionId}/messages": {
@@ -19151,7 +19553,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/sessions/{sessionId}/tool-approvals": {
@@ -19290,7 +19704,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/sessions/{sessionId}/tool-approvals/continue": {
@@ -19302,7 +19728,7 @@
           "sessions"
         ],
         "summary": "Decide an approval round and continue the turn",
-        "description": "Records every decision in one approval round and streams the rest of the turn in this request. No continuation starts without this call. Pass caller-local functions for this invocation. Identical decisions are idempotent; changed decisions conflict. A running retry returns session_busy and a terminal retry returns tool_approval_continuation_settled. If the session's previous turn stopped responding, the call returns session_turn_unresponsive with a Retry-After header, and the decisions stay recorded for the retry. A failure before admission leaves the round waiting for an explicit retry. Output is not replayed.",
+        "description": "Records every decision in one approval round and streams the rest of the turn in this request. No continuation starts without this call. Pass caller-local functions for this invocation. Identical decisions are idempotent; changed decisions conflict. A running retry returns session_busy and a terminal retry returns tool_approval_continuation_settled. If the session's previous turn stopped responding, the call returns session_turn_unresponsive with a Retry-After header, and the decisions stay recorded for the retry. A failure before the turn starts leaves the round waiting for an explicit retry. Output is not replayed.",
         "parameters": [
           {
             "schema": {
@@ -19525,7 +19951,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/sessions/{sessionId}/function-calls/{functionCallId}/claim": {
@@ -19702,7 +20140,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/sessions/{sessionId}/function-calls/{functionCallId}/result": {
@@ -19935,7 +20385,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/sessions/{sessionId}/inputs": {
@@ -20255,7 +20717,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "get": {
         "x-access": "read",
@@ -20572,7 +21046,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/sessions/{sessionId}/stop": {
@@ -20739,7 +21225,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/artifacts": {
@@ -20872,7 +21370,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/artifacts/{artifactId}/download-url": {
@@ -20992,7 +21502,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/artifacts/{artifactId}": {
@@ -21108,7 +21630,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "delete": {
         "x-access": "write",
@@ -21203,7 +21737,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/memories": {
@@ -21359,7 +21905,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "get": {
         "x-access": "read",
@@ -21521,7 +22079,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/agents/{agentId}/memories/{memoryId}": {
@@ -21647,7 +22217,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "patch": {
         "x-access": "write",
@@ -21796,7 +22378,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "delete": {
         "x-access": "write",
@@ -21902,7 +22496,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/prompts": {
@@ -22066,7 +22672,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "get": {
         "x-access": "read",
@@ -22224,7 +22842,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/prompts/{promptId}": {
@@ -22344,7 +22974,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "patch": {
         "x-access": "write",
@@ -22505,7 +23147,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "delete": {
         "x-access": "write",
@@ -22600,7 +23254,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/merchant-connection": {
@@ -22705,7 +23371,7 @@
           "merchant"
         ],
         "summary": "Create a merchant connection",
-        "description": "Connects your Polar or Dodo account so your end users' model-token usage is sent to it. Blazing Agents checks the credential with your provider first, and afterwards shows only its last few characters. Creating a connection replaces your current one: the old connection is retired like `DELETE /v1/merchant-connection` does, its `failed` events are discarded and its credential is deleted at once. While a request admitted on the current connection is still running or one of its usage events is `pending`, it cannot be replaced and the request fails with `merchant_connection_in_use`. Customer bindings belong to a connection, so link your users again after you replace it. An enabled `guard` needs at least one entry in `productIds` or a `meterId`, and each of them must exist at your provider, or the request fails with `validation_failed` and an issue coded `merchant_guard_id_unknown` for each unknown ID. Monetization stays off until you set `monetizationEnabled` on your tenant.",
+        "description": "Connects your Polar or Dodo account so your end users' model-token usage is sent to it. Blazing Agents checks the credential with your provider first, and afterwards shows only its last few characters. Creating a connection replaces your current one: the old connection is retired like `DELETE /v1/merchant-connection` does, its `failed` events are discarded and its credential is deleted at once. While a turn or task run that started on the current connection is still running or one of its usage events is `pending`, it cannot be replaced and the request fails with `merchant_connection_in_use`. Customer bindings belong to a connection, so link your users again after you replace it. An enabled `guard` needs at least one entry in `productIds` or a `meterId`, and each of them must exist at your provider, or the request fails with `validation_failed` and an issue coded `merchant_guard_id_unknown` for each unknown ID. Monetization stays off until you set `monetizationEnabled` on your tenant.",
         "requestBody": {
           "required": true,
           "content": {
@@ -23020,7 +23686,7 @@
           "merchant"
         ],
         "summary": "Retire the merchant connection",
-        "description": "Retires your current merchant connection. While a request admitted on the connection is still running or one of its usage events is `pending`, the connection cannot be retired and the request fails with `merchant_connection_in_use`; try again once those requests finish and those events are delivered. A `pending` event whose automatic delivery gave up also blocks until you retry it. When the connection is retired, its `failed` events are discarded and Blazing Agents deletes its credential at once, so nothing more is delivered through it. New usage is no longer recorded against a retired connection. Create a new connection to start again.",
+        "description": "Retires your current merchant connection. While a turn or task run that started on the connection is still running or one of its usage events is `pending`, the connection cannot be retired and the request fails with `merchant_connection_in_use`; try again once those requests finish and those events are delivered. A `pending` event whose automatic delivery gave up also blocks until you retry it. When the connection is retired, its `failed` events are discarded and Blazing Agents deletes its credential at once, so nothing more is delivered through it. New usage is no longer recorded against a retired connection. Create a new connection to start again.",
         "responses": {
           "204": {
             "description": "The connection was retired"
@@ -24495,7 +25161,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/usage/overview": {
@@ -24883,7 +25561,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/usage/sessions": {
@@ -25001,7 +25691,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/tasks": {
@@ -25389,7 +26091,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "get": {
         "x-access": "read",
@@ -25549,7 +26263,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/tasks/{taskId}": {
@@ -25677,7 +26403,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "patch": {
         "x-access": "write",
@@ -25953,7 +26691,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "delete": {
         "x-access": "write",
@@ -26061,7 +26811,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/tasks/{taskId}/runs": {
@@ -26203,7 +26965,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       },
       "get": {
         "x-access": "read",
@@ -26383,7 +27157,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/tasks/{taskId}/runs/{runId}": {
@@ -26395,7 +27181,7 @@
           "task-runs"
         ],
         "summary": "Get a task run",
-        "description": "Returns a task run's current state and the agent configuration captured when it was queued. `status` moves from `queued` to `running` and ends as `succeeded`, `failed`, `canceled`, or `blocked`. `blocked` means the run was not allowed to start, for example because a quota was reached or usage credit ran out; `error` says why and `errorCode` names the reason as an API error code. `error` also describes a failed run, and `errorCode` is set when the failure has a code, such as `provider_required`. `sessionId` and `turnId` stay `null` until the run is admitted and starts its session, so a blocked run never gets them, nor does a run that fails before starting, such as one whose saved agent configuration has no provider and model. Every final status sets `finishedAt` and lets the task start another run.",
+        "description": "Returns a task run's current state and the agent configuration captured when it was queued. `status` moves from `queued` to `running` and ends as `succeeded`, `failed`, `canceled`, or `blocked`. `blocked` means the run was not allowed to start, for example because a quota was reached or usage credit ran out; `error` says why and `errorCode` names the reason as an API error code. `error` also describes a failed run, and `errorCode` is set when the failure has a code, such as `provider_required`. `sessionId` and `turnId` stay `null` until the run starts its session, so a blocked run never gets them, nor does a run that fails before starting, such as one whose saved agent configuration has no provider and model. Every final status sets `finishedAt` and lets the task start another run.",
         "parameters": [
           {
             "schema": {
@@ -26546,7 +27332,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/tasks/{taskId}/runs/{runId}/messages": {
@@ -26558,7 +27356,7 @@
           "task-runs"
         ],
         "summary": "List a task run's messages",
-        "description": "Returns a task run's transcript with the run's `status`, `error`, and `finishedAt`, so one request tells you both what the agent said and whether the run is done. Pages come newest first, with messages in chronological order inside each page, the same as session messages. To follow a run as it works, save `latestCursor` and pass it as `after` to get only newer messages. Send `cursor` or `after`, not both. The page is empty until the run starts its session; while the run is still going, an empty page does not mean it is done.",
+        "description": "Returns a task run's transcript with the run's `status`, `error`, and `finishedAt`, so one request tells you both what the agent said and whether the run is done. Pages come newest first, with messages in chronological order inside each page, the same as session messages. While the run works, the transcript holds only its prompt; the agent's messages appear all at once when the run ends, so poll `status` to follow progress. Save `latestCursor` and pass it as `after` to get only messages newer than an earlier page. Send `cursor` or `after`, not both. The page is empty until the run starts its session.",
         "parameters": [
           {
             "schema": {
@@ -26716,7 +27514,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     },
     "/v1/tasks/{taskId}/runs/{runId}/cancel": {
@@ -26810,7 +27620,19 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "ApiKey": [],
+            "EndUserScope": []
+          },
+          {
+            "DashboardJwt": []
+          }
+        ]
       }
     }
   },
