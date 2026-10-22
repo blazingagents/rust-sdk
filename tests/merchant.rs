@@ -4,7 +4,7 @@ use blazing_agents::Error;
 use blazing_agents::ids::{MerchantConnectionId, MerchantUsageEventId};
 use blazing_agents::merchant::{
     MerchantEnvironment, MerchantGuard, MerchantNextAction, MerchantProvider, MerchantTurnStatus,
-    MerchantUsageEventStatus, MerchantWorkflowIssue,
+    MerchantUsageEventStatus,
 };
 use blazing_agents::providers::ProviderType;
 use futures_util::TryStreamExt;
@@ -61,7 +61,6 @@ fn event(id: &str) -> serde_json::Value {
         "lastAttemptAt": "2026-07-10T10:05:00.000Z",
         "lastErrorCode": "provider_5xx",
         "acceptedAt": null,
-        "workflowIssue": "error",
         "nextAction": "retry"
     })
 }
@@ -87,7 +86,6 @@ fn assert_event(event: &blazing_agents::merchant::MerchantUsageEvent, id: &str) 
         Some(json!("evt_1"))
     );
     assert_eq!(event.attempt_count, 2);
-    assert_eq!(event.workflow_issue, Some(MerchantWorkflowIssue::Error));
     assert_eq!(event.next_action, MerchantNextAction::Retry);
 }
 
@@ -471,6 +469,22 @@ async fn get_event_unwraps_the_envelope() {
     Mock::given(method("GET"))
         .and(path("/v1/merchant-usage-events/mev_1"))
         .respond_with(json(200, json!({ "event": event("mev_1") })))
+        .mount(&server)
+        .await;
+
+    let event = client.merchant_usage_events().get("mev_1").await.unwrap();
+
+    assert_event(&event, "mev_1");
+}
+
+#[tokio::test]
+async fn get_event_ignores_the_removed_workflow_issue() {
+    let (server, client) = mock().await;
+    let mut body = event("mev_1");
+    body["workflowIssue"] = json!("recovery_exhausted");
+    Mock::given(method("GET"))
+        .and(path("/v1/merchant-usage-events/mev_1"))
+        .respond_with(json(200, json!({ "event": body })))
         .mount(&server)
         .await;
 
