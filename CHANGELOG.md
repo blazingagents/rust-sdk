@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- `MerchantUsageEvent::workflow_issue` and `MerchantWorkflowIssue`. The API
+  no longer sends `workflowIssue`, and the SDK ignores it if it appears. Read
+  `next_action` instead. It is `MerchantNextAction::Retry` for a `pending`
+  event whose automatic delivery has stopped, which is when `workflow_issue`
+  was set:
+
+  ```rust
+  // Before
+  if event.workflow_issue.is_some() {
+      client.merchant_usage_events().retry(event.id.clone()).await?;
+  }
+  // After
+  if event.next_action == MerchantNextAction::Retry {
+      client.merchant_usage_events().retry(event.id.clone()).await?;
+  }
+  ```
+
 ## 0.4.1 (2026-10-22)
 
 ### Changed

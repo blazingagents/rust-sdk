@@ -260,18 +260,6 @@ crate::open_enum! {
 }
 
 crate::open_enum! {
-    /// Why a usage event's delivery workflow stopped.
-    pub enum MerchantWorkflowIssue {
-        /// `error`
-        Error = "error",
-        /// `cancelled`
-        Cancelled = "cancelled",
-        /// `recovery_exhausted`
-        RecoveryExhausted = "recovery_exhausted",
-    }
-}
-
-crate::open_enum! {
     /// What the tenant should do next about a usage event.
     pub enum MerchantNextAction {
         /// `none`
@@ -640,8 +628,6 @@ pub struct MerchantUsageEvent {
     pub last_error_code: Option<String>,
     /// When the provider accepted the event.
     pub accepted_at: Option<Timestamp>,
-    /// Why the delivery workflow stopped, when it did.
-    pub workflow_issue: Option<MerchantWorkflowIssue>,
     /// What the tenant should do next about the event.
     pub next_action: MerchantNextAction,
 }
