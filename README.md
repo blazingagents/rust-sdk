@@ -9,24 +9,24 @@
   </p>
 </div>
 
-The official Rust SDK provides an asynchronous client for the Blazing Agents
-`/v1` API, built on Tokio. It supports Rust 1.85 and newer.
+The official Rust SDK is an asynchronous client for the Blazing Agents `/v1`
+API that your backend uses to manage Agents and run them for your users. It
+runs on Tokio and supports Rust 1.85 and newer.
 
 ## Features
 
-- Typed request builders and response models; unknown fields and enum values
-  still decode.
-- Agent, Workspace, Skill, Provider, MCP connection, Prompt, Memory, Session,
-  Artifact, Task, Chat Connection, Merchant, Usage, and Tenant
-  management.
-- Chat streams of AI SDK UI message stream events, ready to relay to
-  `useChat`, with message batches, tool approvals and backend functions.
-- Text and structured-object generation, buffered or streamed, with
-  schemars-derived schemas.
-- `for_user` user-scoped clients without tenant administration methods.
-- Lazy pagination, uploads and streamed downloads.
-- Request correlation, per-call timeouts and headers, response observation,
-  and typed errors with credential redaction.
+- A typed method for every `/v1` operation an API key can call: Agents,
+  Skills, Sessions, Memories, Prompts, Tasks, Workspaces, Artifacts,
+  Providers, MCP Connections, Chat Connections, usage, spending limits, Tenant
+  settings, and merchant monetization.
+- Chat streams in the AI SDK UI message stream format, with steering, Tool
+  approvals, and backend functions that run in your process.
+- Text and structured-object generation.
+- End-user scoped clients through `for_user`.
+- Lazy pagination, uploads, and streamed downloads.
+- Request IDs and typed errors.
+- JSON Schemas for structured output derived from your Rust types with
+  `schemars`.
 
 ## Installation
 
@@ -35,22 +35,14 @@ cargo add blazing-agents
 cargo add tokio --features macros,rt-multi-thread
 ```
 
-Or add it to `Cargo.toml`:
-
-```toml
-[dependencies]
-blazing-agents = "0.1"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-```
-
-The crate is async and runs on Tokio. TLS uses rustls by default; enable the
-`native-tls` feature instead with `default-features = false, features =
-["native-tls", "schemars"]`.
+TLS uses rustls by default. To use native TLS instead, add the crate with
+`cargo add blazing-agents --no-default-features --features native-tls,schemars`.
 
 ## Quick start
 
-Create a Tenant API key in the Blazing Agents dashboard and set
-`BLAZING_AGENTS_API_KEY`, then:
+Create a Full API key in the Blazing Agents dashboard and set
+`BLAZING_AGENTS_API_KEY` in your server environment. The key acts for your
+whole Tenant, so keep it on your backend and never send it to a browser.
 
 ```rust
 use blazing_agents::Client;
@@ -67,18 +59,67 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Replace `ag_...` with an agent ID from the dashboard. See
-[`examples/`](examples) — `quickstart`, `chat_relay` and `structured_output` —
-and run any of them with
-`BLAZING_AGENTS_API_KEY=... BLAZING_AGENTS_AGENT_ID=ag_... cargo run --example quickstart`.
-`chat_relay` also needs `DEMO_USER_TOKEN`, the bearer token the demo accepts:
-`BLAZING_AGENTS_API_KEY=... BLAZING_AGENTS_AGENT_ID=ag_... DEMO_USER_TOKEN=... cargo run --example chat_relay`.
+Replace `ag_...` with an Agent ID from the dashboard.
+
+For requests from your users, scope the client to the user ID that your
+backend verified at sign-in, never to an ID from the request body. A scoped
+client reaches only that End-user's Agents, Sessions, and Workspace. An
+unscoped Agent shares one Workspace across all your users, so give each user
+an Agent of their own:
+
+```rust
+use blazing_agents::chat::ChatStream;
+use blazing_agents::ids::AgentId;
+use blazing_agents::messages::UserMessage;
+
+async fn create_agent_for_user(client: &Client, user_id: &str) -> blazing_agents::Result<AgentId> {
+    let agent = client
+        .for_user(user_id)?
+        .agents()
+        .create("Assistant")
+        .model("prv_...", "openai/gpt-6-luna")
+        .await?;
+    Ok(agent.id)
+}
+
+async fn chat_as_user(
+    client: &Client,
+    user_id: &str,
+    agent_id: &AgentId,
+    text: &str,
+) -> blazing_agents::Result<ChatStream> {
+    client
+        .for_user(user_id)?
+        .chat(agent_id, UserMessage::text(text))
+        .await
+}
+```
+
+Call `create_agent_for_user` once per user and store the Agent ID with the
+user. A scoped chat with an Agent created without the scope fails with `404`.
+`chat_as_user` returns a `ChatStream`, a `Stream` of server-sent event bytes. Send it to the browser as a `text/event-stream` response, for example
+with axum's `Body::from_stream`, and AI SDK `useChat` reads it.
+
+## Examples
+
+The [`examples/`](examples) directory has three programs. Each file's header
+lists the environment variables it reads and the command that runs it.
+
+- `quickstart` saves a Prompt, runs it as a completion, and chats with an
+  Agent.
+- `chat_relay` is an axum server that relays `useChat` requests from a
+  signed-in user to that user's own Agent.
+- `structured_output` generates an object whose JSON Schema is derived from
+  a Rust type.
+
+The [examples repository](https://github.com/blazingagents/examples) has
+complete TypeScript and Python apps built on the Blazing Agents SDKs.
 
 ## Documentation
 
 Read the [Rust SDK documentation](https://docs.blazingagents.com/sdk/rust)
-for authentication, resource guides, chat and generation, error handling, and
-the complete API reference.
+for client setup, End-user scoping, chat and generation, a guide to each
+resource, and error handling.
 
 ## Development
 
