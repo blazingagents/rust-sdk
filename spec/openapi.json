@@ -1801,6 +1801,7 @@
                                 "update_memory",
                                 "delete_memory",
                                 "web_search",
+                                "web_fetch",
                                 "activate_skill"
                               ]
                             }
@@ -1911,6 +1912,7 @@
                                 "update_memory",
                                 "delete_memory",
                                 "web_search",
+                                "web_fetch",
                                 "activate_skill"
                               ]
                             }
@@ -2043,7 +2045,8 @@
                 "search_memories",
                 "update_memory",
                 "delete_memory",
-                "web_search"
+                "web_search",
+                "web_fetch"
               ]
             }
           },
@@ -2724,6 +2727,7 @@
                                     "update_memory",
                                     "delete_memory",
                                     "web_search",
+                                    "web_fetch",
                                     "activate_skill"
                                   ]
                                 }
@@ -2834,6 +2838,7 @@
                                     "update_memory",
                                     "delete_memory",
                                     "web_search",
+                                    "web_fetch",
                                     "activate_skill"
                                   ]
                                 }
@@ -2954,7 +2959,8 @@
                     "search_memories",
                     "update_memory",
                     "delete_memory",
-                    "web_search"
+                    "web_search",
+                    "web_fetch"
                   ]
                 }
               },
@@ -3128,6 +3134,7 @@
                             "update_memory",
                             "delete_memory",
                             "web_search",
+                            "web_fetch",
                             "activate_skill"
                           ]
                         }
@@ -6678,6 +6685,7 @@
                                     "update_memory",
                                     "delete_memory",
                                     "web_search",
+                                    "web_fetch",
                                     "activate_skill"
                                   ]
                                 }
@@ -6788,6 +6796,7 @@
                                     "update_memory",
                                     "delete_memory",
                                     "web_search",
+                                    "web_fetch",
                                     "activate_skill"
                                   ]
                                 }
@@ -6908,7 +6917,8 @@
                     "search_memories",
                     "update_memory",
                     "delete_memory",
-                    "web_search"
+                    "web_search",
+                    "web_fetch"
                   ]
                 }
               },
@@ -13482,6 +13492,7 @@
                                         "update_memory",
                                         "delete_memory",
                                         "web_search",
+                                        "web_fetch",
                                         "activate_skill"
                                       ]
                                     }
@@ -13593,6 +13604,7 @@
                                         "update_memory",
                                         "delete_memory",
                                         "web_search",
+                                        "web_fetch",
                                         "activate_skill"
                                       ]
                                     }
@@ -13732,7 +13744,8 @@
                         "search_memories",
                         "update_memory",
                         "delete_memory",
-                        "web_search"
+                        "web_search",
+                        "web_fetch"
                       ]
                     },
                     "default": [],
@@ -14666,6 +14679,7 @@
                                         "update_memory",
                                         "delete_memory",
                                         "web_search",
+                                        "web_fetch",
                                         "activate_skill"
                                       ]
                                     }
@@ -14773,6 +14787,7 @@
                                         "update_memory",
                                         "delete_memory",
                                         "web_search",
+                                        "web_fetch",
                                         "activate_skill"
                                       ]
                                     }
@@ -14902,7 +14917,8 @@
                         "search_memories",
                         "update_memory",
                         "delete_memory",
-                        "web_search"
+                        "web_search",
+                        "web_fetch"
                       ]
                     },
                     "description": "Built-in tools the agent can use. Each tool is enabled individually and is off until listed. File tools such as `read` and `bash` run in the attached workspace."
@@ -27815,7 +27831,7 @@
       {
         "tag": "web",
         "name": "Web",
-        "description": "Search the public web for current information."
+        "description": "Search the public web and read pages by URL."
       }
     ],
     "tools": [
@@ -27932,6 +27948,14 @@
       {
         "name": "web_search",
         "description": "Search the public web for current results. Each search consumes Usage credit.",
+        "requiresWorkspace": false,
+        "tags": [
+          "web"
+        ]
+      },
+      {
+        "name": "web_fetch",
+        "description": "Read a public web page or text document by URL, returned as markdown.",
         "requiresWorkspace": false,
         "tags": [
           "web"
