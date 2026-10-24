@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `AgentTool::WebFetch` (`web_fetch`) joins the Agent tool catalog (`AGENT_TOOLS`). It reads a public web page or text document by URL and returns markdown, and needs no Workspace. Like every tool it is off until you list it in `tools`, and an approval policy can name it. `web_fetch` is now a reserved function name. The `web` group description now reads "Search the public web and read pages by URL."
+
 ### Fixed
 
 - A credential-bearing call now fails with `Error::CredentialEcho` when the response carries a `credential` property, such as a merchant connection returning its stored key. The SDK previously caught only a `credential` value it had just submitted.

@@ -55,3 +55,14 @@ fn read_only_file_tools_are_the_file_read_tagged_ones() {
         .collect();
     assert_eq!(read_only, ["read", "grep", "glob"]);
 }
+
+#[test]
+fn web_tools_need_no_workspace() {
+    let web: Vec<_> = AGENT_TOOLS
+        .iter()
+        .filter(|tool| tool.group == AgentToolGroupTag::Web)
+        .collect();
+    let names: Vec<&str> = web.iter().map(|tool| tool.name.as_str()).collect();
+    assert_eq!(names, ["web_search", "web_fetch"]);
+    assert!(web.iter().all(|tool| !tool.requires_workspace));
+}

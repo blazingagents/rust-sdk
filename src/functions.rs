@@ -37,7 +37,7 @@ const RESULT_GRACE: Duration = Duration::from_secs(30);
 const FIRST_RETRY_DELAY: Duration = Duration::from_millis(250);
 const MAX_RETRY_DELAY: Duration = Duration::from_secs(2);
 /// Built-in tool names a function must not shadow.
-const RESERVED_NAMES: [&str; 15] = [
+const RESERVED_NAMES: [&str; 16] = [
     "read",
     "write",
     "edit",
@@ -52,6 +52,7 @@ const RESERVED_NAMES: [&str; 15] = [
     "update_memory",
     "delete_memory",
     "web_search",
+    "web_fetch",
     "activate_skill",
 ];
 
