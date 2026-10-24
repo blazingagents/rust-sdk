@@ -30,7 +30,7 @@ const RETRY_AFTER: HeaderName = HeaderName::from_static("retry-after");
 const MIN_SUBSTRING_SECRET_LENGTH: usize = 8;
 
 /// Response field names that must never carry a value back to the caller.
-const CREDENTIAL_FIELDS: [&str; 12] = [
+const CREDENTIAL_FIELDS: [&str; 13] = [
     "apiKey",
     "api_key",
     "botToken",
@@ -43,6 +43,7 @@ const CREDENTIAL_FIELDS: [&str; 12] = [
     "bearer_token",
     "clientSecret",
     "client_secret",
+    "credential",
 ];
 
 /// Everything but RFC 3986 unreserved characters is encoded, so a value is always
