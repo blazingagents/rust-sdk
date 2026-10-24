@@ -18,7 +18,7 @@ use http::{HeaderName, HeaderValue};
 use serde_json::json;
 use support::{api_error, json, mock, requests};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpSocket, TcpStream};
+use tokio::net::TcpListener;
 use wiremock::matchers::{method, path, query_param, query_param_is_missing};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -1053,22 +1053,10 @@ async fn a_refused_connection_hides_the_request_url() {
 
 #[tokio::test]
 async fn a_stalled_connect_times_out() {
-    // A listener that never accepts, with a full accept queue so the kernel
-    // drops new SYNs and the connect stalls until the timeout fires.
-    let socket = TcpSocket::new_v4().unwrap();
-    socket.bind("127.0.0.1:0".parse().unwrap()).unwrap();
-    let listener = socket.listen(0).unwrap();
-    let address = listener.local_addr().unwrap();
-    let mut fillers = Vec::new();
-    for _ in 0..32 {
-        match tokio::time::timeout(Duration::from_millis(200), TcpStream::connect(address)).await {
-            Ok(Ok(stream)) => fillers.push(stream),
-            Ok(Err(_)) | Err(_) => break,
-        }
-    }
+    // 192.0.2.1 (TEST-NET-1) is never routed, so the connect stalls.
     let client = Client::builder()
         .api_key("test-key")
-        .base_url(format!("http://{address}"))
+        .base_url("http://192.0.2.1")
         .connect_timeout(Duration::from_millis(100))
         .build()
         .unwrap();
@@ -1081,7 +1069,6 @@ async fn a_stalled_connect_times_out() {
         .unwrap_err();
 
     assert!(matches!(error, Error::Timeout), "{error:?}");
-    drop((fillers, listener));
 }
 
 #[tokio::test]
