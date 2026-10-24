@@ -11505,10 +11505,10 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "`nextCursor` from the previous page."
+              "description": "`nextCursor` from the previous page. Leave it out for the first page."
             },
             "required": false,
-            "description": "`nextCursor` from the previous page.",
+            "description": "`nextCursor` from the previous page. Leave it out for the first page.",
             "name": "cursor",
             "in": "query"
           },
@@ -16170,10 +16170,10 @@
               "minimum": 1,
               "maximum": 100,
               "default": 50,
-              "description": "Maximum number of skills to return."
+              "description": "Page size, from 1 to 100. Defaults to 50."
             },
             "required": false,
-            "description": "Maximum number of skills to return.",
+            "description": "Page size, from 1 to 100. Defaults to 50.",
             "name": "limit",
             "in": "query"
           }
@@ -17829,10 +17829,10 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "Cursor from the previous page's `nextCursor`. Leave it out for the first page."
+              "description": "`nextCursor` from the previous page. Leave it out for the first page."
             },
             "required": false,
-            "description": "Cursor from the previous page's `nextCursor`. Leave it out for the first page.",
+            "description": "`nextCursor` from the previous page. Leave it out for the first page.",
             "name": "cursor",
             "in": "query"
           },
@@ -17842,10 +17842,10 @@
               "minimum": 1,
               "maximum": 200,
               "default": 50,
-              "description": "Number of items per page, from 1 to 200. Defaults to 50."
+              "description": "Page size, from 1 to 200. Defaults to 50."
             },
             "required": false,
-            "description": "Number of items per page, from 1 to 200. Defaults to 50.",
+            "description": "Page size, from 1 to 200. Defaults to 50.",
             "name": "limit",
             "in": "query"
           },
@@ -18292,10 +18292,10 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "Cursor from the previous page's `nextCursor`. Leave it out for the first page."
+              "description": "`nextCursor` from the previous page. Leave it out for the first page."
             },
             "required": false,
-            "description": "Cursor from the previous page's `nextCursor`. Leave it out for the first page.",
+            "description": "`nextCursor` from the previous page. Leave it out for the first page.",
             "name": "cursor",
             "in": "query"
           },
@@ -18305,10 +18305,10 @@
               "minimum": 1,
               "maximum": 200,
               "default": 50,
-              "description": "Number of items per page, from 1 to 200. Defaults to 50."
+              "description": "Page size, from 1 to 200. Defaults to 50."
             },
             "required": false,
-            "description": "Number of items per page, from 1 to 200. Defaults to 50.",
+            "description": "Page size, from 1 to 200. Defaults to 50.",
             "name": "limit",
             "in": "query"
           },
@@ -19400,10 +19400,10 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "Cursor from the previous page's `nextCursor`, to walk back to older messages."
+              "description": "`nextCursor` from the previous page. Leave it out for the first page."
             },
             "required": false,
-            "description": "Cursor from the previous page's `nextCursor`, to walk back to older messages.",
+            "description": "`nextCursor` from the previous page. Leave it out for the first page.",
             "name": "cursor",
             "in": "query"
           },
@@ -19413,10 +19413,10 @@
               "minimum": 1,
               "maximum": 200,
               "default": 50,
-              "description": "Number of messages per page, from 1 to 200. Defaults to 50."
+              "description": "Page size, from 1 to 200. Defaults to 50."
             },
             "required": false,
-            "description": "Number of messages per page, from 1 to 200. Defaults to 50.",
+            "description": "Page size, from 1 to 200. Defaults to 50.",
             "name": "limit",
             "in": "query"
           }
@@ -20758,10 +20758,10 @@
               "minimum": 1,
               "maximum": 200,
               "default": 100,
-              "description": "Maximum receipts per page, from 1 to 200."
+              "description": "Page size, from 1 to 200. Defaults to 100."
             },
             "required": false,
-            "description": "Maximum receipts per page, from 1 to 200.",
+            "description": "Page size, from 1 to 200. Defaults to 100.",
             "name": "limit",
             "in": "query"
           },
@@ -21952,10 +21952,10 @@
               "minimum": 1,
               "maximum": 100,
               "default": 50,
-              "description": "Maximum number of memories to return."
+              "description": "Page size, from 1 to 100. Defaults to 50."
             },
             "required": false,
-            "description": "Maximum number of memories to return.",
+            "description": "Page size, from 1 to 100. Defaults to 50.",
             "name": "limit",
             "in": "query"
           }
@@ -23772,10 +23772,10 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "The `nextCursor` from the previous page."
+              "description": "`nextCursor` from the previous page. Leave it out for the first page."
             },
             "required": false,
-            "description": "The `nextCursor` from the previous page.",
+            "description": "`nextCursor` from the previous page. Leave it out for the first page.",
             "name": "cursor",
             "in": "query"
           },
@@ -23785,10 +23785,10 @@
               "minimum": 1,
               "maximum": 200,
               "default": 50,
-              "description": "Bindings per page, from 1 to 200."
+              "description": "Page size, from 1 to 200. Defaults to 50."
             },
             "required": false,
-            "description": "Bindings per page, from 1 to 200.",
+            "description": "Page size, from 1 to 200. Defaults to 50.",
             "name": "limit",
             "in": "query"
           }
@@ -24165,10 +24165,10 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "The `nextCursor` from the previous page."
+              "description": "`nextCursor` from the previous page. Leave it out for the first page."
             },
             "required": false,
-            "description": "The `nextCursor` from the previous page.",
+            "description": "`nextCursor` from the previous page. Leave it out for the first page.",
             "name": "cursor",
             "in": "query"
           },
@@ -24178,10 +24178,10 @@
               "minimum": 1,
               "maximum": 200,
               "default": 50,
-              "description": "Events per page, from 1 to 200."
+              "description": "Page size, from 1 to 200. Defaults to 50."
             },
             "required": false,
-            "description": "Events per page, from 1 to 200.",
+            "description": "Page size, from 1 to 200. Defaults to 50.",
             "name": "limit",
             "in": "query"
           }
@@ -26124,10 +26124,10 @@
               "minimum": 1,
               "maximum": 200,
               "default": 50,
-              "description": "Tasks per page, 1 to 200."
+              "description": "Page size, from 1 to 200. Defaults to 50."
             },
             "required": false,
-            "description": "Tasks per page, 1 to 200.",
+            "description": "Page size, from 1 to 200. Defaults to 50.",
             "name": "limit",
             "in": "query"
           }
@@ -26973,10 +26973,10 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "`nextCursor` from the previous page."
+              "description": "`nextCursor` from the previous page. Leave it out for the first page."
             },
             "required": false,
-            "description": "`nextCursor` from the previous page.",
+            "description": "`nextCursor` from the previous page. Leave it out for the first page.",
             "name": "cursor",
             "in": "query"
           },
@@ -26986,10 +26986,10 @@
               "minimum": 1,
               "maximum": 200,
               "default": 50,
-              "description": "Runs per page, 1 to 200."
+              "description": "Page size, from 1 to 200. Defaults to 50."
             },
             "required": false,
-            "description": "Runs per page, 1 to 200.",
+            "description": "Page size, from 1 to 200. Defaults to 50.",
             "name": "limit",
             "in": "query"
           }
@@ -27364,10 +27364,10 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "description": "`nextCursor` from the previous page. Walks back to older messages."
+              "description": "`nextCursor` from the previous page. Leave it out for the first page."
             },
             "required": false,
-            "description": "`nextCursor` from the previous page. Walks back to older messages.",
+            "description": "`nextCursor` from the previous page. Leave it out for the first page.",
             "name": "cursor",
             "in": "query"
           },
@@ -27377,10 +27377,10 @@
               "minimum": 1,
               "maximum": 200,
               "default": 50,
-              "description": "Messages per page, 1 to 200."
+              "description": "Page size, from 1 to 200. Defaults to 50."
             },
             "required": false,
-            "description": "Messages per page, 1 to 200.",
+            "description": "Page size, from 1 to 200. Defaults to 50.",
             "name": "limit",
             "in": "query"
           }
