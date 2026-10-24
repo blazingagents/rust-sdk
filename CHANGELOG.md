@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- A credential-bearing call now fails with `Error::CredentialEcho` when the response carries a `credential` property, such as a merchant connection returning its stored key. The SDK previously caught only a `credential` value it had just submitted.
+
 ## 0.5.0 (2026-10-22)
 
 ### Changed

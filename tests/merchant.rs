@@ -734,3 +734,28 @@ async fn a_get_response_with_a_credential_field_fails_the_call() {
         "{error:?}"
     );
 }
+
+#[tokio::test]
+async fn a_get_response_with_a_credential_property_fails_the_call() {
+    let (server, client) = mock().await;
+    let mut connection = merchant_connection();
+    connection["credential"] = json!("polar_at_stored_secret");
+    Mock::given(method("GET"))
+        .and(path("/v1/merchant-connection"))
+        .respond_with(json(200, json!({ "connection": connection })))
+        .mount(&server)
+        .await;
+
+    let error = client.merchant_connection().get().await.unwrap_err();
+
+    assert!(
+        matches!(
+            error,
+            Error::CredentialEcho {
+                operation_id: "getMerchantConnection",
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+}
