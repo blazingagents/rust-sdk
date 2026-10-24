@@ -96,7 +96,7 @@ crate::open_enum! {
         Planning = "planning",
         /// `memory` — Save, recall, search, update, and delete durable notes owned by this Agent.
         Memory = "memory",
-        /// `web` — Search the public web for current information.
+        /// `web` — Search the public web and read pages by URL.
         Web = "web",
     }
 }
@@ -136,7 +136,7 @@ pub const AGENT_TOOL_GROUPS: &[AgentToolGroup] = &[
     AgentToolGroup {
         tag: AgentToolGroupTag::Web,
         name: "Web",
-        description: "Search the public web for current information.",
+        description: "Search the public web and read pages by URL.",
     },
 ];
 
@@ -236,6 +236,13 @@ pub const AGENT_TOOLS: &[AgentToolDefinition] = &[
     AgentToolDefinition {
         name: AgentTool::WebSearch,
         description: "Search the public web for current results. Each search consumes Usage credit.",
+        requires_workspace: false,
+        group: AgentToolGroupTag::Web,
+        file_access: None,
+    },
+    AgentToolDefinition {
+        name: AgentTool::WebFetch,
+        description: "Read a public web page or text document by URL, returned as markdown.",
         requires_workspace: false,
         group: AgentToolGroupTag::Web,
         file_access: None,

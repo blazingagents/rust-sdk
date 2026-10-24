@@ -310,6 +310,9 @@ crate::open_enum! {
         /// `web_search` — search the public web; each search consumes usage
         /// credit.
         WebSearch = "web_search",
+        /// `web_fetch` — read a public web page or text document by URL,
+        /// returned as markdown.
+        WebFetch = "web_fetch",
     }
 }
 

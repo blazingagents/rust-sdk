@@ -201,6 +201,10 @@ fn build_rejects_what_the_platform_rejects() {
             |error| matches!(error, FunctionsError::ReservedName(name) if name == "web_search"),
         ),
         (
+            add(Functions::builder(), "web_fetch", "d", valid.clone()),
+            |error| matches!(error, FunctionsError::ReservedName(name) if name == "web_fetch"),
+        ),
+        (
             add(Functions::builder(), "activate_skill", "d", valid.clone()),
             |error| matches!(error, FunctionsError::ReservedName(_)),
         ),
