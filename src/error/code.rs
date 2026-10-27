@@ -18,8 +18,6 @@ crate::open_enum! {
         Unauthorized = "unauthorized",
         /// `not_found`
         NotFound = "not_found",
-        /// `quota_exceeded`
-        QuotaExceeded = "quota_exceeded",
         /// `model_spending_limit_exceeded`
         ModelSpendingLimitExceeded = "model_spending_limit_exceeded",
         /// `subscription_required`

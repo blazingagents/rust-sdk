@@ -79,7 +79,7 @@
     },
     {
       "name": "tenant",
-      "description": "Read and change your tenant's display name, monthly quota, and monetization setting."
+      "description": "Read and change your tenant's display name and monetization setting."
     },
     {
       "name": "usage",
@@ -128,7 +128,6 @@
                   "validation_failed",
                   "unauthorized",
                   "not_found",
-                  "quota_exceeded",
                   "model_spending_limit_exceeded",
                   "subscription_required",
                   "usage_credit_required",
@@ -834,38 +833,6 @@
             "minLength": 1,
             "maxLength": 80
           },
-          "quota": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "properties": {
-              "monthlyTokenLimit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "exclusiveMinimum": 0
-              },
-              "monthlyRequestLimit": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "exclusiveMinimum": 0
-              },
-              "resetDay": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 28
-              }
-            },
-            "required": [
-              "monthlyTokenLimit",
-              "monthlyRequestLimit",
-              "resetDay"
-            ]
-          },
           "deletion": {
             "type": [
               "object",
@@ -893,7 +860,6 @@
         },
         "required": [
           "name",
-          "quota",
           "deletion",
           "monetizationEnabled"
         ]
@@ -1414,8 +1380,7 @@
             "enum": [
               "none",
               "bearer",
-              "oauth_authorization_code",
-              "oauth_client_credentials"
+              "oauth_authorization_code"
             ]
           },
           "status": {
@@ -1531,8 +1496,7 @@
                   "enum": [
                     "none",
                     "bearer",
-                    "oauth_authorization_code",
-                    "oauth_client_credentials"
+                    "oauth_authorization_code"
                   ]
                 },
                 "status": {
@@ -4126,7 +4090,6 @@
                   "validation_failed",
                   "unauthorized",
                   "not_found",
-                  "quota_exceeded",
                   "model_spending_limit_exceeded",
                   "subscription_required",
                   "usage_credit_required",
@@ -6997,7 +6960,6 @@
               "validation_failed",
               "unauthorized",
               "not_found",
-              "quota_exceeded",
               "model_spending_limit_exceeded",
               "subscription_required",
               "usage_credit_required",
@@ -7077,7 +7039,7 @@
               "tenant_not_deleting",
               null
             ],
-            "description": "Machine-readable reason a run ended `blocked` or `failed`: one of the API error codes, such as `usage_credit_required`, `quota_exceeded` or `provider_required`. `null` for every other run, and for a failure without a code; `error` carries the message."
+            "description": "Machine-readable reason a run ended `blocked` or `failed`: one of the API error codes, such as `usage_credit_required`, `model_spending_limit_exceeded` or `provider_required`. `null` for every other run, and for a failure without a code; `error` carries the message."
           },
           "userId": {
             "type": "string"
@@ -7891,7 +7853,7 @@
           "tenant"
         ],
         "summary": "Get tenant settings",
-        "description": "Returns your tenant's display name, monthly quota, and monetization setting. A `null` quota means usage is unlimited. `deletion` is `null` unless your tenant is scheduled for deletion, when it holds the request and deletion times.",
+        "description": "Returns your tenant's display name and monetization setting. `deletion` is `null` unless your tenant is scheduled for deletion, when it holds the request and deletion times.",
         "responses": {
           "200": {
             "description": "Your tenant's settings",
@@ -7899,11 +7861,6 @@
               "application/json": {
                 "example": {
                   "name": "Acme",
-                  "quota": {
-                    "monthlyTokenLimit": 5000000,
-                    "monthlyRequestLimit": 10000,
-                    "resetDay": 1
-                  },
                   "monetizationEnabled": false,
                   "deletion": null
                 },
@@ -7975,17 +7932,13 @@
           "tenant"
         ],
         "summary": "Update tenant settings",
-        "description": "Updates your tenant's display name, monthly quota, or monetization setting. Send at least one field; the ones you leave out keep their values. A `quota` replaces the whole quota, so send all three of its fields with at least one limit set, or send `null` to remove it. Turning `monetizationEnabled` off drops usage events your merchant has not yet accepted.",
+        "description": "Updates your tenant's display name or monetization setting. Send at least one field; the ones you leave out keep their values. Turning `monetizationEnabled` off drops usage events your merchant has not yet accepted.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "example": {
-                "quota": {
-                  "monthlyTokenLimit": 5000000,
-                  "monthlyRequestLimit": null,
-                  "resetDay": 1
-                }
+                "name": "Acme"
               },
               "schema": {
                 "type": "object",
@@ -7999,40 +7952,6 @@
                     "minLength": 1,
                     "maxLength": 80,
                     "description": "Display name of your tenant."
-                  },
-                  "quota": {
-                    "type": [
-                      "object",
-                      "null"
-                    ],
-                    "properties": {
-                      "monthlyTokenLimit": {
-                        "type": [
-                          "integer",
-                          "null"
-                        ],
-                        "exclusiveMinimum": 0
-                      },
-                      "monthlyRequestLimit": {
-                        "type": [
-                          "integer",
-                          "null"
-                        ],
-                        "exclusiveMinimum": 0
-                      },
-                      "resetDay": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 28
-                      }
-                    },
-                    "required": [
-                      "monthlyTokenLimit",
-                      "monthlyRequestLimit",
-                      "resetDay"
-                    ],
-                    "additionalProperties": false,
-                    "description": "The whole monthly quota, replacing the current one, or `null` to remove it. Send `monthlyTokenLimit`, `monthlyRequestLimit`, and `resetDay`, with at least one limit set."
                   }
                 },
                 "additionalProperties": false
@@ -8047,11 +7966,6 @@
               "application/json": {
                 "example": {
                   "name": "Acme",
-                  "quota": {
-                    "monthlyTokenLimit": 5000000,
-                    "monthlyRequestLimit": null,
-                    "resetDay": 1
-                  },
                   "monetizationEnabled": false,
                   "deletion": null
                 },
@@ -12158,7 +12072,7 @@
           "mcp-connections"
         ],
         "summary": "Create an MCP connection",
-        "description": "Creates an MCP connection you can attach to any agent in your tenant. Names are unique within your tenant, and credentials are never returned. The fields you send depend on `authType`: `bearerToken` is required for `bearer`; `clientId` and `clientSecret` are required together for `oauth_client_credentials`; for `oauth_authorization_code` they are optional but go together. For `none`, `bearer`, and `oauth_client_credentials`, Blazing Agents checks the live server before saving and returns `status: \"connected\"`. For `oauth_authorization_code`, it saves the connection as `needs_auth`, and an administrator finishes sign-in from the dashboard. A failed create saves nothing.",
+        "description": "Creates an MCP connection you can attach to any agent in your tenant. Names are unique within your tenant, and credentials are never returned. The fields you send depend on `authType`: `bearerToken` is required for `bearer`; for `oauth_authorization_code`, `clientId` and `clientSecret` are optional but go together. For `none` and `bearer`, Blazing Agents checks the live server before saving and returns `status: \"connected\"`. For `oauth_authorization_code`, it saves the connection as `needs_auth`, and an administrator finishes sign-in from the dashboard. A failed create saves nothing.",
         "requestBody": {
           "required": true,
           "content": {
@@ -12191,7 +12105,7 @@
                         "enum": [
                           "none"
                         ],
-                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, `oauth_client_credentials`, or `oauth_authorization_code`. The other fields you send depend on it."
+                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, or `oauth_authorization_code`. The other fields you send depend on it."
                       }
                     },
                     "required": [
@@ -12221,7 +12135,7 @@
                         "enum": [
                           "bearer"
                         ],
-                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, `oauth_client_credentials`, or `oauth_authorization_code`. The other fields you send depend on it."
+                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, or `oauth_authorization_code`. The other fields you send depend on it."
                       },
                       "bearerToken": {
                         "type": "string",
@@ -12247,28 +12161,28 @@
                         "enum": [
                           "oauth_authorization_code"
                         ],
-                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, `oauth_client_credentials`, or `oauth_authorization_code`. The other fields you send depend on it."
+                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, or `oauth_authorization_code`. The other fields you send depend on it."
                       },
                       "clientId": {
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 2048,
                         "pattern": "^[!-~]+$",
-                        "description": "OAuth client ID. Required with `clientSecret` for `oauth_client_credentials`. Optional for `oauth_authorization_code`, but send it together with `clientSecret`."
+                        "description": "OAuth client ID. Optional, but send it together with `clientSecret`."
                       },
                       "clientSecret": {
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 8192,
                         "pattern": "^[!-~]+$",
-                        "description": "OAuth client secret. Required with `clientId` for `oauth_client_credentials`. Optional for `oauth_authorization_code`, but send it together with `clientId`. Never returned."
+                        "description": "OAuth client secret. Optional, but send it together with `clientId`. Never returned."
                       },
                       "scope": {
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 2048,
                         "pattern": "^[\\x20-\\x7e]+$",
-                        "description": "OAuth scope to request. Optional for either OAuth type."
+                        "description": "OAuth scope to request. Optional."
                       },
                       "url": {
                         "type": "string",
@@ -12285,59 +12199,6 @@
                     },
                     "required": [
                       "authType",
-                      "url",
-                      "name"
-                    ],
-                    "additionalProperties": false
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "authType": {
-                        "type": "string",
-                        "enum": [
-                          "oauth_client_credentials"
-                        ],
-                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, `oauth_client_credentials`, or `oauth_authorization_code`. The other fields you send depend on it."
-                      },
-                      "clientId": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 2048,
-                        "pattern": "^[!-~]+$",
-                        "description": "OAuth client ID. Required with `clientSecret` for `oauth_client_credentials`. Optional for `oauth_authorization_code`, but send it together with `clientSecret`."
-                      },
-                      "clientSecret": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 8192,
-                        "pattern": "^[!-~]+$",
-                        "description": "OAuth client secret. Required with `clientId` for `oauth_client_credentials`. Optional for `oauth_authorization_code`, but send it together with `clientId`. Never returned."
-                      },
-                      "scope": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 2048,
-                        "pattern": "^[\\x20-\\x7e]+$",
-                        "description": "OAuth scope to request. Optional for either OAuth type."
-                      },
-                      "url": {
-                        "type": "string",
-                        "maxLength": 2048,
-                        "format": "uri",
-                        "description": "Streamable HTTP URL of the MCP server. Use `https`, with no credentials, query, or fragment."
-                      },
-                      "name": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80,
-                        "description": "Display name of the connection, unique within your tenant."
-                      }
-                    },
-                    "required": [
-                      "authType",
-                      "clientId",
-                      "clientSecret",
                       "url",
                       "name"
                     ],
@@ -12739,7 +12600,7 @@
           "mcp-connections"
         ],
         "summary": "Reconnect an MCP connection",
-        "description": "Replaces an MCP connection's server URL and credentials. The fields you send depend on `authType`, as when you create a connection: `bearerToken` is required for `bearer`; `clientId` and `clientSecret` are required together for `oauth_client_credentials`; for `oauth_authorization_code` they are optional but go together. For `none`, `bearer`, and `oauth_client_credentials`, Blazing Agents checks the live server before replacing anything and returns `status: \"connected\"`; a failed check leaves the existing configuration as it was. For `oauth_authorization_code`, it saves the replacement as `needs_auth`, and an administrator finishes sign-in from the dashboard.",
+        "description": "Replaces an MCP connection's server URL and credentials. The fields you send depend on `authType`, as when you create a connection: `bearerToken` is required for `bearer`; for `oauth_authorization_code`, `clientId` and `clientSecret` are optional but go together. For `none` and `bearer`, Blazing Agents checks the live server before replacing anything and returns `status: \"connected\"`; a failed check leaves the existing configuration as it was. For `oauth_authorization_code`, it saves the replacement as `needs_auth`, and an administrator finishes sign-in from the dashboard.",
         "parameters": [
           {
             "schema": {
@@ -12772,7 +12633,7 @@
                         "enum": [
                           "none"
                         ],
-                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, `oauth_client_credentials`, or `oauth_authorization_code`. The other fields you send depend on it."
+                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, or `oauth_authorization_code`. The other fields you send depend on it."
                       },
                       "url": {
                         "type": "string",
@@ -12795,7 +12656,7 @@
                         "enum": [
                           "bearer"
                         ],
-                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, `oauth_client_credentials`, or `oauth_authorization_code`. The other fields you send depend on it."
+                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, or `oauth_authorization_code`. The other fields you send depend on it."
                       },
                       "bearerToken": {
                         "type": "string",
@@ -12826,28 +12687,28 @@
                         "enum": [
                           "oauth_authorization_code"
                         ],
-                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, `oauth_client_credentials`, or `oauth_authorization_code`. The other fields you send depend on it."
+                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, or `oauth_authorization_code`. The other fields you send depend on it."
                       },
                       "clientId": {
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 2048,
                         "pattern": "^[!-~]+$",
-                        "description": "OAuth client ID. Required with `clientSecret` for `oauth_client_credentials`. Optional for `oauth_authorization_code`, but send it together with `clientSecret`."
+                        "description": "OAuth client ID. Optional, but send it together with `clientSecret`."
                       },
                       "clientSecret": {
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 8192,
                         "pattern": "^[!-~]+$",
-                        "description": "OAuth client secret. Required with `clientId` for `oauth_client_credentials`. Optional for `oauth_authorization_code`, but send it together with `clientId`. Never returned."
+                        "description": "OAuth client secret. Optional, but send it together with `clientId`. Never returned."
                       },
                       "scope": {
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 2048,
                         "pattern": "^[\\x20-\\x7e]+$",
-                        "description": "OAuth scope to request. Optional for either OAuth type."
+                        "description": "OAuth scope to request. Optional."
                       },
                       "url": {
                         "type": "string",
@@ -12858,52 +12719,6 @@
                     },
                     "required": [
                       "authType",
-                      "url"
-                    ],
-                    "additionalProperties": false
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "authType": {
-                        "type": "string",
-                        "enum": [
-                          "oauth_client_credentials"
-                        ],
-                        "description": "How Blazing Agents authenticates to the MCP server: `none`, `bearer`, `oauth_client_credentials`, or `oauth_authorization_code`. The other fields you send depend on it."
-                      },
-                      "clientId": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 2048,
-                        "pattern": "^[!-~]+$",
-                        "description": "OAuth client ID. Required with `clientSecret` for `oauth_client_credentials`. Optional for `oauth_authorization_code`, but send it together with `clientSecret`."
-                      },
-                      "clientSecret": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 8192,
-                        "pattern": "^[!-~]+$",
-                        "description": "OAuth client secret. Required with `clientId` for `oauth_client_credentials`. Optional for `oauth_authorization_code`, but send it together with `clientId`. Never returned."
-                      },
-                      "scope": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 2048,
-                        "pattern": "^[\\x20-\\x7e]+$",
-                        "description": "OAuth scope to request. Optional for either OAuth type."
-                      },
-                      "url": {
-                        "type": "string",
-                        "maxLength": 2048,
-                        "format": "uri",
-                        "description": "Streamable HTTP URL of the MCP server. Use `https`, with no credentials, query, or fragment."
-                      }
-                    },
-                    "required": [
-                      "authType",
-                      "clientId",
-                      "clientSecret",
                       "url"
                     ],
                     "additionalProperties": false
@@ -17767,8 +17582,8 @@
           "429": {
             "description": "Too many requests",
             "x-error-codes": [
-              "quota_exceeded",
-              "rate_limited"
+              "rate_limited",
+              "model_spending_limit_exceeded"
             ],
             "headers": {
               "Retry-After": {
@@ -18211,7 +18026,6 @@
           "429": {
             "description": "Too many requests",
             "x-error-codes": [
-              "quota_exceeded",
               "rate_limited",
               "model_spending_limit_exceeded"
             ],
@@ -19017,7 +18831,6 @@
           "429": {
             "description": "Too many requests",
             "x-error-codes": [
-              "quota_exceeded",
               "rate_limited",
               "model_spending_limit_exceeded"
             ],
@@ -19890,7 +19703,6 @@
           "429": {
             "description": "Too many requests",
             "x-error-codes": [
-              "quota_exceeded",
               "rate_limited",
               "model_spending_limit_exceeded"
             ],
@@ -27166,7 +26978,7 @@
           "task-runs"
         ],
         "summary": "Get a task run",
-        "description": "Returns a task run's current state and the agent configuration captured when it was queued. `status` moves from `queued` to `running` and ends as `succeeded`, `failed`, `canceled`, or `blocked`. `blocked` means the run was not allowed to start, for example because a quota was reached or usage credit ran out; `error` says why and `errorCode` names the reason as an API error code. `error` also describes a failed run, and `errorCode` is set when the failure has a code, such as `provider_required`. `sessionId` and `turnId` stay `null` until the run starts its session, so a blocked run never gets them, nor does a run that fails before starting, such as one whose saved agent configuration has no provider and model. Every final status sets `finishedAt` and lets the task start another run.",
+        "description": "Returns a task run's current state and the agent configuration captured when it was queued. `status` moves from `queued` to `running` and ends as `succeeded`, `failed`, `canceled`, or `blocked`. `blocked` means the run was not allowed to start, for example because usage credit ran out or a spending limit was reached; `error` says why and `errorCode` names the reason as an API error code. `error` also describes a failed run, and `errorCode` is set when the failure has a code, such as `provider_required`. `sessionId` and `turnId` stay `null` until the run starts its session, so a blocked run never gets them, nor does a run that fails before starting, such as one whose saved agent configuration has no provider and model. Every final status sets `finishedAt` and lets the task start another run.",
         "parameters": [
           {
             "schema": {

@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use crate::call::{Call, impl_request};
 use crate::client::{Client, Tenant};
 use crate::op::TenantOp;
-use crate::patch::Patch;
 use crate::spending_limits::{SpendingLimitInput, SpendingLimitStatus};
 use crate::types::Timestamp;
 
@@ -90,8 +89,6 @@ pub struct UpdateTenantSettings {
     name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     monetization_enabled: Option<bool>,
-    #[serde(skip_serializing_if = "Patch::is_keep")]
-    quota: Patch<QuotaInput>,
 }
 impl_request!(UpdateTenantSettings => TenantSettings; encode = json; decode = json);
 
@@ -105,16 +102,6 @@ impl Call<UpdateTenantSettings> {
     /// off drops usage events your merchant has not yet accepted.
     pub fn monetization_enabled(self, enabled: bool) -> Self {
         self.map(|request| request.monetization_enabled = Some(enabled))
-    }
-
-    /// Replaces the whole monthly quota.
-    pub fn quota(self, quota: QuotaInput) -> Self {
-        self.map(|request| request.quota = Patch::Set(quota))
-    }
-
-    /// Removes the monthly quota.
-    pub fn clear_quota(self) -> Self {
-        self.map(|request| request.quota = Patch::Clear)
     }
 }
 
@@ -138,25 +125,10 @@ impl_request!(UpdateTenantSpendingLimit => SpendingLimitStatus; encode = json; d
 pub struct TenantSettings {
     /// The display name.
     pub name: String,
-    /// The monthly quota, or `None` when none is set.
-    pub quota: Option<Quota>,
     /// A scheduled deletion, or `None` when none is pending.
     pub deletion: Option<TenantDeletion>,
     /// Whether usage is billed to your end users.
     pub monetization_enabled: bool,
-}
-
-/// The tenant's monthly quota.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[non_exhaustive]
-#[serde(rename_all = "camelCase")]
-pub struct Quota {
-    /// The total input and output tokens per month, or `None` for unlimited.
-    pub monthly_token_limit: Option<u64>,
-    /// The requests per month, or `None` for unlimited.
-    pub monthly_request_limit: Option<u64>,
-    /// The day of each month the quota resets, 1 to 28.
-    pub reset_day: u8,
 }
 
 /// A scheduled tenant deletion.
@@ -168,40 +140,4 @@ pub struct TenantDeletion {
     pub deletes_at: Timestamp,
     /// When the deletion was requested.
     pub requested_at: Timestamp,
-}
-
-/// A monthly quota to set on the tenant. Every field is always sent; a limit
-/// you do not set goes out as `null`, which means unlimited.
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct QuotaInput {
-    monthly_token_limit: Option<u64>,
-    monthly_request_limit: Option<u64>,
-    reset_day: u8,
-}
-
-impl QuotaInput {
-    /// A quota resetting on day `reset_day` of each month, 1 to 28. Set at
-    /// least one limit.
-    pub fn new(reset_day: u8) -> Self {
-        Self {
-            monthly_token_limit: None,
-            monthly_request_limit: None,
-            reset_day,
-        }
-    }
-
-    /// The total input and output tokens per month.
-    #[must_use]
-    pub fn monthly_token_limit(mut self, limit: u64) -> Self {
-        self.monthly_token_limit = Some(limit);
-        self
-    }
-
-    /// The requests per month.
-    #[must_use]
-    pub fn monthly_request_limit(mut self, limit: u64) -> Self {
-        self.monthly_request_limit = Some(limit);
-        self
-    }
 }
