@@ -7235,7 +7235,7 @@
           "mcp-oauth"
         ],
         "summary": "Begin the MCP OAuth authorization redirect",
-        "description": "Consumes a one-time `setup` launch token, binds a short-lived HttpOnly cookie to the transaction, and 302-redirects the browser to the MCP authorization server's consent page. Public; no credential required.",
+        "description": "Consumes a one-time `setup` launch token in the browser that started the connect, binds a short-lived HttpOnly cookie to the transaction, and 302-redirects the browser to the MCP authorization server's consent page. The `blazing_mcp_oauth_launch` cookie that `POST /v1/mcp-connections/{id}/connect` set must accompany the request, so a setup link opened in any other browser is refused. Public; no bearer credential required.",
         "security": [],
         "parameters": [
           {
@@ -7268,7 +7268,7 @@
             }
           },
           "400": {
-            "description": "Invalid or expired setup token",
+            "description": "Invalid or expired setup token, or the launch cookie is missing or belongs to another connect",
             "content": {
               "application/json": {
                 "schema": {
@@ -12414,7 +12414,7 @@
           }
         ],
         "summary": "Start OAuth connect for a connection",
-        "description": "Starts OAuth sign-in for a connection that needs authorization and returns the one-time URL that opens the provider sign-in. Returns not_found when the connection is missing or does not need authorization. Only a dashboard session may call this.",
+        "description": "Starts OAuth sign-in for a connection that needs authorization and returns the one-time URL that opens the provider sign-in. Also sets the HttpOnly `blazing_mcp_oauth_launch` cookie, scoped to `/v1/mcp/oauth/authorize`, so the URL opens only in the browser that made this call; call it with credentials included. Returns not_found when the connection is missing or does not need authorization. Only a dashboard session may call this.",
         "parameters": [
           {
             "schema": {
@@ -12430,7 +12430,15 @@
         ],
         "responses": {
           "200": {
-            "description": "One-time URL that opens the provider sign-in",
+            "description": "One-time URL that opens the provider sign-in in this browser; sets the `blazing_mcp_oauth_launch` cookie",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
