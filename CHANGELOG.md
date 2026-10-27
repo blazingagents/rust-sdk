@@ -10,6 +10,41 @@
 
 - A credential-bearing call now fails with `Error::CredentialEcho` when the response carries a `credential` property, such as a merchant connection returning its stored key. The SDK previously caught only a `credential` value it had just submitted.
 
+### Removed
+
+The platform has no production users yet, so both removals ship in one release without a deprecation step.
+
+- Tenant quotas. The API no longer has a monthly token or request limit on Tenant settings, so `TenantSettings::quota`, `tenant::Quota`, `tenant::QuotaInput`, the `quota` and `clear_quota` setters of `client.tenant().update()` and `ErrorCode::QuotaExceeded` are gone. Delete the call and stop matching `quota_exceeded`. Model spending limits (`client.tenant().update_spending_limit`) stay:
+
+  ```rust
+  // Before
+  client
+      .tenant()
+      .update()
+      .quota(QuotaInput::new(1).monthly_token_limit(5_000_000))
+      .await?;
+  // After
+  client.tenant().update().name("Acme").await?;
+  ```
+
+- The MCP connection `oauth_client_credentials` auth type. `NewMcpConnection::OAuthClientCredentials`, `McpReconnect::OAuthClientCredentials` and `McpAuthType::OAuthClientCredentials` are gone. Connect the server with `Bearer` and a token you issue, or with `OAuthAuthorizationCode`, which is saved as `needs_auth` until an admin signs in through the dashboard and keeps its optional `client` and `scope`:
+
+  ```rust
+  // Before
+  NewMcpConnection::OAuthClientCredentials {
+      name: "Docs".to_owned(),
+      url: "https://mcp.example.com/mcp".to_owned(),
+      client: OAuthClient::new("client-42", "secret"),
+      scope: None,
+  }
+  // After
+  NewMcpConnection::Bearer {
+      name: "Docs".to_owned(),
+      url: "https://mcp.example.com/mcp".to_owned(),
+      bearer_token: token,
+  }
+  ```
+
 ## 0.5.0 (2026-10-22)
 
 ### Changed

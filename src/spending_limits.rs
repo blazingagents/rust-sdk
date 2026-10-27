@@ -1,6 +1,6 @@
 //! Model spending limits, shared by agents and the tenant.
 //!
-//! Documentation: <https://docs.blazingagents.com/platform/usage-and-quotas>.
+//! Documentation: <https://docs.blazingagents.com/platform/usage-and-spending-limits>.
 
 use serde::{Deserialize, Serialize};
 

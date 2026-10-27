@@ -473,8 +473,8 @@ crate::open_enum! {
         Queued = "queued",
         /// `running`: in progress.
         Running = "running",
-        /// `blocked`: not allowed to start, for example because a quota was
-        /// reached.
+        /// `blocked`: not allowed to start, for example because usage credit
+        /// ran out or a spending limit was reached.
         Blocked = "blocked",
         /// `succeeded`: finished successfully.
         Succeeded = "succeeded",
@@ -830,7 +830,7 @@ pub struct TaskRun {
     /// Why a `failed` or `blocked` run did not complete, if known.
     pub error: Option<String>,
     /// The API error code a `blocked` or `failed` run ended with, such as
-    /// [`ErrorCode::UsageCreditRequired`], [`ErrorCode::QuotaExceeded`] or
+    /// [`ErrorCode::UsageCreditRequired`], [`ErrorCode::ModelSpendingLimitExceeded`] or
     /// [`ErrorCode::ProviderRequired`]. `None` for every other run and for a
     /// failure without a code.
     pub error_code: Option<ErrorCode>,

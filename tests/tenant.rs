@@ -1,7 +1,6 @@
 mod support;
 
 use blazing_agents::spending_limits::{ResetInterval, SpendingLimitInput};
-use blazing_agents::tenant::QuotaInput;
 use serde_json::json;
 use support::{json, json_body, mock, requests};
 use wiremock::Mock;
@@ -10,11 +9,6 @@ use wiremock::matchers::{method, path};
 fn settings() -> serde_json::Value {
     json!({
         "name": "Acme",
-        "quota": {
-            "monthlyTokenLimit": 5000000,
-            "monthlyRequestLimit": 10000,
-            "resetDay": 1
-        },
         "deletion": null,
         "monetizationEnabled": false
     })
@@ -56,17 +50,13 @@ async fn get_decodes_the_settings_and_ignores_unknown_fields() {
 
     assert_eq!(settings.name, "Acme");
     assert!(!settings.monetization_enabled);
-    let quota = settings.quota.unwrap();
-    assert_eq!(quota.monthly_token_limit, Some(5000000));
-    assert_eq!(quota.monthly_request_limit, Some(10000));
-    assert_eq!(quota.reset_day, 1);
     let deletion = settings.deletion.unwrap();
     assert_eq!(deletion.deletes_at.to_string(), "2026-08-10T10:00:00Z");
     assert_eq!(deletion.requested_at.to_string(), "2026-07-10T10:00:00Z");
 }
 
 #[tokio::test]
-async fn update_omits_unset_fields_and_sends_null_to_clear_quota() {
+async fn update_omits_unset_fields() {
     let (server, client) = mock().await;
     Mock::given(method("PATCH"))
         .and(path("/v1/tenant"))
@@ -81,44 +71,10 @@ async fn update_omits_unset_fields_and_sends_null_to_clear_quota() {
         .monetization_enabled(true)
         .await
         .unwrap();
-    client.tenant().update().clear_quota().await.unwrap();
-    client
-        .tenant()
-        .update()
-        .quota(QuotaInput::new(15).monthly_token_limit(5_000_000))
-        .await
-        .unwrap();
-    client
-        .tenant()
-        .update()
-        .quota(QuotaInput::new(15).monthly_request_limit(10_000))
-        .await
-        .unwrap();
 
     let sent = requests(&server).await;
     assert_eq!(json_body(&sent[0]), json!({ "name": "Acme II" }));
     assert_eq!(json_body(&sent[1]), json!({ "monetizationEnabled": true }));
-    assert_eq!(json_body(&sent[2]), json!({ "quota": null }));
-    assert_eq!(
-        json_body(&sent[3]),
-        json!({
-            "quota": {
-                "monthlyTokenLimit": 5000000,
-                "monthlyRequestLimit": null,
-                "resetDay": 15
-            }
-        })
-    );
-    assert_eq!(
-        json_body(&sent[4]),
-        json!({
-            "quota": {
-                "monthlyTokenLimit": null,
-                "monthlyRequestLimit": 10000,
-                "resetDay": 15
-            }
-        })
-    );
 }
 
 #[tokio::test]

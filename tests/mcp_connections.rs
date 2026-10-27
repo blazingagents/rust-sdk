@@ -74,19 +74,9 @@ async fn create_sends_one_body_per_auth_type() {
         })
         .await
         .unwrap();
-    client
-        .mcp_connections()
-        .create(NewMcpConnection::OAuthClientCredentials {
-            name: "Docs Search".to_owned(),
-            url: "https://mcp.example.com/mcp".to_owned(),
-            client: OAuthClient::new("client-42", "oauth-secret-a1b2c3"),
-            scope: None,
-        })
-        .await
-        .unwrap();
 
     let sent = requests(&server).await;
-    assert_eq!(sent.len(), 5);
+    assert_eq!(sent.len(), 4);
     assert_eq!(
         json_body(&sent[0]),
         json!({
@@ -121,16 +111,6 @@ async fn create_sends_one_body_per_auth_type() {
             "clientId": "client-42",
             "clientSecret": "oauth-secret-a1b2c3",
             "scope": "read:docs"
-        })
-    );
-    assert_eq!(
-        json_body(&sent[4]),
-        json!({
-            "authType": "oauth_client_credentials",
-            "name": "Docs Search",
-            "url": "https://mcp.example.com/mcp",
-            "clientId": "client-42",
-            "clientSecret": "oauth-secret-a1b2c3"
         })
     );
 }
@@ -223,7 +203,7 @@ async fn unknown_enum_values_decode_as_unrecognized() {
 async fn get_decodes_oauth_fields() {
     let (server, client) = mock().await;
     let mut body = connection("mcp_3Kd9QwE2sLx5R7Tn");
-    body["authType"] = json!("oauth_client_credentials");
+    body["authType"] = json!("oauth_authorization_code");
     body["status"] = json!("error");
     body["lastAuthErrorCode"] = json!("MCP_CONNECTION_AUTHENTICATION_FAILED");
     body["credentialFragment"] = json!(null);
@@ -242,7 +222,7 @@ async fn get_decodes_oauth_fields() {
         .await
         .unwrap();
 
-    assert_eq!(fetched.auth_type, McpAuthType::OAuthClientCredentials);
+    assert_eq!(fetched.auth_type, McpAuthType::OAuthAuthorizationCode);
     assert_eq!(fetched.status, McpConnectionStatus::Error);
     assert_eq!(
         fetched.last_auth_error_code,
@@ -592,21 +572,9 @@ async fn reconnect_sends_one_body_per_auth_type() {
         )
         .await
         .unwrap();
-    client
-        .mcp_connections()
-        .reconnect(
-            "mcp_3Kd9QwE2sLx5R7Tn",
-            McpReconnect::OAuthClientCredentials {
-                url: "https://mcp.example.com/mcp".to_owned(),
-                client: OAuthClient::new("client-42", "oauth-secret-a1b2c3"),
-                scope: Some("read:docs".to_owned()),
-            },
-        )
-        .await
-        .unwrap();
 
     let sent = requests(&server).await;
-    assert_eq!(sent.len(), 4);
+    assert_eq!(sent.len(), 3);
     assert_eq!(
         json_body(&sent[0]),
         json!({
@@ -625,16 +593,6 @@ async fn reconnect_sends_one_body_per_auth_type() {
         json_body(&sent[2]),
         json!({
             "authType": "oauth_authorization_code",
-            "url": "https://mcp.example.com/mcp",
-            "clientId": "client-42",
-            "clientSecret": "oauth-secret-a1b2c3",
-            "scope": "read:docs"
-        })
-    );
-    assert_eq!(
-        json_body(&sent[3]),
-        json!({
-            "authType": "oauth_client_credentials",
             "url": "https://mcp.example.com/mcp",
             "clientId": "client-42",
             "clientSecret": "oauth-secret-a1b2c3",
@@ -679,9 +637,9 @@ async fn an_error_echoing_a_secret_is_redacted() {
         .mcp_connections()
         .reconnect(
             "mcp_3Kd9QwE2sLx5R7Tn",
-            McpReconnect::OAuthClientCredentials {
+            McpReconnect::OAuthAuthorizationCode {
                 url: "https://mcp.example.com/mcp".to_owned(),
-                client: OAuthClient::new("client-42", "oauth-secret-a1b2c3"),
+                client: Some(OAuthClient::new("client-42", "oauth-secret-a1b2c3")),
                 scope: None,
             },
         )
@@ -732,16 +690,6 @@ async fn an_error_echoing_an_oauth_client_secret_is_redacted() {
         })
         .await
         .unwrap_err();
-    let client_credentials_error = client
-        .mcp_connections()
-        .create(NewMcpConnection::OAuthClientCredentials {
-            name: "Docs Search".to_owned(),
-            url: "https://mcp.example.com/mcp".to_owned(),
-            client: OAuthClient::new("client-42", "oauth-secret-a1b2c3"),
-            scope: None,
-        })
-        .await
-        .unwrap_err();
     let reconnect_error = client
         .mcp_connections()
         .reconnect(
@@ -755,7 +703,7 @@ async fn an_error_echoing_an_oauth_client_secret_is_redacted() {
         .await
         .unwrap_err();
 
-    for error in [oauth_code_error, client_credentials_error, reconnect_error] {
+    for error in [oauth_code_error, reconnect_error] {
         let Error::Api(api) = error else {
             panic!("expected an API error, got {error:?}");
         };
@@ -824,15 +772,6 @@ fn every_debug_variant_redacts_its_secrets() {
             },
             r#"OAuthAuthorizationCode { name: "Docs Search", url: "https://mcp.example.com/mcp", client: None, scope: None }"#,
         ),
-        (
-            NewMcpConnection::OAuthClientCredentials {
-                name: "Docs Search".to_owned(),
-                url: "https://mcp.example.com/mcp".to_owned(),
-                client: OAuthClient::new("client-42", "oauth-secret-a1b2c3"),
-                scope: None,
-            },
-            r#"OAuthClientCredentials { name: "Docs Search", url: "https://mcp.example.com/mcp", client: OAuthClient { id: "client-42", secret: "[redacted]" }, scope: None }"#,
-        ),
     ];
     for (connection, expected) in create_cases {
         assert_eq!(format!("{connection:?}"), expected);
@@ -867,14 +806,6 @@ fn every_debug_variant_redacts_its_secrets() {
                 scope: None,
             },
             r#"OAuthAuthorizationCode { url: "https://mcp.example.com/mcp", client: None, scope: None }"#,
-        ),
-        (
-            McpReconnect::OAuthClientCredentials {
-                url: "https://mcp.example.com/mcp".to_owned(),
-                client: OAuthClient::new("client-42", "oauth-secret-a1b2c3"),
-                scope: None,
-            },
-            r#"OAuthClientCredentials { url: "https://mcp.example.com/mcp", client: OAuthClient { id: "client-42", secret: "[redacted]" }, scope: None }"#,
         ),
     ];
     for (auth, expected) in reconnect_cases {

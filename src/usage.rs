@@ -1,6 +1,6 @@
 //! Usage reports. Start from [`Client::usage`]. The overview is tenant only.
 //!
-//! Documentation: <https://docs.blazingagents.com/platform/usage-and-quotas>.
+//! Documentation: <https://docs.blazingagents.com/platform/usage-and-spending-limits>.
 
 use serde::{Deserialize, Serialize};
 

@@ -138,8 +138,6 @@ crate::open_enum! {
         Bearer = "bearer",
         /// `oauth_authorization_code`
         OAuthAuthorizationCode = "oauth_authorization_code",
-        /// `oauth_client_credentials`
-        OAuthClientCredentials = "oauth_client_credentials",
     }
 }
 
@@ -249,20 +247,6 @@ pub enum NewMcpConnection {
         #[serde(skip_serializing_if = "Option::is_none")]
         scope: Option<String>,
     },
-    /// OAuth with the client credentials flow.
-    #[serde(rename = "oauth_client_credentials")]
-    OAuthClientCredentials {
-        /// The display name, unique within your tenant.
-        name: String,
-        /// The streamable HTTP URL of the MCP server.
-        url: String,
-        /// The OAuth client ID and secret.
-        #[serde(flatten)]
-        client: OAuthClient,
-        /// The OAuth scope to request.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        scope: Option<String>,
-    },
 }
 
 impl NewMcpConnection {
@@ -273,7 +257,6 @@ impl NewMcpConnection {
             Self::OAuthAuthorizationCode { client, .. } => {
                 client.iter().map(|client| client.secret.clone()).collect()
             }
-            Self::OAuthClientCredentials { client, .. } => vec![client.secret.clone()],
         }
     }
 }
@@ -299,18 +282,6 @@ impl fmt::Debug for NewMcpConnection {
                 scope,
             } => f
                 .debug_struct("OAuthAuthorizationCode")
-                .field("name", name)
-                .field("url", url)
-                .field("client", client)
-                .field("scope", scope)
-                .finish(),
-            Self::OAuthClientCredentials {
-                name,
-                url,
-                client,
-                scope,
-            } => f
-                .debug_struct("OAuthClientCredentials")
                 .field("name", name)
                 .field("url", url)
                 .field("client", client)
@@ -353,18 +324,6 @@ pub enum McpReconnect {
         #[serde(skip_serializing_if = "Option::is_none")]
         scope: Option<String>,
     },
-    /// OAuth with the client credentials flow.
-    #[serde(rename = "oauth_client_credentials")]
-    OAuthClientCredentials {
-        /// The streamable HTTP URL of the MCP server.
-        url: String,
-        /// The OAuth client ID and secret.
-        #[serde(flatten)]
-        client: OAuthClient,
-        /// The OAuth scope to request.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        scope: Option<String>,
-    },
 }
 
 impl McpReconnect {
@@ -375,7 +334,6 @@ impl McpReconnect {
             Self::OAuthAuthorizationCode { client, .. } => {
                 client.iter().map(|client| client.secret.clone()).collect()
             }
-            Self::OAuthClientCredentials { client, .. } => vec![client.secret.clone()],
         }
     }
 }
@@ -391,12 +349,6 @@ impl fmt::Debug for McpReconnect {
                 .finish(),
             Self::OAuthAuthorizationCode { url, client, scope } => f
                 .debug_struct("OAuthAuthorizationCode")
-                .field("url", url)
-                .field("client", client)
-                .field("scope", scope)
-                .finish(),
-            Self::OAuthClientCredentials { url, client, scope } => f
-                .debug_struct("OAuthClientCredentials")
                 .field("url", url)
                 .field("client", client)
                 .field("scope", scope)
