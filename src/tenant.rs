@@ -1,7 +1,7 @@
 //! Tenant settings and the tenant-wide spending limit. Tenant only; start from
 //! [`Client::tenant`].
 //!
-//! Documentation: <https://docs.blazingagents.com/platform/usage-and-quotas>.
+//! Documentation: <https://docs.blazingagents.com/platform/usage-and-spending-limits>.
 
 use serde::{Deserialize, Serialize};
 
