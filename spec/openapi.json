@@ -402,14 +402,12 @@
                 "code": {
                   "type": "string",
                   "enum": [
-                    "developer",
                     "pro"
                   ]
                 },
                 "name": {
                   "type": "string",
                   "enum": [
-                    "Developer",
                     "Pro"
                   ]
                 },
@@ -7482,7 +7480,6 @@
                   "plan": {
                     "type": "string",
                     "enum": [
-                      "developer",
                       "pro"
                     ]
                   },
