@@ -17878,8 +17878,7 @@
                   "metadata": {
                     "type": "object",
                     "additionalProperties": {},
-                    "default": {},
-                    "description": "Your own key-value data. Recorded on a new session and on the turn's usage."
+                    "description": "Your own key-value data. Recorded on a new session and on the turn's usage. An omitted value records the session's metadata on the turn's usage."
                   },
                   "functions": {
                     "type": "object",
@@ -18676,8 +18675,7 @@
                   "metadata": {
                     "type": "object",
                     "additionalProperties": {},
-                    "default": {},
-                    "description": "Your own key-value data. Recorded on a new session and on the turn's usage."
+                    "description": "Your own key-value data. Recorded on a new session and on the turn's usage. An omitted value records the session's metadata on the turn's usage."
                   },
                   "functions": {
                     "type": "object",
