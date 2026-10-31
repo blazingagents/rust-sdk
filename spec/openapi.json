@@ -7355,7 +7355,7 @@
           }
         ],
         "summary": "Get the caller's tenant",
-        "description": "JWT-only. Returns the tenant record, with `subscriptionCancelsAt` set while an active Subscription is set to end at that date (`PATCH /v1/subscription`). While the tenant has no active Subscription, the request first refreshes it from the billing provider once, so a payment shows without waiting for the webhook; if the provider is unavailable the stored state answers. An API-key-authenticated request is rejected here with generic 401 `unauthorized`: the credential type is insufficient for this resource.",
+        "description": "JWT-only. Returns the tenant record, with `subscriptionCancelsAt` set while an active Subscription is set to end at that date (`PATCH /v1/subscription`). While the tenant has no active Subscription or no Usage credit, the request first refreshes it from the billing provider once, so a payment or a top-up shows without waiting for the webhook; if the provider is unavailable the stored state answers. An API-key-authenticated request is rejected here with generic 401 `unauthorized`: the credential type is insufficient for this resource.",
         "responses": {
           "200": {
             "description": "The tenant record",
