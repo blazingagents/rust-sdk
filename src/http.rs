@@ -383,6 +383,9 @@ fn redact_headers(headers: HeaderMap, sensitive: &[String]) -> HeaderMap {
 fn redact_text(text: &str, sensitive: &[String]) -> String {
     let mut text = text.to_owned();
     for secret in sensitive {
+        if secret.is_empty() {
+            continue;
+        }
         if secret.len() >= MIN_SUBSTRING_SECRET_LENGTH {
             text = text.replace(secret.as_str(), "[REDACTED]");
         } else if text == *secret {
@@ -421,8 +424,10 @@ fn contains_credential_material(value: &Value, sensitive: &[String]) -> bool {
             .iter()
             .any(|item| contains_credential_material(item, sensitive)),
         Value::String(text) => sensitive.iter().any(|secret| {
-            text == secret
-                || (secret.len() >= MIN_SUBSTRING_SECRET_LENGTH && text.contains(secret.as_str()))
+            !secret.is_empty()
+                && (text == secret
+                    || (secret.len() >= MIN_SUBSTRING_SECRET_LENGTH
+                        && text.contains(secret.as_str())))
         }),
         _ => false,
     }
