@@ -1398,6 +1398,26 @@ async fn a_short_secret_substring_does_not_fail_the_call() {
 }
 
 #[tokio::test]
+async fn an_empty_secret_does_not_treat_empty_response_fields_as_echo() {
+    let (server, client) = mock().await;
+    let mut body = provider("prv_7Tn4Kd9QwE2sLx5R");
+    body["baseUrl"] = json!("");
+    Mock::given(method("POST"))
+        .and(path("/v1/providers"))
+        .respond_with(json(201, body))
+        .mount(&server)
+        .await;
+
+    let created = client
+        .providers()
+        .create("OpenAI", ProviderType::OpenAi, "")
+        .await
+        .unwrap();
+
+    assert_eq!(created.base_url.as_deref(), Some(""));
+}
+
+#[tokio::test]
 async fn upload_file_sends_multipart_and_octet_stream_bodies() {
     let dir = temp_dir("upload");
     let avatar = dir.join("avatar.png");
