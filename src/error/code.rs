@@ -38,6 +38,8 @@ crate::open_enum! {
         AgentDisabled = "agent_disabled",
         /// `agent_busy`
         AgentBusy = "agent_busy",
+        /// `agent_deleting`
+        AgentDeleting = "agent_deleting",
         /// `admin_agent_managed`
         AdminAgentManaged = "admin_agent_managed",
         /// `agent_mcp_connection_not_found`
