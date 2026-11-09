@@ -171,7 +171,10 @@ impl<S: Scope> Sessions<'_, S> {
 
     /// Permanently deletes a session and its transcript and, with
     /// `delete_artifacts`, its artifacts. Fails with `session_busy` while a
-    /// turn is running or an approval continuation is still open.
+    /// turn or an approval continuation is running. Deleting a session whose
+    /// approval round waits for a continue call fails that round. Deleting a
+    /// deleted session succeeds, so call it again to finish a delete that
+    /// failed part way, for example while deleting its artifacts.
     pub fn delete(
         &self,
         agent_id: impl Into<AgentId>,

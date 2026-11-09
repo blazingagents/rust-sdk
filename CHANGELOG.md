@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `ErrorCode::AgentDeleting` (`agent_deleting`). While a delete of an agent that also deletes its artifacts runs, a new chat turn, resume, tool-approval continuation, generation or task run for that agent fails with `409 agent_deleting`. If that delete failed, the agent keeps refusing work until you send the delete again, which finishes it.
+
+### Fixed
+
+- An empty credential string is no longer treated as a submitted secret. Creating a Provider with an empty `api_key` (or another empty credential) used to fail with `Error::CredentialEcho` when the response held any empty string, and to replace those empty strings with `[REDACTED]` on errors. Empty secrets are now ignored for both checks.
+
 ## 0.6.0 (2026-10-27)
 
 ### Added
