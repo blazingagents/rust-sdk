@@ -165,6 +165,7 @@
                   "mcp_connection_in_use",
                   "mcp_connection_unreachable",
                   "mcp_connection_discovery_failed",
+                  "mcp_connection_needs_auth",
                   "workspace_not_found",
                   "workspace_in_use",
                   "workspace_busy",
@@ -4126,6 +4127,7 @@
                   "mcp_connection_in_use",
                   "mcp_connection_unreachable",
                   "mcp_connection_discovery_failed",
+                  "mcp_connection_needs_auth",
                   "workspace_not_found",
                   "workspace_in_use",
                   "workspace_busy",
@@ -6997,6 +6999,7 @@
               "mcp_connection_in_use",
               "mcp_connection_unreachable",
               "mcp_connection_discovery_failed",
+              "mcp_connection_needs_auth",
               "workspace_not_found",
               "workspace_in_use",
               "workspace_busy",
@@ -7472,7 +7475,7 @@
           }
         ],
         "summary": "Create a checkout",
-        "description": "Creates a hosted checkout for the tenant and returns its URL. A tenant that already pays is refused with `subscription_already_paid`; checkout never changes a Plan. Polar refuses a second subscription at payment and expires an unpaid checkout after 24 hours. After payment the hosted page returns to the dashboard, which waits for `GET /v1/me` to report `subscriptionStatus: active`. Only a dashboard JWT may call this.",
+        "description": "Creates a hosted checkout for the tenant and returns its URL. A tenant that already pays is refused with `subscription_already_paid`; checkout never changes a Plan. While a tenant deletion is scheduled, checkout is refused with `tenant_deleting` until `POST /v1/tenant/deletion/cancel` cancels it. Polar refuses a second subscription at payment and expires an unpaid checkout after 24 hours. After payment the hosted page returns to the dashboard, which waits for `GET /v1/me` to report `subscriptionStatus: active`. Only a dashboard JWT may call this.",
         "requestBody": {
           "required": true,
           "content": {
@@ -7541,7 +7544,7 @@
             }
           },
           "409": {
-            "description": "The tenant already pays (`subscription_already_paid`)",
+            "description": "The tenant already pays (`subscription_already_paid`) or is scheduled for deletion (`tenant_deleting`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7782,7 +7785,7 @@
           }
         ],
         "summary": "Schedule tenant deletion",
-        "description": "Marks the tenant deleting: new executions block immediately and queued Task runs are cancelled; work already running finishes. Permanent deletion runs 24 hours later and can be cancelled until then. Every other route stays open in that window. The response reports the scheduled deletion. A tenant whose active Subscription still renews is refused with `subscription_not_cancelled`; cancel it first with `PATCH /v1/subscription`. Only a dashboard JWT may call this route.",
+        "description": "Marks the tenant deleting: new executions block immediately and queued Task runs are cancelled; work already running finishes. Permanent deletion runs 24 hours later and can be cancelled until then. Checkout and resuming the Subscription are refused with `tenant_deleting` in that window; every other route stays open. The response reports the scheduled deletion. A tenant whose active Subscription still renews is refused with `subscription_not_cancelled`; cancel it first with `PATCH /v1/subscription`. Only a dashboard JWT may call this route.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9700,7 +9703,7 @@
           }
         ],
         "summary": "Cancel or resume the subscription",
-        "description": "`cancelAtPeriodEnd: true` sets the tenant's active Subscription to end at its next billing date, with no refund; the Plan stays active until then. `false` resumes a Subscription set to end, so it renews again. Repeating either is harmless. The response reports `cancelsAt`, when the Subscription stops renewing, or null while it renews; `GET /v1/me` reports the same as `subscriptionCancelsAt`. A tenant must cancel before `DELETE /v1/tenant` is accepted. A tenant with no Subscription that grants access, before the change or in the answer the billing provider gives to it, is refused with `subscription_required`. Only a dashboard JWT may call this route.",
+        "description": "`cancelAtPeriodEnd: true` sets the tenant's active Subscription to end at its next billing date, with no refund; the Plan stays active until then. `false` resumes a Subscription set to end, so it renews again, and is refused with `tenant_deleting` while a tenant deletion is scheduled, until `POST /v1/tenant/deletion/cancel` cancels it. Repeating either is harmless. The response reports `cancelsAt`, when the Subscription stops renewing, or null while it renews; `GET /v1/me` reports the same as `subscriptionCancelsAt`. A tenant must cancel before `DELETE /v1/tenant` is accepted. A tenant with no Subscription that grants access, before the change or in the answer the billing provider gives to it, is refused with `subscription_required`. Only a dashboard JWT may call this route.",
         "requestBody": {
           "required": true,
           "content": {
@@ -9754,6 +9757,16 @@
           },
           "404": {
             "description": "Not found in this tenant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Resuming while the tenant is scheduled for deletion (`tenant_deleting`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -17588,7 +17601,8 @@
             "description": "The request conflicts with the resource's current state",
             "x-error-codes": [
               "agent_disabled",
-              "agent_deleting"
+              "agent_deleting",
+              "mcp_connection_needs_auth"
             ],
             "content": {
               "application/json": {
@@ -17616,6 +17630,19 @@
                 "description": "Sent with `session_turn_unresponsive`, and with `rate_limited` when the limit names a wait: the whole seconds to wait before sending the request again. Retrying earlier fails the same way."
               }
             },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "An upstream service failed",
+            "x-error-codes": [
+              "mcp_connection_discovery_failed"
+            ],
             "content": {
               "application/json": {
                 "schema": {
@@ -18032,7 +18059,8 @@
             "x-error-codes": [
               "agent_disabled",
               "agent_deleting",
-              "tenant_deleting"
+              "tenant_deleting",
+              "mcp_connection_needs_auth"
             ],
             "content": {
               "application/json": {
@@ -18825,7 +18853,8 @@
               "session_busy",
               "session_turn_unresponsive",
               "message_id_conflict",
-              "tenant_deleting"
+              "tenant_deleting",
+              "mcp_connection_needs_auth"
             ],
             "headers": {
               "Retry-After": {
@@ -19698,7 +19727,8 @@
               "tool_approval_continuation_settled",
               "agent_disabled",
               "agent_deleting",
-              "tenant_deleting"
+              "tenant_deleting",
+              "mcp_connection_needs_auth"
             ],
             "headers": {
               "Retry-After": {
