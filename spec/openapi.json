@@ -138,6 +138,7 @@
                   "subscription_not_cancelled",
                   "agent_disabled",
                   "agent_busy",
+                  "agent_deleting",
                   "admin_agent_managed",
                   "agent_mcp_connection_not_found",
                   "agent_mcp_connections_invalid",
@@ -4098,6 +4099,7 @@
                   "subscription_not_cancelled",
                   "agent_disabled",
                   "agent_busy",
+                  "agent_deleting",
                   "admin_agent_managed",
                   "agent_mcp_connection_not_found",
                   "agent_mcp_connections_invalid",
@@ -6968,6 +6970,7 @@
               "subscription_not_cancelled",
               "agent_disabled",
               "agent_busy",
+              "agent_deleting",
               "admin_agent_managed",
               "agent_mcp_connection_not_found",
               "agent_mcp_connections_invalid",
@@ -7284,11 +7287,11 @@
           "mcp-oauth"
         ],
         "summary": "Complete the MCP OAuth authorization",
-        "description": "The provider's redirect target after user consent. Validates the transaction cookie and `state`, stores the issued credential on the Connection, clears the cookie, and 302-redirects to the dashboard with a safe `mcpOAuth` status only — provider parameters never reach the dashboard URL. Public; no credential required.",
+        "description": "The provider's redirect target after user consent. Validates the transaction cookie and `state`, stores the issued credential on the Connection, clears the cookie once the callback has consumed the transaction it names, and 302-redirects to the dashboard with a safe `mcpOAuth` status only — provider parameters never reach the dashboard URL. Public; no credential required.",
         "security": [],
         "responses": {
           "302": {
-            "description": "Redirect to the dashboard with `?mcpOAuth=success&id=…` or `?mcpOAuth=error`; clears the `blazing_mcp_oauth` cookie",
+            "description": "Redirect to the dashboard with `?mcpOAuth=success&id=…` or `?mcpOAuth=error`; clears the `blazing_mcp_oauth` cookie when the callback consumed its transaction, and keeps it for a callback that matched none",
             "headers": {
               "Location": {
                 "schema": {
@@ -7300,7 +7303,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "required": true
+                "required": false
               }
             }
           }
@@ -8089,7 +8092,7 @@
           "chat-connections"
         ],
         "summary": "Create a chat connection",
-        "description": "Connects one of your agents to a Slack app or Telegram bot. Blazing Agents checks the credentials with the chat platform and reads the bot identity from the token before saving, and returns the `webhookUrl` to configure on the platform. Each bot installation belongs to one connection. Slack needs `botToken` and `signingSecret`; Telegram needs only `botToken`. Creating an enabled Telegram connection registers its webhook for you. If that registration fails, the connection is saved disabled and its `webhook_url` health check fails; fix the bot and call enable. The platform-managed agent cannot be connected.",
+        "description": "Connects one of your agents to a Slack app or Telegram bot. Blazing Agents checks the credentials with the chat platform and reads the bot identity from the token before saving, and returns the `webhookUrl` to configure on the platform. Each bot installation belongs to one connection. Slack needs `botToken` and `signingSecret`; Telegram needs only `botToken`. Creating an enabled Telegram connection registers its webhook for you. If that registration fails, the connection is saved disabled and its `webhook_secret` health check fails; fix the bot and call enable. The platform-managed agent cannot be connected.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8984,7 +8987,7 @@
           "chat-connections"
         ],
         "summary": "Rotate chat connection credentials",
-        "description": "Replaces a connection's credentials. Send `platform` matching the connection and the complete credentials for the same bot installation: Slack needs `botToken` and `signingSecret`, and Telegram needs `botToken`. The new credentials are checked with the chat platform and must identify the same bot. The enabled state and sessions are kept. On an enabled Telegram connection, Blazing Agents re-registers the webhook with a new secret. If that fails, the new credentials are still saved and the request returns an error; call enable to retry. [Manage and troubleshoot](https://docs.blazingagents.com/platform/chat-integrations#manage-and-troubleshoot) covers what happens to running turns and waiting messages.",
+        "description": "Replaces a connection's credentials. Send `platform` matching the connection and the complete credentials for the same bot installation: Slack needs `botToken` and `signingSecret`, and Telegram needs `botToken`. The new credentials are checked with the chat platform and must identify the same bot. The enabled state and sessions are kept. For Telegram, Blazing Agents re-registers the webhook with a new secret when the connection is enabled, or when it is disabled and the bot still delivers to it. If that fails, the new credentials are still saved, the `webhook_secret` health check fails, and the request returns an error; call enable to retry. [Manage and troubleshoot](https://docs.blazingagents.com/platform/chat-integrations#manage-and-troubleshoot) covers what happens to running turns and waiting messages.",
         "parameters": [
           {
             "schema": {
@@ -9521,7 +9524,7 @@
           "chat-connections"
         ],
         "summary": "Enable a chat connection",
-        "description": "Starts accepting new messages. Messages sent while the connection was disabled are not replayed. For Telegram, Blazing Agents registers the webhook first. If the bot already sends updates to a webhook outside Blazing Agents, the request returns `chat_webhook_conflict`; remove that webhook and try again. If registration fails for another reason, the request returns `chat_webhook_registration_failed` and the connection stays disabled.",
+        "description": "Starts accepting new messages. Messages sent while the connection was disabled are not replayed. For Telegram, Blazing Agents registers the webhook first. If the bot already sends updates to a webhook outside Blazing Agents, the request returns `chat_webhook_conflict`; remove that webhook and try again. If registration fails for another reason, the request returns `chat_webhook_registration_failed` and the connection stays disabled. A disable that lands while this request runs wins, and the response shows the connection disabled. The response carries freshly checked `health`.",
         "parameters": [
           {
             "schema": {
@@ -9697,7 +9700,7 @@
           }
         ],
         "summary": "Cancel or resume the subscription",
-        "description": "`cancelAtPeriodEnd: true` sets the tenant's active Subscription to end at its next billing date, with no refund; the Plan stays active until then. `false` resumes a Subscription set to end, so it renews again. Repeating either is harmless. The response reports `cancelsAt`, when the Subscription stops renewing, or null while it renews; `GET /v1/me` reports the same as `subscriptionCancelsAt`. A tenant must cancel before `DELETE /v1/tenant` is accepted. Only a dashboard JWT may call this route.",
+        "description": "`cancelAtPeriodEnd: true` sets the tenant's active Subscription to end at its next billing date, with no refund; the Plan stays active until then. `false` resumes a Subscription set to end, so it renews again. Repeating either is harmless. The response reports `cancelsAt`, when the Subscription stops renewing, or null while it renews; `GET /v1/me` reports the same as `subscriptionCancelsAt`. A tenant must cancel before `DELETE /v1/tenant` is accepted. A tenant with no Subscription that grants access, before the change or in the answer the billing provider gives to it, is refused with `subscription_required`. Only a dashboard JWT may call this route.",
         "requestBody": {
           "required": true,
           "content": {
@@ -9731,6 +9734,16 @@
           },
           "401": {
             "description": "Missing or invalid credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "No Subscription grants access (`subscription_required`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -14936,7 +14949,7 @@
           "agents"
         ],
         "summary": "Delete an agent",
-        "description": "Permanently deletes an agent. Its workspace is kept. Set `includeArtifacts` to choose whether its artifacts are deleted too. The platform-managed agent cannot be deleted. An agent cannot be deleted while it has a running turn or a queued or running task run: the call returns `409 agent_busy`, so stop that work or wait for it to finish, then delete again.",
+        "description": "Permanently deletes an agent. Its workspace is kept. Set `includeArtifacts` to choose whether its artifacts are deleted too. The platform-managed agent cannot be deleted. An agent cannot be deleted while it has a running turn or a queued or running task run: the call returns `409 agent_busy`, so stop that work or wait for it to finish, then delete again. While a delete that includes artifacts runs, new turns and task runs for the agent fail with `409 agent_deleting`. If that delete fails, they keep failing until you send the delete again, which finishes it.",
         "parameters": [
           {
             "schema": {
@@ -17574,7 +17587,8 @@
           "409": {
             "description": "The request conflicts with the resource's current state",
             "x-error-codes": [
-              "agent_disabled"
+              "agent_disabled",
+              "agent_deleting"
             ],
             "content": {
               "application/json": {
@@ -18017,6 +18031,7 @@
             "description": "The request conflicts with the resource's current state",
             "x-error-codes": [
               "agent_disabled",
+              "agent_deleting",
               "tenant_deleting"
             ],
             "content": {
@@ -18430,7 +18445,7 @@
           "sessions"
         ],
         "summary": "Delete a session",
-        "description": "Deletes a session. Afterwards it can no longer be read or continued, and every request for it returns `404`. Set `deleteArtifacts` to choose whether its artifacts are deleted too. A session cannot be deleted while a Turn is running or a recorded approval continuation is waiting to resume. If its last turn stopped responding, the call returns `409 session_turn_unresponsive` with a `Retry-After` header that says when the session can be deleted.",
+        "description": "Deletes a session. Afterwards it can no longer be read or continued, and every other request for it returns `404`. Set `deleteArtifacts` to choose whether its artifacts are deleted too. Deleting a deleted session again returns `204`, so if a delete fails after the session is gone, for example while deleting its artifacts, send it again to finish. A session cannot be deleted while a turn is running. Deleting a session whose approval round is waiting for a continue call fails that round. If its last turn stopped responding, the call returns `409 session_turn_unresponsive` with a `Retry-After` header that says when the session can be deleted.",
         "parameters": [
           {
             "schema": {
@@ -18806,6 +18821,7 @@
             "description": "The request conflicts with the resource's current state",
             "x-error-codes": [
               "agent_disabled",
+              "agent_deleting",
               "session_busy",
               "session_turn_unresponsive",
               "message_id_conflict",
@@ -19534,7 +19550,7 @@
           "sessions"
         ],
         "summary": "Decide an approval round and continue the turn",
-        "description": "Records every decision in one approval round and streams the rest of the turn in this request. No continuation starts without this call. Pass caller-local functions for this invocation. Identical decisions are idempotent; changed decisions conflict. A running retry returns session_busy and a terminal retry returns tool_approval_continuation_settled. If the session's previous turn stopped responding, the call returns session_turn_unresponsive with a Retry-After header, and the decisions stay recorded for the retry. A failure before the turn starts leaves the round waiting for an explicit retry. Output is not replayed.",
+        "description": "Records every decision in one approval round and streams the rest of the turn in this request. No continuation starts without this call. Pass caller-local functions for this invocation. Identical decisions are idempotent; changed decisions conflict. A running retry returns `session_busy` and a terminal retry returns `tool_approval_continuation_settled`. If the session's previous turn stopped responding, the call returns `session_turn_unresponsive` with a `Retry-After` header, and the decisions stay recorded for the retry. Errors from finding the session, agent or provider, such as `not_found`, `agent_disabled` or `tenant_deleting`, also leave the round waiting for a retry. A billing, rate or spending refusal, such as `usage_credit_required`, `rate_limited` or `model_spending_limit_exceeded`, or a failure after the turn starts, fails the round, and a retry returns `tool_approval_continuation_settled`. Output is not replayed.",
         "parameters": [
           {
             "schema": {
@@ -19681,6 +19697,7 @@
               "tool_approval_decision_conflict",
               "tool_approval_continuation_settled",
               "agent_disabled",
+              "agent_deleting",
               "tenant_deleting"
             ],
             "headers": {
@@ -23725,7 +23742,7 @@
           "merchant"
         ],
         "summary": "Set a merchant binding",
-        "description": "Links one of your end users to a customer in your billing provider, or changes the customer an existing link points to. Blazing Agents checks that the customer exists first. Usage for that user is then sent to this customer.",
+        "description": "Links one of your end users to a customer in your billing provider, or changes the customer an existing link points to. Blazing Agents checks that the customer exists first. Usage for that user is then sent to this customer. If your merchant connection is replaced or removed while the request runs, nothing is saved and the request fails with `merchant_eligibility_unavailable`; retry it to check the customer against the current connection.",
         "parameters": [
           {
             "schema": {
@@ -23854,7 +23871,8 @@
           "503": {
             "description": "The service is temporarily unavailable",
             "x-error-codes": [
-              "merchant_provider_unavailable"
+              "merchant_provider_unavailable",
+              "merchant_eligibility_unavailable"
             ],
             "content": {
               "application/json": {
@@ -26755,6 +26773,7 @@
             "x-error-codes": [
               "task_active_run_exists",
               "agent_disabled",
+              "agent_deleting",
               "tenant_deleting"
             ],
             "content": {
