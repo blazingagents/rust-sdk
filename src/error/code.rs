@@ -92,6 +92,8 @@ crate::open_enum! {
         McpConnectionUnreachable = "mcp_connection_unreachable",
         /// `mcp_connection_discovery_failed`
         McpConnectionDiscoveryFailed = "mcp_connection_discovery_failed",
+        /// `mcp_connection_needs_auth`
+        McpConnectionNeedsAuth = "mcp_connection_needs_auth",
         /// `workspace_not_found`
         WorkspaceNotFound = "workspace_not_found",
         /// `workspace_in_use`
