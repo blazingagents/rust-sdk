@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `ErrorCode::McpConnectionNeedsAuth` (`mcp_connection_needs_auth`). A chat turn, resume, tool-approval continuation or generation whose agent has an attached MCP connection with status `needs_auth` fails with `409 mcp_connection_needs_auth` before the model runs. The message names the connection, and `details()` holds `connections`, a list of `{ connectionId, status }`. Reconnect the connection; retrying fails until then. A task run that fails this way ends `blocked` with this error code. A turn's `502 mcp_connection_discovery_failed` now names its connection the same way, with `status` `error`.
+
 ## 0.7.0 (2026-11-09)
 
 ### Added
