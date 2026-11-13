@@ -1976,6 +1976,13 @@
             ],
             "pattern": "^prv_[0-9A-Za-z]{16}$"
           },
+          "autoApprovalModel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1
+          },
           "workspaceId": {
             "type": "string",
             "pattern": "^ws_[0-9A-Za-z]{16}$"
@@ -2063,6 +2070,7 @@
           "model",
           "thinkingLevel",
           "providerId",
+          "autoApprovalModel",
           "workspaceId",
           "autoCompaction",
           "compactionReserveTokens",
@@ -2894,6 +2902,13 @@
                 ],
                 "pattern": "^prv_[0-9A-Za-z]{16}$"
               },
+              "autoApprovalModel": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1
+              },
               "autoCompaction": {
                 "type": "boolean"
               },
@@ -2950,6 +2965,7 @@
               "model",
               "thinkingLevel",
               "providerId",
+              "autoApprovalModel",
               "autoCompaction",
               "compactionReserveTokens",
               "memoryInjectionEnabled",
@@ -6853,6 +6869,13 @@
                 ],
                 "pattern": "^prv_[0-9A-Za-z]{16}$"
               },
+              "autoApprovalModel": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1
+              },
               "autoCompaction": {
                 "type": "boolean"
               },
@@ -6909,6 +6932,7 @@
               "model",
               "thinkingLevel",
               "providerId",
+              "autoApprovalModel",
               "autoCompaction",
               "compactionReserveTokens",
               "memoryInjectionEnabled",
@@ -13550,6 +13574,15 @@
                     "default": null,
                     "description": "ID of the provider whose key runs the model. Send it together with `model`."
                   },
+                  "autoApprovalModel": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "default": null,
+                    "description": "Model ID, on the agent's provider, that reviews tool calls whose approval is `auto`. `null` uses the agent's model. Needs a provider and model. Changing `providerId` without sending this sets it to `null`."
+                  },
                   "workspaceId": {
                     "type": "string",
                     "pattern": "^ws_[0-9A-Za-z]{16}$",
@@ -13653,6 +13686,7 @@
                   "model": "openai/gpt-6-luna",
                   "thinkingLevel": null,
                   "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                  "autoApprovalModel": null,
                   "workspaceId": "ws_3Vb8Ny6HpU1cGf4M",
                   "autoCompaction": true,
                   "compactionReserveTokens": 16384,
@@ -13883,6 +13917,7 @@
                       "model": "openai/gpt-6-luna",
                       "thinkingLevel": null,
                       "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                      "autoApprovalModel": null,
                       "workspaceId": "ws_3Vb8Ny6HpU1cGf4M",
                       "autoCompaction": true,
                       "compactionReserveTokens": 16384,
@@ -14335,6 +14370,7 @@
                   "model": "openai/gpt-6-luna",
                   "thinkingLevel": null,
                   "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                  "autoApprovalModel": null,
                   "workspaceId": "ws_3Vb8Ny6HpU1cGf4M",
                   "autoCompaction": true,
                   "compactionReserveTokens": 16384,
@@ -14726,6 +14762,14 @@
                     "pattern": "^prv_[0-9A-Za-z]{16}$",
                     "description": "ID of the provider whose key runs the model. Send it together with `model`."
                   },
+                  "autoApprovalModel": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "description": "Model ID, on the agent's provider, that reviews tool calls whose approval is `auto`. `null` uses the agent's model. Needs a provider and model. Changing `providerId` without sending this sets it to `null`."
+                  },
                   "workspaceId": {
                     "type": "string",
                     "pattern": "^ws_[0-9A-Za-z]{16}$",
@@ -14814,6 +14858,7 @@
                   "model": "openai/gpt-6-luna",
                   "thinkingLevel": null,
                   "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                  "autoApprovalModel": null,
                   "workspaceId": "ws_3Vb8Ny6HpU1cGf4M",
                   "autoCompaction": true,
                   "compactionReserveTokens": 16384,
@@ -15134,6 +15179,7 @@
                   "model": "openai/gpt-6-luna",
                   "thinkingLevel": null,
                   "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                  "autoApprovalModel": null,
                   "workspaceId": "ws_3Vb8Ny6HpU1cGf4M",
                   "autoCompaction": true,
                   "compactionReserveTokens": 16384,
@@ -15299,6 +15345,7 @@
                   "model": "openai/gpt-6-luna",
                   "thinkingLevel": null,
                   "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                  "autoApprovalModel": null,
                   "workspaceId": "ws_3Vb8Ny6HpU1cGf4M",
                   "autoCompaction": true,
                   "compactionReserveTokens": 16384,
@@ -15490,6 +15537,7 @@
                   "model": "openai/gpt-6-luna",
                   "thinkingLevel": null,
                   "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                  "autoApprovalModel": null,
                   "workspaceId": "ws_3Vb8Ny6HpU1cGf4M",
                   "autoCompaction": true,
                   "compactionReserveTokens": 16384,
@@ -15666,6 +15714,7 @@
                   "model": "openai/gpt-6-luna",
                   "thinkingLevel": null,
                   "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                  "autoApprovalModel": null,
                   "workspaceId": "ws_3Vb8Ny6HpU1cGf4M",
                   "autoCompaction": true,
                   "compactionReserveTokens": 16384,
@@ -18362,6 +18411,7 @@
                     "model": "openai/gpt-6-luna",
                     "thinkingLevel": null,
                     "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                    "autoApprovalModel": null,
                     "autoCompaction": true,
                     "compactionReserveTokens": 16384,
                     "memoryInjectionEnabled": false,
@@ -19042,6 +19092,7 @@
                     "model": "openai/gpt-6-luna",
                     "thinkingLevel": null,
                     "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                    "autoApprovalModel": null,
                     "autoCompaction": true,
                     "compactionReserveTokens": 16384,
                     "memoryInjectionEnabled": false,
@@ -19095,6 +19146,7 @@
                     "model": "openai/gpt-6-luna",
                     "thinkingLevel": null,
                     "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                    "autoApprovalModel": null,
                     "autoCompaction": true,
                     "compactionReserveTokens": 16384,
                     "memoryInjectionEnabled": false,
@@ -26899,6 +26951,7 @@
                         "model": "openai/gpt-6-luna",
                         "thinkingLevel": null,
                         "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                        "autoApprovalModel": null,
                         "autoCompaction": true,
                         "compactionReserveTokens": 16384,
                         "memoryInjectionEnabled": false,
@@ -27078,6 +27131,7 @@
                     "model": "openai/gpt-6-luna",
                     "thinkingLevel": null,
                     "providerId": "prv_7Tn4Kd9QwE2sLx5R",
+                    "autoApprovalModel": null,
                     "autoCompaction": true,
                     "compactionReserveTokens": 16384,
                     "memoryInjectionEnabled": false,

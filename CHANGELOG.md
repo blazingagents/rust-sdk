@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `auto_approval_model` on agents. It is the model, on the agent's own provider, that reviews tool calls whose approval is `auto`; `None` means the agent's own model reviews them. `Agent::auto_approval_model` and `AgentConfig::auto_approval_model` (the snapshot on sessions and task runs) hold it. `client.agents().create(..).auto_approval_model(model)` and `client.agents().update(..).auto_approval_model(model)` set it, and `update(..).clear_auto_approval_model()` removes it. It needs a provider and model, and changing the agent's provider without sending it resets it to `None`.
+
 ## 0.9.0 (2026-11-13)
 
 ### Added
