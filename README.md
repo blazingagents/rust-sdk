@@ -21,6 +21,8 @@ runs on Tokio and supports Rust 1.85 and newer.
   settings, and merchant monetization.
 - Chat streams in the AI SDK UI message stream format, with steering, Tool
   approvals, and backend functions that run in your process.
+- A browser relay, `ChatRelay`, that serves `useBlazingAgentsChat` from your
+  backend as your signed-in End-user.
 - Text and structured-object generation.
 - End-user scoped clients through `for_user`.
 - Lazy pagination, uploads, and streamed downloads.
@@ -97,8 +99,40 @@ async fn chat_as_user(
 
 Call `create_agent_for_user` once per user and store the Agent ID with the
 user. A scoped chat with an Agent created without the scope fails with `404`.
-`chat_as_user` returns a `ChatStream`, a `Stream` of server-sent event bytes. Send it to the browser as a `text/event-stream` response, for example
-with axum's `Body::from_stream`, and AI SDK `useChat` reads it.
+`chat_as_user` returns a `ChatStream`, a `Stream` of server-sent event bytes
+that you can send to a browser as a `text/event-stream` response.
+
+## Chat from a browser app
+
+A browser holds no API key, so `useBlazingAgentsChat` from the TypeScript SDK
+posts every chat, history and steer request to one endpoint on your backend.
+`ChatRelay` is that endpoint. It runs your sign-in check, then answers each
+request as the signed-in End-user. It works with any HTTP framework built on
+the `http` crate, and with axum it is one handler:
+
+```rust
+use axum::extract::{Request, State};
+use axum::response::Response;
+use blazing_agents::Client;
+use blazing_agents::relay::{ChatRelay, RelayBody, RelayContext};
+
+async fn chat(State(relay): State<ChatRelay>, request: Request) -> Response<RelayBody> {
+    relay.handle(request).await
+}
+
+fn chat_relay(client: Client) -> ChatRelay {
+    ChatRelay::new(client, |request| async move {
+        // Your own sign-in check, on the session cookie or token of the
+        // request. `None` answers 401.
+        let user_id = verified_user(&request).await?;
+        Ok(user_id.map(|user_id| RelayContext::new("ag_...", user_id)))
+    })
+}
+```
+
+Mount `chat` on one `POST` route and point the browser at it. Read the
+[browser relay contract](https://docs.blazingagents.com/api-reference/protocols/browser-relay)
+for the request and error shapes.
 
 ## Examples
 
@@ -107,8 +141,8 @@ lists the environment variables it reads and the command that runs it.
 
 - `quickstart` saves a Prompt, runs it as a completion, and chats with an
   Agent.
-- `chat_relay` is an axum server that relays `useChat` requests from a
-  signed-in user to that user's own Agent.
+- `chat_relay` is an axum server that serves `useBlazingAgentsChat` for a
+  signed-in user and that user's own Agent.
 - `structured_output` generates an object whose JSON Schema is derived from
   a Rust type.
 
