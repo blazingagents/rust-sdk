@@ -13,13 +13,20 @@ message='Tests must use the public API. Either rewrite this test against the pub
 deps=$(mktemp)
 trap 'rm -f "$deps"' EXIT
 cargo rustc --quiet -p blazing-agents --lib --all-features -- --emit=dep-info="$deps"
-mapfile -t compiled < <(sed -n '1{s/^[^:]*: *//;s/ \+/\n/g;p}' "$deps" | grep '\.rs$')
-if [[ ! " ${compiled[*]} " =~ " src/lib.rs " ]]; then
-  echo "::error::the library's dep-info does not list src/lib.rs: ${compiled[*]}" >&2
+# Bash 3.2 and BSD sed (macOS) lack mapfile and GNU sed's \+ and \n, so read with while and split with tr.
+compiled=()
+while IFS= read -r file; do
+  compiled+=("$file")
+done < <(sed -n '1{s/^[^:]*: *//;p;}' "$deps" | tr -s ' ' '\n' | grep '\.rs$')
+if [[ ! " ${compiled[*]-} " =~ " src/lib.rs " ]]; then
+  echo "::error::the library's dep-info does not list src/lib.rs: ${compiled[*]-}" >&2
   exit 1
 fi
 # src/ files that this platform's build skips (a cfg(windows) module) count too.
-mapfile -t sources < <({ printf '%s\n' "${compiled[@]}"; find src -name '*.rs'; } | sort -u)
+sources=()
+while IFS= read -r file; do
+  sources+=("$file")
+done < <({ printf '%s\n' "${compiled[@]}"; find src -name '*.rs'; } | sort -u)
 
 # Matches #[cfg(..test..)], #[cfg_attr(..test..)] and cfg!(..test..) even when
 # rustfmt wraps them, and test attributes such as #[test], #[tokio::test] and
