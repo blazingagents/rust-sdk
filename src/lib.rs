@@ -29,6 +29,7 @@ pub mod messages;
 pub mod pagination;
 pub mod prompts;
 pub mod providers;
+pub mod relay;
 pub mod sessions;
 pub mod skills;
 pub mod spending_limits;

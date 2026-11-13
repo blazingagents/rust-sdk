@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `relay::ChatRelay`, the backend endpoint of `useBlazingAgentsChat`, so a Rust backend no longer hand-writes it. `ChatRelay::new(client, resolve_context)` takes your sign-in check. It returns a `RelayContext` (the Agent ID and End-user ID, with optional `functions` and `metadata`), `None` for a request nobody is signed in to, which answers `401`, or an error, which answers `500` so an outage does not sign users out. `relay.handle(request)` then answers the browser's `chat`, `history` and `steer` requests as that End-user, Tool approval rounds included. It takes any `http::Request` whose body implements `http_body::Body` and returns an `http::Response<RelayBody>`, a body that is both an `http_body::Body` and a `Stream` of bytes, so an axum handler is `relay.handle(request).await`. The crate now depends on `http-body` and `http-body-util`. A client that disconnects drops the response and cancels the Turn.
+
 ## 0.8.0 (2026-11-09)
 
 ### Added
