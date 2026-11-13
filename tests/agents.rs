@@ -24,6 +24,7 @@ fn agent(id: &str) -> serde_json::Value {
         "name": "Support writer",
         "model": "openai/gpt-6-luna",
         "thinkingLevel": "high",
+        "autoApprovalModel": "openai/gpt-6-luna-mini",
         "providerId": "prv_7Tn4Kd9QwE2sLx5R",
         "workspaceId": "ws_3Jv8Km2Np6Qr4Xt7",
         "autoCompaction": true,
@@ -62,6 +63,7 @@ async fn create_sends_every_field_and_decodes_the_agent() {
         .create("Support writer")
         .model("prv_7Tn4Kd9QwE2sLx5R", "openai/gpt-6-luna")
         .thinking_level("high")
+        .auto_approval_model("openai/gpt-6-luna-mini")
         .workspace_tier(WorkspaceTier::Plus)
         .workspace_id("ws_3Jv8Km2Np6Qr4Xt7")
         .auto_compaction(false)
@@ -96,6 +98,7 @@ async fn create_sends_every_field_and_decodes_the_agent() {
             "providerId": "prv_7Tn4Kd9QwE2sLx5R",
             "model": "openai/gpt-6-luna",
             "thinkingLevel": "high",
+            "autoApprovalModel": "openai/gpt-6-luna-mini",
             "workspaceId": "ws_3Jv8Km2Np6Qr4Xt7",
             "autoCompaction": false,
             "compactionReserveTokens": 8192,
@@ -124,6 +127,10 @@ async fn create_sends_every_field_and_decodes_the_agent() {
     assert_eq!(created.name, "Support writer");
     assert_eq!(created.model.as_deref(), Some("openai/gpt-6-luna"));
     assert_eq!(created.thinking_level.as_deref(), Some("high"));
+    assert_eq!(
+        created.auto_approval_model.as_deref(),
+        Some("openai/gpt-6-luna-mini")
+    );
     assert_eq!(
         created.provider_id,
         Some(ProviderId::from("prv_7Tn4Kd9QwE2sLx5R"))
@@ -314,6 +321,12 @@ async fn update_omits_unset_fields_and_sends_null_to_clear() {
         .clear_thinking_level()
         .await
         .unwrap();
+    client
+        .agents()
+        .update("ag_1")
+        .clear_auto_approval_model()
+        .await
+        .unwrap();
 
     let sent = requests(&server).await;
     assert_eq!(json_body(&sent[0]), json!({ "name": "Renamed" }));
@@ -327,6 +340,7 @@ async fn update_omits_unset_fields_and_sends_null_to_clear() {
     );
     assert_eq!(json_body(&sent[3]), json!({ "model": "openai/gpt-6-luna" }));
     assert_eq!(json_body(&sent[4]), json!({ "thinkingLevel": null }));
+    assert_eq!(json_body(&sent[5]), json!({ "autoApprovalModel": null }));
 }
 
 #[tokio::test]
@@ -385,6 +399,7 @@ async fn update_sends_every_field() {
         .agents()
         .update("ag_1")
         .thinking_level("medium")
+        .auto_approval_model("openai/gpt-6-luna-mini")
         .workspace_id("ws_9Lm2Np6Qr4Xt7Jv3")
         .auto_compaction(false)
         .compaction_reserve_tokens(4096)
@@ -413,6 +428,7 @@ async fn update_sends_every_field() {
         json_body(&sent[0]),
         json!({
             "thinkingLevel": "medium",
+            "autoApprovalModel": "openai/gpt-6-luna-mini",
             "workspaceId": "ws_9Lm2Np6Qr4Xt7Jv3",
             "autoCompaction": false,
             "compactionReserveTokens": 4096,
@@ -753,6 +769,7 @@ fn agent_config_decodes_a_saved_snapshot() {
         "name": "Support writer",
         "model": "openai/gpt-6-luna",
         "thinkingLevel": "high",
+        "autoApprovalModel": "openai/gpt-6-luna-mini",
         "providerId": "prv_7Tn4Kd9QwE2sLx5R",
         "autoCompaction": true,
         "compactionReserveTokens": 16384,
@@ -778,6 +795,10 @@ fn agent_config_decodes_a_saved_snapshot() {
     assert_eq!(config.name, "Support writer");
     assert_eq!(config.model.as_deref(), Some("openai/gpt-6-luna"));
     assert_eq!(config.thinking_level.as_deref(), Some("high"));
+    assert_eq!(
+        config.auto_approval_model.as_deref(),
+        Some("openai/gpt-6-luna-mini")
+    );
     assert_eq!(
         config.provider_id,
         Some(ProviderId::from("prv_7Tn4Kd9QwE2sLx5R"))

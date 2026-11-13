@@ -45,6 +45,7 @@ fn task_run(id: &str) -> serde_json::Value {
             "name": "Support Agent",
             "model": "openai/gpt-6-luna",
             "thinkingLevel": null,
+            "autoApprovalModel": null,
             "providerId": "prv_7Tn4Kd9QwE2sLx5R",
             "autoCompaction": true,
             "compactionReserveTokens": 16384,

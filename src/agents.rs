@@ -60,6 +60,7 @@ impl<S: Scope> Agents<'_, S> {
                 name: name.into(),
                 model: None,
                 thinking_level: None,
+                auto_approval_model: None,
                 provider_id: None,
                 workspace_id: None,
                 workspace_tier: None,
@@ -374,6 +375,8 @@ pub struct CreateAgent {
     #[serde(skip_serializing_if = "Option::is_none")]
     thinking_level: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    auto_approval_model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     provider_id: Option<ProviderId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     workspace_id: Option<WorkspaceId>,
@@ -417,6 +420,13 @@ impl Call<CreateAgent> {
     /// provider and model, and must be a level the model supports.
     pub fn thinking_level(self, thinking_level: impl Into<String>) -> Self {
         self.map(|request| request.thinking_level = Some(thinking_level.into()))
+    }
+
+    /// The model, on the agent's provider, that reviews tool calls whose
+    /// approval is `auto`. Without one, the agent's own model reviews them.
+    /// Needs a provider and model.
+    pub fn auto_approval_model(self, auto_approval_model: impl Into<String>) -> Self {
+        self.map(|request| request.auto_approval_model = Some(auto_approval_model.into()))
     }
 
     /// An existing workspace the agent shares instead of getting a new one.
@@ -519,6 +529,8 @@ pub struct UpdateAgent {
     model: Patch<String>,
     #[serde(skip_serializing_if = "Patch::is_keep")]
     thinking_level: Patch<String>,
+    #[serde(skip_serializing_if = "Patch::is_keep")]
+    auto_approval_model: Patch<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     workspace_id: Option<WorkspaceId>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -581,6 +593,19 @@ impl Call<UpdateAgent> {
     /// Removes the thinking level; the model decides how much to reason.
     pub fn clear_thinking_level(self) -> Self {
         self.map(|request| request.thinking_level = Patch::Clear)
+    }
+
+    /// The model, on the agent's provider, that reviews tool calls whose
+    /// approval is `auto`. Needs a provider and model. Changing the provider
+    /// without sending this resets it to the agent's own model.
+    pub fn auto_approval_model(self, auto_approval_model: impl Into<String>) -> Self {
+        self.map(|request| request.auto_approval_model = Patch::Set(auto_approval_model.into()))
+    }
+
+    /// Removes the auto-approval model; the agent's own model reviews tool
+    /// calls whose approval is `auto`.
+    pub fn clear_auto_approval_model(self) -> Self {
+        self.map(|request| request.auto_approval_model = Patch::Clear)
     }
 
     /// Moves the agent to another workspace.
@@ -896,6 +921,9 @@ pub struct Agent {
     pub model: Option<String>,
     /// The requested reasoning level, such as `high`, if set.
     pub thinking_level: Option<String>,
+    /// The model, on the agent's provider, that reviews tool calls whose
+    /// approval is `auto`, or `None` when the agent's own model reviews them.
+    pub auto_approval_model: Option<String>,
     /// The provider whose key runs the model, if the agent has one.
     pub provider_id: Option<ProviderId>,
     /// The workspace the agent reads and writes files in.
@@ -976,6 +1004,9 @@ pub struct AgentConfig {
     pub model: Option<String>,
     /// The requested reasoning level, such as `high`, if set.
     pub thinking_level: Option<String>,
+    /// The model, on the agent's provider, that reviewed tool calls whose
+    /// approval was `auto`, or `None` when the agent's own model reviewed them.
+    pub auto_approval_model: Option<String>,
     /// The provider whose key ran the model, if the agent had one.
     pub provider_id: Option<ProviderId>,
     /// Whether older context was summarized automatically when a conversation
