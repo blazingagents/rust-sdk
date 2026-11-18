@@ -20048,7 +20048,8 @@
               "validation_failed",
               "provider_required",
               "prompt_variable_missing",
-              "prompt_variable_unknown"
+              "prompt_variable_unknown",
+              "mcp_connection_discovery_failed"
             ],
             "content": {
               "application/json": {
@@ -20974,7 +20975,8 @@
               "validation_failed",
               "provider_required",
               "prompt_variable_missing",
-              "prompt_variable_unknown"
+              "prompt_variable_unknown",
+              "mcp_connection_discovery_failed"
             ],
             "content": {
               "application/json": {
@@ -21985,7 +21987,8 @@
             "x-error-codes": [
               "invalid_request",
               "validation_failed",
-              "provider_required"
+              "provider_required",
+              "mcp_connection_discovery_failed"
             ],
             "content": {
               "application/json": {
