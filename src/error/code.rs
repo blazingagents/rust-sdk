@@ -116,6 +116,8 @@ crate::open_enum! {
         ToolApprovalContinuationSettled = "tool_approval_continuation_settled",
         /// `tool_approval_decision_conflict`
         ToolApprovalDecisionConflict = "tool_approval_decision_conflict",
+        /// `tool_approval_outdated`
+        ToolApprovalOutdated = "tool_approval_outdated",
         /// `function_call_conflict`
         FunctionCallConflict = "function_call_conflict",
         /// `skill_invalid_archive`
