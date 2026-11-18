@@ -347,6 +347,24 @@ impl Payload {
         self
     }
 
+    /// Sends `key` as the `Idempotency-Key` header. `None` sends nothing. An
+    /// empty key, or one that is not a valid header value, is refused before
+    /// any request.
+    pub(crate) fn idempotency_key(self, key: Option<&str>) -> Result<Self> {
+        let Some(key) = key else {
+            return Ok(self);
+        };
+        if key.is_empty() {
+            return Err(crate::Error::InvalidArgument(
+                "idempotency key must not be empty".to_owned(),
+            ));
+        }
+        let value = HeaderValue::from_str(key).map_err(|_| {
+            crate::Error::InvalidArgument("idempotency key is not a valid header value".to_owned())
+        })?;
+        Ok(self.header(HeaderName::from_static("idempotency-key"), value))
+    }
+
     pub(crate) fn multipart(mut self, form: reqwest::multipart::Form) -> Self {
         self.body = Body::Multipart(form);
         self

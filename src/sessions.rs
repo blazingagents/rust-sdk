@@ -3,7 +3,6 @@
 //!
 //! Documentation: <https://docs.blazingagents.com/platform/sessions-and-turns>.
 
-use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 
 use crate::agents::{AgentStatus, ToolReference};
@@ -338,16 +337,8 @@ pub struct ForkSession {
 
 impl ForkSession {
     fn into_payload(self) -> Result<Payload> {
-        if self.idempotency_key.is_empty() {
-            return Err(crate::Error::InvalidArgument(
-                "idempotency key must not be empty".to_owned(),
-            ));
-        }
-        let key = HeaderValue::from_str(&self.idempotency_key).map_err(|_| {
-            crate::Error::InvalidArgument("idempotency key is not a valid header value".to_owned())
-        })?;
         Payload::default()
-            .header(http::HeaderName::from_static("idempotency-key"), key)
+            .idempotency_key(Some(&self.idempotency_key))?
             .json(&self)
     }
 }

@@ -60,6 +60,7 @@ impl<S: Scope> Skills<'_, S> {
             CreateSkill {
                 path: path.into(),
                 content: content.into(),
+                idempotency_key: None,
             },
         )
     }
@@ -76,6 +77,7 @@ impl<S: Scope> Skills<'_, S> {
             UploadSkill {
                 archive_type,
                 archive,
+                idempotency_key: None,
             },
         )
     }
@@ -195,6 +197,7 @@ impl<S: Scope> Skills<'_, S> {
             },
             CopySkill {
                 agent_ids: agent_ids.into_iter().map(Into::into).collect(),
+                idempotency_key: None,
             },
         )
     }
@@ -218,18 +221,40 @@ crate::open_enum! {
 pub struct CreateSkill {
     path: String,
     content: String,
+    #[serde(skip)]
+    idempotency_key: Option<String>,
 }
-impl_request!(CreateSkill => SkillDetail; encode = json; decode = json);
+
+impl CreateSkill {
+    fn into_payload(self) -> Result<Payload> {
+        Payload::default()
+            .idempotency_key(self.idempotency_key.as_deref())?
+            .json(&self)
+    }
+}
+impl_request!(CreateSkill => SkillDetail; encode = (Self::into_payload); decode = json);
+
+impl Call<CreateSkill> {
+    /// Makes retries safe: repeating the request with the same key, 1 to 200
+    /// characters, returns the skill the first request created. The same key
+    /// with a different `SKILL.md` answers `idempotency_conflict`. The agent
+    /// remembers the key for as long as the skill exists.
+    pub fn idempotency_key(self, idempotency_key: impl Into<String>) -> Self {
+        self.map(|request| request.idempotency_key = Some(idempotency_key.into()))
+    }
+}
 
 /// Request state of [`Skills::upload`].
 #[derive(Debug)]
 pub struct UploadSkill {
     archive_type: ArchiveType,
     archive: Upload,
+    idempotency_key: Option<String>,
 }
 
 impl UploadSkill {
     fn into_payload(self) -> Result<Payload> {
+        let payload = Payload::default().idempotency_key(self.idempotency_key.as_deref())?;
         let form = reqwest::multipart::Form::new()
             .text("type", self.archive_type.as_str().to_owned())
             .part(
@@ -238,10 +263,20 @@ impl UploadSkill {
                     .default_file_name(format!("skill.{}", self.archive_type.as_str()))
                     .into_part()?,
             );
-        Ok(Payload::default().multipart(form))
+        Ok(payload.multipart(form))
     }
 }
 impl_request!(UploadSkill => SkillDetail; encode = (Self::into_payload); decode = json);
+
+impl Call<UploadSkill> {
+    /// Makes retries safe: repeating the request with the same key, 1 to 200
+    /// characters, returns the skill the first request created. The same key
+    /// with different files answers `idempotency_conflict`. The agent
+    /// remembers the key for as long as the skill exists.
+    pub fn idempotency_key(self, idempotency_key: impl Into<String>) -> Self {
+        self.map(|request| request.idempotency_key = Some(idempotency_key.into()))
+    }
+}
 
 /// Request state of [`Skills::list`].
 #[derive(Clone, Debug, Default, Serialize)]
@@ -308,8 +343,30 @@ impl_request!(DeleteSkillFile => SkillDetail; encode = query; decode = json);
 #[serde(rename_all = "camelCase")]
 pub struct CopySkill {
     agent_ids: Vec<AgentId>,
+    #[serde(skip)]
+    idempotency_key: Option<String>,
 }
-impl_request!(CopySkill => Vec<SkillCopyResult>; encode = json; decode = json);
+
+impl CopySkill {
+    fn into_payload(self) -> Result<Payload> {
+        Payload::default()
+            .idempotency_key(self.idempotency_key.as_deref())?
+            .json(&self)
+    }
+}
+impl_request!(CopySkill => Vec<SkillCopyResult>; encode = (Self::into_payload); decode = json);
+
+impl Call<CopySkill> {
+    /// Makes retries safe: repeating the request with the same key, 1 to 200
+    /// characters, returns the copy each destination already has as
+    /// [`SkillCopyResult::Created`]. The same key with a different source skill
+    /// makes that destination a [`SkillCopyResult::Failed`] result with
+    /// `idempotency_conflict`. Each destination agent remembers the key for as
+    /// long as its copy exists.
+    pub fn idempotency_key(self, idempotency_key: impl Into<String>) -> Self {
+        self.map(|request| request.idempotency_key = Some(idempotency_key.into()))
+    }
+}
 
 /// A skill in a list page: its summary fields without its files.
 #[derive(Clone, Debug, Serialize, Deserialize)]
