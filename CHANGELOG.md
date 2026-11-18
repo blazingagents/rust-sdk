@@ -6,6 +6,8 @@
 
 - `ErrorCode::ToolApprovalOutdated` (`tool_approval_outdated`). When an agent's connections, skills or workspace change while a tool approval waits, `continue_chat()` still answers with a `200` stream, and the approved tool does not run. The stream sends a `data-ba-error` event whose `data.code` is this code before its `error` chunk, and both carry the same message. Send the user's message again. Before, the stream had only an `error` chunk that said the agent hit an error during generation.
 
+- `.idempotency_key(key)` on `skills().create(..)`, `skills().upload(..)` and `skills().copy(..)`. It sends the `Idempotency-Key` header, 1 to 200 characters, so a retry after a lost response returns the skill the first request created instead of `skill_name_conflict`. Repeating a copy returns the copy each destination already has as `Created`. The same key with different content answers `409 idempotency_conflict`, and for a copy that destination is a `Failed` result with that code. An agent remembers a key for as long as its skill exists, so deleting the skill frees the key. Without the call nothing changes, and an empty key or one that is not a valid header value is `Error::InvalidArgument` before any request.
+
 ## 0.10.0 (2026-11-13)
 
 ### Added

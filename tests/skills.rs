@@ -6,7 +6,7 @@ use blazing_agents::files::Upload;
 use blazing_agents::skills::{ArchiveType, SkillCopyResult};
 use futures_util::TryStreamExt;
 use serde_json::json;
-use support::{json, json_body, mock, requests};
+use support::{api_error, json, json_body, mock, requests};
 use wiremock::matchers::{method, path, query_param, query_param_is_missing};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -415,4 +415,210 @@ async fn a_copy_result_with_a_known_status_but_bad_body_fails_to_decode() {
         matches!(error, Error::Decode { .. }),
         "expected a decode error, got {error:?}"
     );
+}
+
+const KEY: &str = "import-refund-policy:2026-11-18";
+
+fn idempotency_key(request: &wiremock::Request) -> Option<&str> {
+    request
+        .headers
+        .get("idempotency-key")
+        .map(|value| value.to_str().unwrap())
+}
+
+#[tokio::test]
+async fn create_sends_the_idempotency_key_as_a_header_only_when_set() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/skills"))
+        .respond_with(json(201, skill("skill_1")))
+        .mount(&server)
+        .await;
+
+    client
+        .agent("ag_1")
+        .skills()
+        .create("SKILL.md", document())
+        .idempotency_key(KEY)
+        .await
+        .unwrap();
+    client
+        .agent("ag_1")
+        .skills()
+        .create("SKILL.md", document())
+        .await
+        .unwrap();
+
+    let sent = requests(&server).await;
+    assert_eq!(idempotency_key(&sent[0]), Some(KEY));
+    assert_eq!(
+        json_body(&sent[0]),
+        json!({ "path": "SKILL.md", "content": document() })
+    );
+    assert_eq!(idempotency_key(&sent[1]), None);
+    assert_eq!(json_body(&sent[1]), json_body(&sent[0]));
+}
+
+#[tokio::test]
+async fn upload_sends_the_idempotency_key_as_a_header_only_when_set() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/skills/upload"))
+        .respond_with(json(201, skill("skill_1")))
+        .mount(&server)
+        .await;
+
+    client
+        .agent("ag_1")
+        .skills()
+        .upload(ArchiveType::Zip, Upload::bytes(b"zip-bytes".as_slice()))
+        .idempotency_key(KEY)
+        .await
+        .unwrap();
+    client
+        .agent("ag_1")
+        .skills()
+        .upload(ArchiveType::Zip, Upload::bytes(b"zip-bytes".as_slice()))
+        .await
+        .unwrap();
+
+    let sent = requests(&server).await;
+    assert_eq!(idempotency_key(&sent[0]), Some(KEY));
+    assert!(
+        sent[0]
+            .headers
+            .get("content-type")
+            .and_then(|value| value.to_str().ok())
+            .unwrap()
+            .starts_with("multipart/form-data; boundary=")
+    );
+    let body = String::from_utf8_lossy(&sent[0].body);
+    assert!(body.contains("zip-bytes"), "{body}");
+    assert!(!body.contains(KEY), "{body}");
+    assert!(!body.to_lowercase().contains("idempotency"), "{body}");
+    assert_eq!(idempotency_key(&sent[1]), None);
+}
+
+#[tokio::test]
+async fn copy_sends_the_idempotency_key_as_a_header_only_when_set() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/skills/skill_1/copies"))
+        .respond_with(json(200, json!([])))
+        .mount(&server)
+        .await;
+
+    client
+        .agent("ag_1")
+        .skills()
+        .copy("skill_1", ["ag_9Xm3Fp7KdR2vHs5T"])
+        .idempotency_key(KEY)
+        .await
+        .unwrap();
+    client
+        .agent("ag_1")
+        .skills()
+        .copy("skill_1", ["ag_9Xm3Fp7KdR2vHs5T"])
+        .await
+        .unwrap();
+
+    let sent = requests(&server).await;
+    assert_eq!(idempotency_key(&sent[0]), Some(KEY));
+    assert_eq!(
+        json_body(&sent[0]),
+        json!({ "agentIds": ["ag_9Xm3Fp7KdR2vHs5T"] })
+    );
+    assert_eq!(idempotency_key(&sent[1]), None);
+    assert_eq!(json_body(&sent[1]), json_body(&sent[0]));
+}
+
+#[tokio::test]
+async fn an_invalid_idempotency_key_is_refused_before_any_request() {
+    let (server, client) = mock().await;
+    Mock::given(wiremock::matchers::any())
+        .respond_with(json(201, skill("skill_1")))
+        .expect(0)
+        .mount(&server)
+        .await;
+    let agent = client.agent("ag_1");
+    let skills = agent.skills();
+
+    for key in ["", "key\n"] {
+        let errors = [
+            skills
+                .create("SKILL.md", document())
+                .idempotency_key(key)
+                .await
+                .unwrap_err(),
+            skills
+                .upload(ArchiveType::Zip, Upload::bytes(b"zip-bytes".as_slice()))
+                .idempotency_key(key)
+                .await
+                .unwrap_err(),
+            skills
+                .copy("skill_1", ["ag_9Xm3Fp7KdR2vHs5T"])
+                .idempotency_key(key)
+                .await
+                .unwrap_err(),
+        ];
+        for error in errors {
+            assert!(
+                matches!(error, Error::InvalidArgument(_)),
+                "key {key:?}: expected an invalid argument, got {error:?}"
+            );
+        }
+    }
+    assert!(requests(&server).await.is_empty());
+}
+
+#[tokio::test]
+async fn a_reused_idempotency_key_with_other_content_is_an_idempotency_conflict() {
+    let (server, client) = mock().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/skills"))
+        .respond_with(api_error(
+            409,
+            "idempotency_conflict",
+            "The Idempotency-Key was used for a different request.",
+        ))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/v1/agents/ag_1/skills/skill_1/copies"))
+        .respond_with(json(
+            200,
+            json!([{
+                "agentId": "ag_9Xm3Fp7KdR2vHs5T",
+                "status": "failed",
+                "error": {
+                    "code": "idempotency_conflict",
+                    "message": "The Idempotency-Key was used for a different request."
+                }
+            }]),
+        ))
+        .mount(&server)
+        .await;
+
+    let error = client
+        .agent("ag_1")
+        .skills()
+        .create("SKILL.md", document())
+        .idempotency_key(KEY)
+        .await
+        .unwrap_err();
+    let copies = client
+        .agent("ag_1")
+        .skills()
+        .copy("skill_1", ["ag_9Xm3Fp7KdR2vHs5T"])
+        .idempotency_key(KEY)
+        .await
+        .unwrap();
+
+    assert_eq!(error.code(), Some(&ErrorCode::IdempotencyConflict));
+    match &copies[0] {
+        SkillCopyResult::Failed { error, .. } => {
+            assert_eq!(error.code, ErrorCode::IdempotencyConflict);
+        }
+        other => panic!("expected a failed result, got {other:?}"),
+    }
 }
