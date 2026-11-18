@@ -17550,7 +17550,7 @@
           "skills"
         ],
         "summary": "Create a skill",
-        "description": "Creates a skill on the agent from a `SKILL.md` document and returns it with its file list. The frontmatter's `name` must be unique among the agent's skills. An agent can have up to 100 skills.",
+        "description": "Creates a skill on the agent from a `SKILL.md` document and returns it with its file list. The frontmatter's `name` must be unique among the agent's skills. An agent can have up to 100 skills. Send an `Idempotency-Key` header to retry safely: a retry with the same key and the same content returns the skill the first request created, and the same key with different content fails with `idempotency_conflict`. A key is remembered for as long as its skill exists.",
         "parameters": [
           {
             "schema": {
@@ -17562,6 +17562,18 @@
             "description": "ID of the agent.",
             "name": "agentId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Unique key for this request. Reuse it when retrying the same request, and the skill the first attempt created is returned."
+            },
+            "required": false,
+            "description": "Unique key for this request. Reuse it when retrying the same request, and the skill the first attempt created is returned.",
+            "name": "idempotency-key",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -17697,6 +17709,7 @@
           "409": {
             "description": "The request conflicts with the resource's current state",
             "x-error-codes": [
+              "idempotency_conflict",
               "skill_name_conflict"
             ],
             "content": {
@@ -17979,7 +17992,7 @@
           "skills"
         ],
         "summary": "Upload a skill archive",
-        "description": "Creates a skill on the agent from a `zip`, `tar`, or `tar.gz` archive and returns it with its file list. Set `type` to the archive's format. The archive must contain `SKILL.md` at its root, and its frontmatter's `name` must be unique among the agent's skills. An archive can be up to 10 MiB and hold up to 100 files totalling up to 10 MiB unpacked, without links or special files. An agent can have up to 100 skills.",
+        "description": "Creates a skill on the agent from a `zip`, `tar`, or `tar.gz` archive and returns it with its file list. Set `type` to the archive's format. The archive must contain `SKILL.md` at its root, and its frontmatter's `name` must be unique among the agent's skills. An archive can be up to 10 MiB and hold up to 100 files totalling up to 10 MiB unpacked, without links or special files. An agent can have up to 100 skills. Send an `Idempotency-Key` header to retry safely: a retry with the same key and the same files returns the skill the first request created, and the same key with different files fails with `idempotency_conflict`. A key is remembered for as long as its skill exists.",
         "parameters": [
           {
             "schema": {
@@ -17991,6 +18004,18 @@
             "description": "ID of the agent.",
             "name": "agentId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Unique key for this request. Reuse it when retrying the same request, and the skill the first attempt created is returned."
+            },
+            "required": false,
+            "description": "Unique key for this request. Reuse it when retrying the same request, and the skill the first attempt created is returned.",
+            "name": "idempotency-key",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -18131,6 +18156,7 @@
           "409": {
             "description": "The request conflicts with the resource's current state",
             "x-error-codes": [
+              "idempotency_conflict",
               "skill_name_conflict"
             ],
             "content": {
@@ -19181,7 +19207,7 @@
           "skills"
         ],
         "summary": "Copy a skill to other agents",
-        "description": "Copies a skill, with all its files, to each agent in `agentIds`. Each copy is a new skill with its own ID. The response has one result per destination, in request order: `created` with the new skill, or `failed` with an error such as `skill_name_conflict` or `skill_limit_reached`. One failed destination does not stop the others.",
+        "description": "Copies a skill, with all its files, to each agent in `agentIds`. Each copy is a new skill with its own ID. The response has one result per destination, in request order: `created` with the new skill, or `failed` with an error such as `skill_name_conflict` or `skill_limit_reached`. One failed destination does not stop the others. Send an `Idempotency-Key` header to retry safely: a retry with the same key returns the copy each destination already has as `created`, and a destination where the key created a different skill is `failed` with `idempotency_conflict`. A key is remembered for as long as its copy exists.",
         "parameters": [
           {
             "schema": {
@@ -19204,6 +19230,18 @@
             "description": "ID of the skill.",
             "name": "skillId",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Unique key for this request. Reuse it when retrying the same request, and the skill the first attempt created is returned."
+            },
+            "required": false,
+            "description": "Unique key for this request. Reuse it when retrying the same request, and the skill the first attempt created is returned.",
+            "name": "idempotency-key",
+            "in": "header"
           }
         ],
         "requestBody": {
