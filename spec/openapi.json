@@ -43,7 +43,7 @@
     },
     {
       "name": "mcp-oauth",
-      "description": "The public legs of MCP OAuth authorization. POST /v1/mcp-connections/{id}/connect returns an authorizationUrl to open in the user's browser; GET /v1/mcp/oauth/authorize sets a transaction cookie and redirects to the provider; after the user consents, the provider redirects to GET /v1/mcp/oauth/callback, which stores the credential and redirects to the dashboard; the caller then polls GET /v1/mcp-connections/{id} until status is connected. client-metadata is fetched by the provider itself during dynamic client registration."
+      "description": "The public legs of MCP OAuth authorization. POST /v1/mcp-connections/{id}/connect sets a transaction cookie and returns the provider's authorizationUrl to open in the same browser; after the user consents, the provider redirects to GET /v1/mcp/oauth/callback, which stores the credential and redirects to the dashboard; the caller then polls GET /v1/mcp-connections/{id} until status is connected. client-metadata is fetched by the provider itself during dynamic client registration."
     },
     {
       "name": "merchant",
@@ -7260,57 +7260,6 @@
         }
       }
     },
-    "/v1/mcp/oauth/authorize": {
-      "get": {
-        "tags": [
-          "mcp-oauth"
-        ],
-        "summary": "Begin the MCP OAuth authorization redirect",
-        "description": "Consumes a one-time `setup` launch token in the browser that started the connect, binds a short-lived HttpOnly cookie to the transaction, and 302-redirects the browser to the MCP authorization server's consent page. The `blazing_mcp_oauth_launch` cookie that `POST /v1/mcp-connections/{id}/connect` set must accompany the request, so a setup link opened in any other browser is refused. Public; no bearer credential required.",
-        "security": [],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 4096
-            },
-            "required": true,
-            "name": "setup",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "302": {
-            "description": "Redirect to the provider's authorization page; sets the `blazing_mcp_oauth` transaction cookie",
-            "headers": {
-              "Location": {
-                "schema": {
-                  "type": "string"
-                },
-                "required": true
-              },
-              "Set-Cookie": {
-                "schema": {
-                  "type": "string"
-                },
-                "required": true
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid or expired setup token, or the launch cookie is missing or belongs to another connect",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v1/mcp/oauth/callback": {
       "get": {
         "tags": [
@@ -13550,7 +13499,7 @@
           }
         ],
         "summary": "Start OAuth connect for a connection",
-        "description": "Starts OAuth sign-in for a connection that needs authorization and returns the one-time URL that opens the provider sign-in. Also sets the HttpOnly `blazing_mcp_oauth_launch` cookie, scoped to `/v1/mcp/oauth/authorize`, so the URL opens only in the browser that made this call; call it with credentials included. Returns not_found when the connection is missing or does not need authorization. Only a dashboard session may call this.",
+        "description": "Starts OAuth sign-in for a connection that needs authorization: runs discovery, client registration and PKCE against the connection's authorization server and returns the provider's authorization URL, valid for 10 minutes. Also sets the HttpOnly `blazing_mcp_oauth` cookie, scoped to `/v1/mcp/oauth/callback`, so only the browser that made this call can complete the sign-in; call it with credentials included and open the URL in that browser. Returns not_found when the connection is missing or does not need authorization, and invalid_request when the authorization server cannot be prepared for sign-in. Only a dashboard session may call this.",
         "parameters": [
           {
             "schema": {
@@ -13566,7 +13515,7 @@
         ],
         "responses": {
           "200": {
-            "description": "One-time URL that opens the provider sign-in in this browser; sets the `blazing_mcp_oauth_launch` cookie",
+            "description": "The provider's authorization URL to open in this browser; sets the `blazing_mcp_oauth` cookie",
             "headers": {
               "Set-Cookie": {
                 "schema": {
