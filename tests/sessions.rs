@@ -22,6 +22,7 @@ const TURN: &str = "turn_3Vx9KpL2QwR8TmN5";
 fn session(id: &str) -> serde_json::Value {
     json!({
         "id": id,
+        "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
         "messageCount": 4,
         "lastMessagePreview": "Open Settings, choose Security, and select Reset password.",
         "userId": "customer_123",
@@ -114,6 +115,7 @@ async fn list_sends_filters_and_decodes_compact_items() {
 
     assert_eq!(page.data.len(), 2);
     assert_eq!(page.data[0].id.as_str(), "ss_1");
+    assert_eq!(page.data[0].tenant_id.as_str(), "ten_8Hq2Zr5WcY1bJt6D");
     assert_eq!(page.data[0].message_count, 4);
     assert_eq!(
         page.data[0].last_message_preview.as_deref(),
@@ -174,6 +176,7 @@ async fn list_latest_sends_by_agent_and_decodes_status() {
         .unwrap();
 
     assert_eq!(page.data[0].agent_id.as_str(), AGENT);
+    assert_eq!(page.data[0].tenant_id.as_str(), "ten_8Hq2Zr5WcY1bJt6D");
     assert_eq!(page.data[0].status, AgentStatus::Active);
     match &page.data[1].status {
         AgentStatus::Unrecognized(value) => assert_eq!(value.as_str(), "archived"),
@@ -214,6 +217,7 @@ async fn get_decodes_agent_config_and_provenance() {
     );
     assert_eq!(config.approval_in_chat.default, ApprovalDecision::Manual);
     assert_eq!(fetched.id.as_str(), SESSION);
+    assert_eq!(fetched.tenant_id.as_str(), "ten_8Hq2Zr5WcY1bJt6D");
     assert_eq!(fetched.message_count, 4);
     assert_eq!(fetched.user_id, "customer_123");
     assert_eq!(fetched.metadata.get("plan"), Some(&json!("pro")));
@@ -266,6 +270,7 @@ async fn fork_posts_the_message_and_key() {
         .await
         .unwrap();
 
+    assert_eq!(child.tenant_id.as_str(), "ten_8Hq2Zr5WcY1bJt6D");
     assert_eq!(child.agent_config.name, "Support Agent");
     assert!(child.forked_from.is_none());
 
@@ -739,7 +744,7 @@ async fn submit_input_posts_the_message_and_decodes_the_receipt() {
         .respond_with(json(
             202,
             json!({
-                "data": session_input(1),
+                "input": session_input(1),
                 "activity": { "state": "running", "turnId": TURN }
             }),
         ))
@@ -790,7 +795,7 @@ async fn submit_input_decodes_unknown_states() {
         .respond_with(json(
             202,
             json!({
-                "data": receipt,
+                "input": receipt,
                 "activity": { "state": "idle", "turnId": null }
             }),
         ))

@@ -1,7 +1,7 @@
 mod support;
 
 use blazing_agents::Error;
-use blazing_agents::ids::McpConnectionId;
+use blazing_agents::ids::{McpConnectionId, TenantId};
 use blazing_agents::mcp_connections::{
     McpAuthType, McpConnectionErrorCode, McpConnectionStatus, McpConnectionTest, McpReconnect,
     McpReconnectStatus, NewMcpConnection, OAuthClient,
@@ -14,6 +14,7 @@ use wiremock::{Mock, ResponseTemplate};
 fn connection(id: &str) -> serde_json::Value {
     json!({
         "id": id,
+        "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
         "name": "Docs Search",
         "url": "https://mcp.example.com/mcp",
         "authType": "bearer",
@@ -122,15 +123,16 @@ async fn list_decodes_connections_and_ignores_unknown_fields() {
     entry["addedNextYear"] = json!({ "nested": true });
     Mock::given(method("GET"))
         .and(path("/v1/mcp-connections"))
-        .respond_with(json(200, json!({ "mcpConnections": [entry] })))
+        .respond_with(json(200, json!({ "data": [entry] })))
         .mount(&server)
         .await;
 
     let list = client.mcp_connections().list().await.unwrap();
 
-    assert_eq!(list.mcp_connections.len(), 1);
-    let connection = &list.mcp_connections[0];
+    assert_eq!(list.data.len(), 1);
+    let connection = &list.data[0];
     assert_eq!(connection.id, McpConnectionId::from("mcp_3Kd9QwE2sLx5R7Tn"));
+    assert_eq!(connection.tenant_id, TenantId::from("ten_8Hq2Zr5WcY1bJt6D"));
     assert_eq!(connection.auth_type, McpAuthType::Bearer);
     assert_eq!(connection.status, McpConnectionStatus::Connected);
     assert_eq!(connection.credential_fragment.as_deref(), Some("x7Qa"));

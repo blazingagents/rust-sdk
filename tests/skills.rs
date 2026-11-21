@@ -312,7 +312,7 @@ async fn copy_decodes_each_result_in_order() {
         .and(path("/v1/agents/ag_1/skills/skill_1/copies"))
         .respond_with(json(
             200,
-            json!([
+            json!({ "data": [
                 {
                     "agentId": "ag_9Xm3Fp7KdR2vHs5T",
                     "status": "created",
@@ -332,7 +332,7 @@ async fn copy_decodes_each_result_in_order() {
                     "status": "skipped",
                     "reason": "same_skill"
                 }
-            ]),
+            ] }),
         ))
         .mount(&server)
         .await;
@@ -358,8 +358,8 @@ async fn copy_decodes_each_result_in_order() {
             "agentIds": ["ag_9Xm3Fp7KdR2vHs5T", "ag_2Bt6Yh4MsW8kLc1V", "ag_7Zn4Xc6Vb1Nm3Qw8"]
         })
     );
-    assert_eq!(results.len(), 3);
-    match &results[0] {
+    assert_eq!(results.data.len(), 3);
+    match &results.data[0] {
         SkillCopyResult::Created {
             agent_id, skill, ..
         } => {
@@ -369,7 +369,7 @@ async fn copy_decodes_each_result_in_order() {
         }
         other => panic!("expected a created result, got {other:?}"),
     }
-    match &results[1] {
+    match &results.data[1] {
         SkillCopyResult::Failed {
             agent_id, error, ..
         } => {
@@ -383,7 +383,7 @@ async fn copy_decodes_each_result_in_order() {
         }
         other => panic!("expected a failed result, got {other:?}"),
     }
-    match &results[2] {
+    match &results.data[2] {
         SkillCopyResult::Unrecognized(value) => {
             assert_eq!(value["status"], json!("skipped"));
             assert_eq!(value["agentId"], json!("ag_7Zn4Xc6Vb1Nm3Qw8"));
@@ -399,7 +399,7 @@ async fn a_copy_result_with_a_known_status_but_bad_body_fails_to_decode() {
         .and(path("/v1/agents/ag_1/skills/skill_1/copies"))
         .respond_with(json(
             200,
-            json!([{ "agentId": "ag_9Xm3Fp7KdR2vHs5T", "status": "created" }]),
+            json!({ "data": [{ "agentId": "ag_9Xm3Fp7KdR2vHs5T", "status": "created" }] }),
         ))
         .mount(&server)
         .await;
@@ -504,7 +504,7 @@ async fn copy_sends_the_idempotency_key_as_a_header_only_when_set() {
     let (server, client) = mock().await;
     Mock::given(method("POST"))
         .and(path("/v1/agents/ag_1/skills/skill_1/copies"))
-        .respond_with(json(200, json!([])))
+        .respond_with(json(200, json!({ "data": [] })))
         .mount(&server)
         .await;
 
@@ -587,14 +587,14 @@ async fn a_reused_idempotency_key_with_other_content_is_an_idempotency_conflict(
         .and(path("/v1/agents/ag_1/skills/skill_1/copies"))
         .respond_with(json(
             200,
-            json!([{
+            json!({ "data": [{
                 "agentId": "ag_9Xm3Fp7KdR2vHs5T",
                 "status": "failed",
                 "error": {
                     "code": "idempotency_conflict",
                     "message": "The Idempotency-Key was used for a different request."
                 }
-            }]),
+            }] }),
         ))
         .mount(&server)
         .await;
@@ -615,7 +615,7 @@ async fn a_reused_idempotency_key_with_other_content_is_an_idempotency_conflict(
         .unwrap();
 
     assert_eq!(error.code(), Some(&ErrorCode::IdempotencyConflict));
-    match &copies[0] {
+    match &copies.data[0] {
         SkillCopyResult::Failed { error, .. } => {
             assert_eq!(error.code, ErrorCode::IdempotencyConflict);
         }

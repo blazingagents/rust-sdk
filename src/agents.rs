@@ -106,14 +106,14 @@ impl<S: Scope> Agents<'_, S> {
     }
 
     /// Permanently deletes an agent, its sessions, tasks, memories, skills and
-    /// linked prompts. `include_artifacts` chooses whether its artifacts are
+    /// linked prompts. `delete_artifacts` chooses whether its artifacts are
     /// deleted too. Its workspace, provider and MCP connections stay. While it
     /// has a running turn or a queued or running task run the request fails
     /// with `agent_busy`; stop that work or wait for it, then delete again.
     pub fn delete(
         &self,
         agent_id: impl Into<AgentId>,
-        include_artifacts: bool,
+        delete_artifacts: bool,
     ) -> Call<DeleteAgent> {
         let agent_id = agent_id.into();
         Call::new(
@@ -121,7 +121,7 @@ impl<S: Scope> Agents<'_, S> {
             Op::DeleteAgent {
                 agent_id: agent_id.as_str(),
             },
-            DeleteAgent { include_artifacts },
+            DeleteAgent { delete_artifacts },
         )
     }
 
@@ -674,7 +674,7 @@ impl Call<UpdateAgent> {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteAgent {
-    include_artifacts: bool,
+    delete_artifacts: bool,
 }
 impl_request!(DeleteAgent => (); encode = query; decode = none);
 
@@ -988,7 +988,7 @@ pub struct McpAttachment {
 #[serde(rename_all = "camelCase")]
 pub struct McpAttachmentList {
     /// The attachments, one per attached connection.
-    pub mcp_attachments: Vec<McpAttachment>,
+    pub data: Vec<McpAttachment>,
 }
 
 /// The agent configuration a session or task run saved when it started.

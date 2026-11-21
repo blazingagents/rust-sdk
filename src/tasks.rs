@@ -7,9 +7,9 @@ use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::agents::AgentConfig;
-use crate::call::{Call, Paginate, impl_request};
+use crate::call::{Call, Paginate, Payload, impl_request};
 use crate::client::{Client, Scope};
-use crate::error::ErrorCode;
+use crate::error::{ErrorCode, Result};
 use crate::ids::{AgentId, SessionId, TaskId, TaskRunId, TenantId, TurnId};
 use crate::op::Op;
 use crate::pagination::{Cursor, Page, Paginated};
@@ -250,7 +250,7 @@ pub struct CreateTask {
     agent_id: AgentId,
     name: String,
     prompt: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip)]
     idempotency_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     schedule: Option<Schedule>,
@@ -263,12 +263,21 @@ pub struct CreateTask {
     #[serde(skip_serializing_if = "Option::is_none")]
     metadata: Option<Metadata>,
 }
-impl_request!(CreateTask => CreatedTask; encode = json; decode = json);
+
+impl CreateTask {
+    fn into_payload(self) -> Result<Payload> {
+        Payload::default()
+            .idempotency_key(self.idempotency_key.as_deref())?
+            .json(&self)
+    }
+}
+impl_request!(CreateTask => CreatedTask; encode = (Self::into_payload); decode = json);
 
 impl Call<CreateTask> {
-    /// Retries this creation safely: a repeated request with the same key
-    /// returns the task and its original initial run instead of creating
-    /// another task. Changed fields or a deleted task return `409`.
+    /// Retries this creation safely: a repeated request with the same key,
+    /// sent as the `Idempotency-Key` header, returns the task and its original
+    /// initial run instead of creating another task. Changed fields or a
+    /// deleted task return `409`.
     pub fn idempotency_key(self, idempotency_key: impl Into<String>) -> Self {
         self.map(|request| request.idempotency_key = Some(idempotency_key.into()))
     }
@@ -365,17 +374,22 @@ pub struct DeleteTask;
 impl_request!(DeleteTask => (); encode = none; decode = none);
 
 /// Request state of [`Tasks::submit`].
-#[derive(Clone, Debug, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Default)]
 pub struct CreateTaskRun {
-    #[serde(skip_serializing_if = "Option::is_none")]
     idempotency_key: Option<String>,
 }
-impl_request!(CreateTaskRun => CreatedTaskRun; encode = json; decode = json);
+
+impl CreateTaskRun {
+    fn into_payload(self) -> Result<Payload> {
+        Payload::default().idempotency_key(self.idempotency_key.as_deref())
+    }
+}
+impl_request!(CreateTaskRun => CreatedTaskRun; encode = (Self::into_payload); decode = json);
 
 impl Call<CreateTaskRun> {
-    /// Makes retries safe: repeating the request with the same key returns the
-    /// same run instead of starting another.
+    /// Makes retries safe: repeating the request with the same key, sent as
+    /// the `Idempotency-Key` header, returns the same run instead of starting
+    /// another.
     pub fn idempotency_key(self, idempotency_key: impl Into<String>) -> Self {
         self.map(|request| request.idempotency_key = Some(idempotency_key.into()))
     }

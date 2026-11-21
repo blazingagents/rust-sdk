@@ -130,7 +130,6 @@
                   "agent_busy",
                   "agent_deleting",
                   "admin_agent_managed",
-                  "agent_mcp_connection_not_found",
                   "agent_mcp_connections_invalid",
                   "provider_required",
                   "api_key_limit_reached",
@@ -147,6 +146,7 @@
                   "model_discovery_unsupported",
                   "model_not_found",
                   "model_validation_unavailable",
+                  "mcp_connection_not_found",
                   "mcp_connection_limit_reached",
                   "mcp_connection_name_conflict",
                   "mcp_connection_stale_credential_version",
@@ -173,20 +173,16 @@
                   "skill_invalid_markdown",
                   "skill_limit_reached",
                   "skill_name_conflict",
-                  "skill_not_found",
                   "skill_too_many_files",
                   "skill_uncompressed_too_large",
                   "task_active_run_exists",
                   "chat_webhook_conflict",
                   "chat_webhook_registration_failed",
-                  "merchant_connection_not_found",
                   "merchant_connection_in_use",
                   "merchant_credential_invalid",
                   "merchant_provider_unavailable",
                   "merchant_customer_not_found",
-                  "merchant_binding_not_found",
                   "merchant_account_mismatch",
-                  "merchant_event_not_found",
                   "merchant_event_state_conflict",
                   "merchant_customer_unmapped",
                   "forbidden",
@@ -422,7 +418,7 @@
       "ChatConnectionList": {
         "type": "object",
         "properties": {
-          "chatConnections": {
+          "data": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ChatConnection"
@@ -430,7 +426,7 @@
           }
         },
         "required": [
-          "chatConnections"
+          "data"
         ]
       },
       "TenantSettings": {
@@ -563,6 +559,10 @@
             "type": "string",
             "pattern": "^prv_[0-9A-Za-z]{16}$"
           },
+          "tenantId": {
+            "type": "string",
+            "pattern": "^ten_[0-9A-Za-z]{16}$"
+          },
           "name": {
             "type": "string",
             "minLength": 1,
@@ -601,6 +601,7 @@
         },
         "required": [
           "id",
+          "tenantId",
           "name",
           "providerType",
           "baseUrl",
@@ -612,7 +613,7 @@
       "ProviderList": {
         "type": "object",
         "properties": {
-          "providers": {
+          "data": {
             "type": "array",
             "items": {
               "type": "object",
@@ -620,6 +621,10 @@
                 "id": {
                   "type": "string",
                   "pattern": "^prv_[0-9A-Za-z]{16}$"
+                },
+                "tenantId": {
+                  "type": "string",
+                  "pattern": "^ten_[0-9A-Za-z]{16}$"
                 },
                 "name": {
                   "type": "string",
@@ -648,6 +653,7 @@
               },
               "required": [
                 "id",
+                "tenantId",
                 "name",
                 "providerType",
                 "createdAt",
@@ -657,13 +663,13 @@
           }
         },
         "required": [
-          "providers"
+          "data"
         ]
       },
       "ProviderModelList": {
         "type": "object",
         "properties": {
-          "models": {
+          "data": {
             "type": "array",
             "items": {
               "type": "object",
@@ -680,7 +686,7 @@
           }
         },
         "required": [
-          "models"
+          "data"
         ]
       },
       "ProviderThinkingLevels": {
@@ -945,6 +951,10 @@
             "type": "string",
             "pattern": "^mcp_[0-9A-Za-z]{16}$"
           },
+          "tenantId": {
+            "type": "string",
+            "pattern": "^ten_[0-9A-Za-z]{16}$"
+          },
           "name": {
             "type": "string",
             "minLength": 1,
@@ -1024,6 +1034,7 @@
         },
         "required": [
           "id",
+          "tenantId",
           "name",
           "url",
           "authType",
@@ -1040,7 +1051,7 @@
       "McpConnectionList": {
         "type": "object",
         "properties": {
-          "mcpConnections": {
+          "data": {
             "type": "array",
             "items": {
               "type": "object",
@@ -1048,6 +1059,10 @@
                 "id": {
                   "type": "string",
                   "pattern": "^mcp_[0-9A-Za-z]{16}$"
+                },
+                "tenantId": {
+                  "type": "string",
+                  "pattern": "^ten_[0-9A-Za-z]{16}$"
                 },
                 "name": {
                   "type": "string",
@@ -1128,6 +1143,7 @@
               },
               "required": [
                 "id",
+                "tenantId",
                 "name",
                 "url",
                 "authType",
@@ -1144,7 +1160,7 @@
           }
         },
         "required": [
-          "mcpConnections"
+          "data"
         ]
       },
       "McpConnectionTest": {
@@ -1678,7 +1694,7 @@
       "McpAttachmentList": {
         "type": "object",
         "properties": {
-          "mcpAttachments": {
+          "data": {
             "type": "array",
             "items": {
               "type": "object",
@@ -1719,7 +1735,7 @@
           }
         },
         "required": [
-          "mcpAttachments"
+          "data"
         ]
       },
       "McpAttachment": {
@@ -1900,141 +1916,149 @@
         ]
       },
       "SkillCopyResultList": {
-        "type": "array",
-        "items": {
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "agentId": {
-                  "type": "string",
-                  "pattern": "^ag_[0-9A-Za-z]{16}$"
-                },
-                "status": {
-                  "type": "string",
-                  "enum": [
-                    "created"
-                  ]
-                },
-                "skill": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
                   "type": "object",
                   "properties": {
-                    "id": {
-                      "type": "string",
-                      "pattern": "^skill_[0-9A-Za-z]{16}$"
-                    },
-                    "tenantId": {
-                      "type": "string",
-                      "pattern": "^ten_[0-9A-Za-z]{16}$"
-                    },
                     "agentId": {
                       "type": "string",
                       "pattern": "^ag_[0-9A-Za-z]{16}$"
                     },
-                    "name": {
+                    "status": {
                       "type": "string",
-                      "minLength": 1,
-                      "maxLength": 64,
-                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                      "enum": [
+                        "created"
+                      ]
                     },
-                    "description": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 1024
-                    },
-                    "metadata": {
+                    "skill": {
                       "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
-                    },
-                    "createdAt": {
-                      "type": "string",
-                      "format": "date-time"
-                    },
-                    "updatedAt": {
-                      "type": "string",
-                      "format": "date-time"
-                    },
-                    "files": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "path": {
-                            "type": "string",
-                            "minLength": 1
-                          },
-                          "sizeBytes": {
-                            "type": "integer",
-                            "minimum": 0
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^skill_[0-9A-Za-z]{16}$"
+                        },
+                        "tenantId": {
+                          "type": "string",
+                          "pattern": "^ten_[0-9A-Za-z]{16}$"
+                        },
+                        "agentId": {
+                          "type": "string",
+                          "pattern": "^ag_[0-9A-Za-z]{16}$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1024
+                        },
+                        "metadata": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
                           }
                         },
-                        "required": [
-                          "path",
-                          "sizeBytes"
-                        ]
-                      }
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "files": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "path": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "sizeBytes": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "path",
+                              "sizeBytes"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "tenantId",
+                        "agentId",
+                        "name",
+                        "description",
+                        "createdAt",
+                        "updatedAt",
+                        "files"
+                      ]
                     }
                   },
                   "required": [
-                    "id",
-                    "tenantId",
                     "agentId",
-                    "name",
-                    "description",
-                    "createdAt",
-                    "updatedAt",
-                    "files"
-                  ]
-                }
-              },
-              "required": [
-                "agentId",
-                "status",
-                "skill"
-              ]
-            },
-            {
-              "type": "object",
-              "properties": {
-                "agentId": {
-                  "type": "string",
-                  "pattern": "^ag_[0-9A-Za-z]{16}$"
-                },
-                "status": {
-                  "type": "string",
-                  "enum": [
-                    "failed"
+                    "status",
+                    "skill"
                   ]
                 },
-                "error": {
+                {
                   "type": "object",
                   "properties": {
-                    "code": {
+                    "agentId": {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "^ag_[0-9A-Za-z]{16}$"
                     },
-                    "message": {
+                    "status": {
                       "type": "string",
-                      "minLength": 1
+                      "enum": [
+                        "failed"
+                      ]
                     },
-                    "details": {}
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "message": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
                   },
                   "required": [
-                    "code",
-                    "message"
+                    "agentId",
+                    "status",
+                    "error"
                   ]
                 }
-              },
-              "required": [
-                "agentId",
-                "status",
-                "error"
               ]
             }
-          ]
-        }
+          }
+        },
+        "required": [
+          "data"
+        ]
       },
       "SessionList": {
         "type": "object",
@@ -2047,6 +2071,10 @@
                 "id": {
                   "type": "string",
                   "pattern": "^ss_[0-9A-Za-z]{16}$"
+                },
+                "tenantId": {
+                  "type": "string",
+                  "pattern": "^ten_[0-9A-Za-z]{16}$"
                 },
                 "messageCount": {
                   "type": "integer",
@@ -2076,6 +2104,7 @@
               },
               "required": [
                 "id",
+                "tenantId",
                 "messageCount",
                 "lastMessagePreview",
                 "userId",
@@ -2108,6 +2137,10 @@
                 "id": {
                   "type": "string",
                   "pattern": "^ss_[0-9A-Za-z]{16}$"
+                },
+                "tenantId": {
+                  "type": "string",
+                  "pattern": "^ten_[0-9A-Za-z]{16}$"
                 },
                 "messageCount": {
                   "type": "integer",
@@ -2162,6 +2195,7 @@
               },
               "required": [
                 "id",
+                "tenantId",
                 "messageCount",
                 "lastMessagePreview",
                 "userId",
@@ -2193,6 +2227,10 @@
           "id": {
             "type": "string",
             "pattern": "^ss_[0-9A-Za-z]{16}$"
+          },
+          "tenantId": {
+            "type": "string",
+            "pattern": "^ten_[0-9A-Za-z]{16}$"
           },
           "messageCount": {
             "type": "integer",
@@ -2561,6 +2599,7 @@
         },
         "required": [
           "id",
+          "tenantId",
           "messageCount",
           "lastMessagePreview",
           "userId",
@@ -3681,7 +3720,6 @@
                   "agent_busy",
                   "agent_deleting",
                   "admin_agent_managed",
-                  "agent_mcp_connection_not_found",
                   "agent_mcp_connections_invalid",
                   "provider_required",
                   "api_key_limit_reached",
@@ -3698,6 +3736,7 @@
                   "model_discovery_unsupported",
                   "model_not_found",
                   "model_validation_unavailable",
+                  "mcp_connection_not_found",
                   "mcp_connection_limit_reached",
                   "mcp_connection_name_conflict",
                   "mcp_connection_stale_credential_version",
@@ -3724,20 +3763,16 @@
                   "skill_invalid_markdown",
                   "skill_limit_reached",
                   "skill_name_conflict",
-                  "skill_not_found",
                   "skill_too_many_files",
                   "skill_uncompressed_too_large",
                   "task_active_run_exists",
                   "chat_webhook_conflict",
                   "chat_webhook_registration_failed",
-                  "merchant_connection_not_found",
                   "merchant_connection_in_use",
                   "merchant_credential_invalid",
                   "merchant_provider_unavailable",
                   "merchant_customer_not_found",
-                  "merchant_binding_not_found",
                   "merchant_account_mismatch",
-                  "merchant_event_not_found",
                   "merchant_event_state_conflict",
                   "merchant_customer_unmapped",
                   "forbidden",
@@ -3839,7 +3874,7 @@
             "items": {
               "type": "object",
               "properties": {
-                "artifactId": {
+                "id": {
                   "type": "string",
                   "pattern": "^at_[0-9A-Za-z]{16}$"
                 },
@@ -3885,7 +3920,7 @@
                 }
               },
               "required": [
-                "artifactId",
+                "id",
                 "agentId",
                 "tenantId",
                 "sessionId",
@@ -3931,7 +3966,7 @@
       "Artifact": {
         "type": "object",
         "properties": {
-          "artifactId": {
+          "id": {
             "type": "string",
             "pattern": "^at_[0-9A-Za-z]{16}$"
           },
@@ -3977,7 +4012,7 @@
           }
         },
         "required": [
-          "artifactId",
+          "id",
           "agentId",
           "tenantId",
           "sessionId",
@@ -3993,55 +4028,47 @@
       "Memory": {
         "type": "object",
         "properties": {
-          "memory": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^mem_[0-9A-Za-z]{16}$"
-              },
-              "tenantId": {
-                "type": "string",
-                "pattern": "^ten_[0-9A-Za-z]{16}$"
-              },
-              "agentId": {
-                "type": "string",
-                "pattern": "^ag_[0-9A-Za-z]{16}$"
-              },
-              "userId": {
-                "type": "string"
-              },
-              "text": {
-                "type": "string",
-                "minLength": 1
-              },
-              "createdAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "updatedAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "lastAccessedAt": {
-                "type": "string",
-                "format": "date-time"
-              }
-            },
-            "required": [
-              "id",
-              "tenantId",
-              "agentId",
-              "userId",
-              "text",
-              "createdAt",
-              "updatedAt",
-              "lastAccessedAt"
-            ]
+          "id": {
+            "type": "string",
+            "pattern": "^mem_[0-9A-Za-z]{16}$"
+          },
+          "tenantId": {
+            "type": "string",
+            "pattern": "^ten_[0-9A-Za-z]{16}$"
+          },
+          "agentId": {
+            "type": "string",
+            "pattern": "^ag_[0-9A-Za-z]{16}$"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastAccessedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
-          "memory"
+          "id",
+          "tenantId",
+          "agentId",
+          "userId",
+          "text",
+          "createdAt",
+          "updatedAt",
+          "lastAccessedAt"
         ]
       },
       "MemoryList": {
@@ -4206,6 +4233,10 @@
                 "type": "string",
                 "pattern": "^mch_[0-9A-Za-z]{16}$"
               },
+              "tenantId": {
+                "type": "string",
+                "pattern": "^ten_[0-9A-Za-z]{16}$"
+              },
               "provider": {
                 "type": "string",
                 "enum": [
@@ -4273,6 +4304,7 @@
             },
             "required": [
               "id",
+              "tenantId",
               "provider",
               "environment",
               "merchantAccountId",
@@ -4286,6 +4318,95 @@
         },
         "required": [
           "connection"
+        ]
+      },
+      "MerchantConnection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^mch_[0-9A-Za-z]{16}$"
+          },
+          "tenantId": {
+            "type": "string",
+            "pattern": "^ten_[0-9A-Za-z]{16}$"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "polar",
+              "dodo"
+            ]
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "sandbox",
+              "live"
+            ]
+          },
+          "merchantAccountId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "keyFragment": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4
+          },
+          "guard": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "productIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "maxItems": 100
+              },
+              "meterId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1
+              }
+            },
+            "required": [
+              "enabled",
+              "productIds",
+              "meterId"
+            ],
+            "additionalProperties": false
+          },
+          "configVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "provider",
+          "environment",
+          "merchantAccountId",
+          "keyFragment",
+          "guard",
+          "configVersion",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "MerchantConnectionCreate": {
@@ -4394,7 +4515,7 @@
       "MerchantBindingList": {
         "type": "object",
         "properties": {
-          "bindings": {
+          "data": {
             "type": "array",
             "items": {
               "type": "object",
@@ -4432,43 +4553,35 @@
           }
         },
         "required": [
-          "bindings",
+          "data",
           "nextCursor"
         ]
       },
-      "MerchantBindingResponse": {
+      "MerchantBinding": {
         "type": "object",
         "properties": {
-          "binding": {
-            "type": "object",
-            "properties": {
-              "userId": {
-                "type": "string",
-                "minLength": 1
-              },
-              "customerId": {
-                "type": "string",
-                "minLength": 1
-              },
-              "createdAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "updatedAt": {
-                "type": "string",
-                "format": "date-time"
-              }
-            },
-            "required": [
-              "userId",
-              "customerId",
-              "createdAt",
-              "updatedAt"
-            ]
+          "userId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "customerId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
-          "binding"
+          "userId",
+          "customerId",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "MerchantBindingUpsert": {
@@ -4488,7 +4601,7 @@
       "MerchantUsageEventList": {
         "type": "object",
         "properties": {
-          "events": {
+          "data": {
             "type": "array",
             "items": {
               "type": "object",
@@ -4496,6 +4609,10 @@
                 "id": {
                   "type": "string",
                   "pattern": "^mev_[0-9A-Za-z]{16}$"
+                },
+                "tenantId": {
+                  "type": "string",
+                  "pattern": "^ten_[0-9A-Za-z]{16}$"
                 },
                 "turnId": {
                   "type": "string",
@@ -4635,6 +4752,7 @@
               },
               "required": [
                 "id",
+                "tenantId",
                 "turnId",
                 "connectionId",
                 "provider",
@@ -4669,289 +4787,278 @@
           }
         },
         "required": [
-          "events",
+          "data",
           "nextCursor"
         ]
       },
       "MerchantUsageSummary": {
         "type": "object",
         "properties": {
-          "summary": {
+          "counts": {
             "type": "object",
             "properties": {
-              "counts": {
-                "type": "object",
-                "properties": {
-                  "pending": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "accepted": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "failed": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "incomplete": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "expired": {
-                    "type": "integer",
-                    "minimum": 0
-                  },
-                  "discarded": {
-                    "type": "integer",
-                    "minimum": 0
-                  }
-                },
-                "required": [
-                  "pending",
-                  "accepted",
-                  "failed",
-                  "incomplete",
-                  "expired",
-                  "discarded"
-                ],
-                "additionalProperties": false
+              "pending": {
+                "type": "integer",
+                "minimum": 0
               },
-              "lastAcceptedAt": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "format": "date-time"
+              "accepted": {
+                "type": "integer",
+                "minimum": 0
               },
-              "oldestPendingOccurredAt": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "format": "date-time"
+              "failed": {
+                "type": "integer",
+                "minimum": 0
               },
-              "daily": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "day": {
-                      "type": "string",
-                      "format": "date"
-                    },
-                    "acceptedEvents": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "acceptedTokens": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "pendingEvents": {
-                      "type": "integer",
-                      "minimum": 0
-                    }
-                  },
-                  "required": [
-                    "day",
-                    "acceptedEvents",
-                    "acceptedTokens",
-                    "pendingEvents"
-                  ],
-                  "additionalProperties": false
-                }
+              "incomplete": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "expired": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "discarded": {
+                "type": "integer",
+                "minimum": 0
               }
             },
             "required": [
-              "counts",
-              "lastAcceptedAt",
-              "oldestPendingOccurredAt",
-              "daily"
+              "pending",
+              "accepted",
+              "failed",
+              "incomplete",
+              "expired",
+              "discarded"
             ],
             "additionalProperties": false
+          },
+          "lastAcceptedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "oldestPendingOccurredAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "daily": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "acceptedEvents": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "acceptedTokens": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "pendingEvents": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "day",
+                "acceptedEvents",
+                "acceptedTokens",
+                "pendingEvents"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
-          "summary"
-        ]
+          "counts",
+          "lastAcceptedAt",
+          "oldestPendingOccurredAt",
+          "daily"
+        ],
+        "additionalProperties": false
       },
-      "MerchantUsageEventResponse": {
+      "MerchantUsageEvent": {
         "type": "object",
         "properties": {
-          "event": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^mev_[0-9A-Za-z]{16}$"
-              },
-              "turnId": {
-                "type": "string",
-                "pattern": "^turn_[0-9A-Za-z]{16}$"
-              },
-              "connectionId": {
-                "type": "string",
-                "pattern": "^mch_[0-9A-Za-z]{16}$"
-              },
-              "provider": {
-                "type": "string",
-                "enum": [
-                  "polar",
-                  "dodo"
-                ]
-              },
-              "userId": {
-                "type": "string"
-              },
-              "customerId": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "minLength": 1
-              },
-              "agentId": {
-                "type": "string",
-                "pattern": "^ag_[0-9A-Za-z]{16}$"
-              },
-              "sessionId": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "pattern": "^ss_[0-9A-Za-z]{16}$"
-              },
-              "model": {
-                "type": "string",
-                "minLength": 1
-              },
-              "modelProvider": {
-                "type": "string",
-                "enum": [
-                  "openai",
-                  "anthropic",
-                  "openrouter",
-                  "google",
-                  "vercel_ai_gateway",
-                  "custom"
-                ]
-              },
-              "inputTokens": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "outputTokens": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "totalTokens": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "turnStatus": {
-                "type": "string",
-                "enum": [
-                  "succeeded",
-                  "cancelled",
-                  "failed"
-                ]
-              },
-              "startedAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "occurredAt": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "status": {
-                "type": "string",
-                "enum": [
-                  "pending",
-                  "accepted",
-                  "failed",
-                  "incomplete",
-                  "discarded",
-                  "expired"
-                ]
-              },
-              "payload": {
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "additionalProperties": {}
-              },
-              "attemptCount": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "attemptGeneration": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "lastAttemptAt": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "format": "date-time"
-              },
-              "lastErrorCode": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "acceptedAt": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "format": "date-time"
-              },
-              "nextAction": {
-                "type": "string",
-                "enum": [
-                  "none",
-                  "wait",
-                  "retry",
-                  "investigate",
-                  "discard"
-                ]
-              }
-            },
-            "required": [
-              "id",
-              "turnId",
-              "connectionId",
-              "provider",
-              "userId",
-              "customerId",
-              "agentId",
-              "sessionId",
-              "model",
-              "modelProvider",
-              "inputTokens",
-              "outputTokens",
-              "totalTokens",
-              "turnStatus",
-              "startedAt",
-              "occurredAt",
-              "status",
-              "payload",
-              "attemptCount",
-              "attemptGeneration",
-              "lastAttemptAt",
-              "lastErrorCode",
-              "acceptedAt",
-              "nextAction"
+          "id": {
+            "type": "string",
+            "pattern": "^mev_[0-9A-Za-z]{16}$"
+          },
+          "tenantId": {
+            "type": "string",
+            "pattern": "^ten_[0-9A-Za-z]{16}$"
+          },
+          "turnId": {
+            "type": "string",
+            "pattern": "^turn_[0-9A-Za-z]{16}$"
+          },
+          "connectionId": {
+            "type": "string",
+            "pattern": "^mch_[0-9A-Za-z]{16}$"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "polar",
+              "dodo"
+            ]
+          },
+          "userId": {
+            "type": "string"
+          },
+          "customerId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1
+          },
+          "agentId": {
+            "type": "string",
+            "pattern": "^ag_[0-9A-Za-z]{16}$"
+          },
+          "sessionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^ss_[0-9A-Za-z]{16}$"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1
+          },
+          "modelProvider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "anthropic",
+              "openrouter",
+              "google",
+              "vercel_ai_gateway",
+              "custom"
+            ]
+          },
+          "inputTokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "outputTokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalTokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "turnStatus": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "cancelled",
+              "failed"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "failed",
+              "incomplete",
+              "discarded",
+              "expired"
+            ]
+          },
+          "payload": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {}
+          },
+          "attemptCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "attemptGeneration": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastAttemptAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "lastErrorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "acceptedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "nextAction": {
+            "type": "string",
+            "enum": [
+              "none",
+              "wait",
+              "retry",
+              "investigate",
+              "discard"
             ]
           }
         },
         "required": [
-          "event"
+          "id",
+          "tenantId",
+          "turnId",
+          "connectionId",
+          "provider",
+          "userId",
+          "customerId",
+          "agentId",
+          "sessionId",
+          "model",
+          "modelProvider",
+          "inputTokens",
+          "outputTokens",
+          "totalTokens",
+          "turnStatus",
+          "startedAt",
+          "occurredAt",
+          "status",
+          "payload",
+          "attemptCount",
+          "attemptGeneration",
+          "lastAttemptAt",
+          "lastErrorCode",
+          "acceptedAt",
+          "nextAction"
         ]
       },
       "Usage": {
@@ -6557,7 +6664,6 @@
               "agent_busy",
               "agent_deleting",
               "admin_agent_managed",
-              "agent_mcp_connection_not_found",
               "agent_mcp_connections_invalid",
               "provider_required",
               "api_key_limit_reached",
@@ -6574,6 +6680,7 @@
               "model_discovery_unsupported",
               "model_not_found",
               "model_validation_unavailable",
+              "mcp_connection_not_found",
               "mcp_connection_limit_reached",
               "mcp_connection_name_conflict",
               "mcp_connection_stale_credential_version",
@@ -6600,20 +6707,16 @@
               "skill_invalid_markdown",
               "skill_limit_reached",
               "skill_name_conflict",
-              "skill_not_found",
               "skill_too_many_files",
               "skill_uncompressed_too_large",
               "task_active_run_exists",
               "chat_webhook_conflict",
               "chat_webhook_registration_failed",
-              "merchant_connection_not_found",
               "merchant_connection_in_use",
               "merchant_credential_invalid",
               "merchant_provider_unavailable",
               "merchant_customer_not_found",
-              "merchant_binding_not_found",
               "merchant_account_mismatch",
-              "merchant_event_not_found",
               "merchant_event_state_conflict",
               "merchant_customer_unmapped",
               "forbidden",
@@ -7191,7 +7294,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "chatConnections": [
+                  "data": [
                     {
                       "id": "cc_6Wd3Hs8KqP1vRt5N",
                       "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
@@ -7786,7 +7889,7 @@
         ]
       }
     },
-    "/v1/chat-connections/{id}": {
+    "/v1/chat-connections/{chatConnectionId}": {
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
@@ -7806,7 +7909,7 @@
             },
             "required": true,
             "description": "ID of the chat connection.",
-            "name": "id",
+            "name": "chatConnectionId",
             "in": "path"
           },
           {
@@ -8039,7 +8142,7 @@
             },
             "required": true,
             "description": "ID of the chat connection.",
-            "name": "id",
+            "name": "chatConnectionId",
             "in": "path"
           },
           {
@@ -8340,7 +8443,7 @@
             },
             "required": true,
             "description": "ID of the chat connection.",
-            "name": "id",
+            "name": "chatConnectionId",
             "in": "path"
           },
           {
@@ -8506,7 +8609,7 @@
         }
       }
     },
-    "/v1/chat-connections/{id}/credentials": {
+    "/v1/chat-connections/{chatConnectionId}/credentials": {
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
@@ -8526,7 +8629,7 @@
             },
             "required": true,
             "description": "ID of the chat connection.",
-            "name": "id",
+            "name": "chatConnectionId",
             "in": "path"
           },
           {
@@ -8828,7 +8931,7 @@
         }
       }
     },
-    "/v1/chat-connections/{id}/health": {
+    "/v1/chat-connections/{chatConnectionId}/health": {
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
@@ -8848,7 +8951,7 @@
             },
             "required": true,
             "description": "ID of the chat connection.",
-            "name": "id",
+            "name": "chatConnectionId",
             "in": "path"
           },
           {
@@ -9064,7 +9167,7 @@
         }
       }
     },
-    "/v1/chat-connections/{id}/disable": {
+    "/v1/chat-connections/{chatConnectionId}/disable": {
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
@@ -9084,7 +9187,7 @@
             },
             "required": true,
             "description": "ID of the chat connection.",
-            "name": "id",
+            "name": "chatConnectionId",
             "in": "path"
           },
           {
@@ -9300,7 +9403,7 @@
         }
       }
     },
-    "/v1/chat-connections/{id}/enable": {
+    "/v1/chat-connections/{chatConnectionId}/enable": {
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
@@ -9320,7 +9423,7 @@
             },
             "required": true,
             "description": "ID of the chat connection.",
-            "name": "id",
+            "name": "chatConnectionId",
             "in": "path"
           },
           {
@@ -10403,9 +10506,10 @@
             "content": {
               "application/json": {
                 "example": {
-                  "providers": [
+                  "data": [
                     {
                       "id": "prv_7Tn4Kd9QwE2sLx5R",
+                      "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                       "name": "Production OpenRouter",
                       "providerType": "openrouter",
                       "createdAt": "2026-07-10T10:00:00.000Z",
@@ -10642,6 +10746,7 @@
               "application/json": {
                 "example": {
                   "id": "prv_7Tn4Kd9QwE2sLx5R",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                   "name": "Production OpenRouter",
                   "providerType": "openrouter",
                   "baseUrl": null,
@@ -10816,7 +10921,7 @@
         ]
       }
     },
-    "/v1/providers/{id}/models": {
+    "/v1/providers/{providerId}/models": {
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
@@ -10836,7 +10941,7 @@
             },
             "required": true,
             "description": "ID of the provider.",
-            "name": "id",
+            "name": "providerId",
             "in": "path"
           },
           {
@@ -10849,7 +10954,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "models": [
+                  "data": [
                     {
                       "id": "openai/gpt-6-luna"
                     }
@@ -10942,7 +11047,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "provider_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -11034,7 +11139,7 @@
         }
       }
     },
-    "/v1/providers/{id}/thinking-levels": {
+    "/v1/providers/{providerId}/thinking-levels": {
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
@@ -11054,7 +11159,7 @@
             },
             "required": true,
             "description": "ID of the provider.",
-            "name": "id",
+            "name": "providerId",
             "in": "path"
           },
           {
@@ -11174,7 +11279,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "provider_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -11247,7 +11352,7 @@
         }
       }
     },
-    "/v1/providers/{id}": {
+    "/v1/providers/{providerId}": {
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
@@ -11267,7 +11372,7 @@
             },
             "required": true,
             "description": "ID of the provider.",
-            "name": "id",
+            "name": "providerId",
             "in": "path"
           },
           {
@@ -11281,6 +11386,7 @@
               "application/json": {
                 "example": {
                   "id": "prv_7Tn4Kd9QwE2sLx5R",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                   "name": "Production OpenRouter",
                   "providerType": "openrouter",
                   "baseUrl": null,
@@ -11375,7 +11481,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "provider_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -11466,7 +11572,7 @@
             },
             "required": true,
             "description": "ID of the provider.",
-            "name": "id",
+            "name": "providerId",
             "in": "path"
           },
           {
@@ -11505,6 +11611,7 @@
               "application/json": {
                 "example": {
                   "id": "prv_7Tn4Kd9QwE2sLx5R",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                   "name": "Primary OpenRouter",
                   "providerType": "openrouter",
                   "baseUrl": null,
@@ -11600,7 +11707,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "provider_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -11709,7 +11816,7 @@
             },
             "required": true,
             "description": "ID of the provider.",
-            "name": "id",
+            "name": "providerId",
             "in": "path"
           },
           {
@@ -11818,7 +11925,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "provider_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -12611,7 +12718,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "workspace_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -12695,7 +12802,7 @@
           }
         ]
       },
-      "put": {
+      "patch": {
         "x-access": "write",
         "x-scope": "end-user",
         "operationId": "updateWorkspace",
@@ -12919,7 +13026,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "workspace_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -13132,7 +13239,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "workspace_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -13252,9 +13359,10 @@
             "content": {
               "application/json": {
                 "example": {
-                  "mcpConnections": [
+                  "data": [
                     {
                       "id": "mcp_2Rk7Wm4XsQ9dHv1B",
+                      "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                       "name": "Docs Search",
                       "url": "https://mcp.example.com/mcp",
                       "authType": "bearer",
@@ -13567,6 +13675,7 @@
               "application/json": {
                 "example": {
                   "id": "mcp_2Rk7Wm4XsQ9dHv1B",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                   "name": "Docs Search",
                   "url": "https://mcp.example.com/mcp",
                   "authType": "bearer",
@@ -13750,7 +13859,7 @@
         ]
       }
     },
-    "/v1/mcp-connections/{id}/test": {
+    "/v1/mcp-connections/{mcpConnectionId}/test": {
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
@@ -13770,7 +13879,7 @@
             },
             "required": true,
             "description": "ID of the MCP connection.",
-            "name": "id",
+            "name": "mcpConnectionId",
             "in": "path"
           },
           {
@@ -13956,7 +14065,7 @@
         }
       }
     },
-    "/v1/mcp-connections/{id}/reconnect": {
+    "/v1/mcp-connections/{mcpConnectionId}/reconnect": {
       "post": {
         "x-access": "write",
         "x-scope": "tenant",
@@ -13976,7 +14085,7 @@
             },
             "required": true,
             "description": "ID of the MCP connection.",
-            "name": "id",
+            "name": "mcpConnectionId",
             "in": "path"
           },
           {
@@ -14106,6 +14215,7 @@
                   "status": "connected",
                   "connection": {
                     "id": "mcp_2Rk7Wm4XsQ9dHv1B",
+                    "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                     "name": "Docs Search",
                     "url": "https://mcp.example.com/mcp",
                     "authType": "bearer",
@@ -14302,7 +14412,7 @@
         }
       }
     },
-    "/v1/mcp-connections/{id}": {
+    "/v1/mcp-connections/{mcpConnectionId}": {
       "get": {
         "x-access": "read",
         "x-scope": "tenant",
@@ -14322,7 +14432,7 @@
             },
             "required": true,
             "description": "ID of the MCP connection.",
-            "name": "id",
+            "name": "mcpConnectionId",
             "in": "path"
           },
           {
@@ -14336,6 +14446,7 @@
               "application/json": {
                 "example": {
                   "id": "mcp_2Rk7Wm4XsQ9dHv1B",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                   "name": "Docs Search",
                   "url": "https://mcp.example.com/mcp",
                   "authType": "bearer",
@@ -14526,7 +14637,7 @@
             },
             "required": true,
             "description": "ID of the MCP connection.",
-            "name": "id",
+            "name": "mcpConnectionId",
             "in": "path"
           },
           {
@@ -14562,6 +14673,7 @@
               "application/json": {
                 "example": {
                   "id": "mcp_2Rk7Wm4XsQ9dHv1B",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                   "name": "Docs Search Production",
                   "url": "https://mcp.example.com/mcp",
                   "authType": "bearer",
@@ -14771,7 +14883,7 @@
             },
             "required": true,
             "description": "ID of the MCP connection.",
-            "name": "id",
+            "name": "mcpConnectionId",
             "in": "path"
           },
           {
@@ -15680,8 +15792,6 @@
             "x-error-codes": [
               "invalid_request",
               "validation_failed",
-              "model_not_found",
-              "agent_mcp_connection_not_found",
               "agent_mcp_connections_invalid",
               "mcp_connection_discovery_failed"
             ],
@@ -15757,7 +15867,26 @@
             "description": "The resource was not found",
             "x-error-codes": [
               "provider_not_found",
-              "workspace_not_found"
+              "workspace_not_found",
+              "mcp_connection_not_found"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "422": {
+            "description": "The request was understood but rejected",
+            "x-error-codes": [
+              "model_not_found"
             ],
             "content": {
               "application/json": {
@@ -15908,7 +16037,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "mcpAttachments": [
+                  "data": [
                     {
                       "mcpConnectionId": "mcp_2Rk7Wm4XsQ9dHv1B",
                       "forwardUserId": true,
@@ -16588,7 +16717,7 @@
           }
         ]
       },
-      "put": {
+      "patch": {
         "x-access": "write",
         "x-scope": "end-user",
         "operationId": "updateAgent",
@@ -17009,8 +17138,6 @@
             "x-error-codes": [
               "invalid_request",
               "validation_failed",
-              "model_not_found",
-              "agent_mcp_connection_not_found",
               "agent_mcp_connections_invalid",
               "mcp_connection_discovery_failed"
             ],
@@ -17087,7 +17214,8 @@
             "x-error-codes": [
               "not_found",
               "provider_not_found",
-              "workspace_not_found"
+              "workspace_not_found",
+              "mcp_connection_not_found"
             ],
             "content": {
               "application/json": {
@@ -17106,6 +17234,24 @@
             "description": "The request conflicts with the resource's current state",
             "x-error-codes": [
               "admin_agent_managed"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "422": {
+            "description": "The request was understood but rejected",
+            "x-error-codes": [
+              "model_not_found"
             ],
             "content": {
               "application/json": {
@@ -17198,7 +17344,7 @@
           "agents"
         ],
         "summary": "Delete an agent",
-        "description": "Permanently deletes an agent. Its workspace is kept. Set `includeArtifacts` to choose whether its artifacts are deleted too. The platform-managed agent cannot be deleted. An agent cannot be deleted while it has a running turn or a queued or running task run: the call returns `409 agent_busy`, so stop that work or wait for it to finish, then delete again. While a delete that includes artifacts runs, new turns and task runs for the agent fail with `409 agent_deleting`. If that delete fails, they keep failing until you send the delete again, which finishes it.",
+        "description": "Permanently deletes an agent. Its workspace is kept. Set `deleteArtifacts` to choose whether its artifacts are deleted too. The platform-managed agent cannot be deleted. An agent cannot be deleted while it has a running turn or a queued or running task run: the call returns `409 agent_busy`, so stop that work or wait for it to finish, then delete again. While a delete that includes artifacts runs, new turns and task runs for the agent fail with `409 agent_deleting`. If that delete fails, they keep failing until you send the delete again, which finishes it.",
         "parameters": [
           {
             "schema": {
@@ -17223,7 +17369,7 @@
             },
             "required": true,
             "description": "`true` also deletes the agent's artifacts; `false` keeps them.",
-            "name": "includeArtifacts",
+            "name": "deleteArtifacts",
             "in": "query"
           },
           {
@@ -19507,8 +19653,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "not_found",
-              "skill_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -19714,8 +19859,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "not_found",
-              "skill_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -19942,8 +20086,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "not_found",
-              "skill_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -20203,8 +20346,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "not_found",
-              "skill_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -20483,8 +20625,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "not_found",
-              "skill_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -20655,42 +20796,44 @@
             "description": "One result per destination agent",
             "content": {
               "application/json": {
-                "example": [
-                  {
-                    "agentId": "ag_9Xm3Fp7KdR2vHs5T",
-                    "status": "created",
-                    "skill": {
-                      "id": "skill_1Nc5Gv9JwZ3hQe8M",
-                      "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                "example": {
+                  "data": [
+                    {
                       "agentId": "ag_9Xm3Fp7KdR2vHs5T",
-                      "name": "refund-policy",
-                      "description": "Answer refund questions using the current refund policy.",
-                      "metadata": {
-                        "owner": "support"
-                      },
-                      "createdAt": "2026-07-10T10:00:00.000Z",
-                      "updatedAt": "2026-07-10T10:00:00.000Z",
-                      "files": [
-                        {
-                          "path": "SKILL.md",
-                          "sizeBytes": 168
+                      "status": "created",
+                      "skill": {
+                        "id": "skill_1Nc5Gv9JwZ3hQe8M",
+                        "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                        "agentId": "ag_9Xm3Fp7KdR2vHs5T",
+                        "name": "refund-policy",
+                        "description": "Answer refund questions using the current refund policy.",
+                        "metadata": {
+                          "owner": "support"
                         },
-                        {
-                          "path": "policy.md",
-                          "sizeBytes": 2048
-                        }
-                      ]
+                        "createdAt": "2026-07-10T10:00:00.000Z",
+                        "updatedAt": "2026-07-10T10:00:00.000Z",
+                        "files": [
+                          {
+                            "path": "SKILL.md",
+                            "sizeBytes": 168
+                          },
+                          {
+                            "path": "policy.md",
+                            "sizeBytes": 2048
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "agentId": "ag_2Bt6Yh4MsW8kLc1V",
+                      "status": "failed",
+                      "error": {
+                        "code": "skill_name_conflict",
+                        "message": "Skill name already exists for this Agent"
+                      }
                     }
-                  },
-                  {
-                    "agentId": "ag_2Bt6Yh4MsW8kLc1V",
-                    "status": "failed",
-                    "error": {
-                      "code": "skill_name_conflict",
-                      "message": "Skill name already exists for this Agent"
-                    }
-                  }
-                ],
+                  ]
+                },
                 "schema": {
                   "$ref": "#/components/schemas/SkillCopyResultList"
                 }
@@ -20779,8 +20922,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "not_found",
-              "skill_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -21227,7 +21369,7 @@
           "sessions"
         ],
         "summary": "List an agent's sessions",
-        "description": "Lists an agent's sessions, most recently updated first, one page at a time. Each session shows its message count and a preview of its last message. An agent that does not exist in your tenant returns an empty page.",
+        "description": "Lists an agent's sessions, most recently updated first, one page at a time. Each session shows its message count and a preview of its last message. An agent that does not exist in your tenant returns `404 not_found`.",
         "parameters": [
           {
             "schema": {
@@ -21287,6 +21429,7 @@
                   "data": [
                     {
                       "id": "ss_6Rt2Mw8KqZ4Nc1Hp",
+                      "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                       "messageCount": 4,
                       "lastMessagePreview": "Open Settings, choose Security, and select Reset password.",
                       "userId": "user_42",
@@ -21370,6 +21513,24 @@
             "description": "The caller is not allowed to make this request",
             "x-error-codes": [
               "forbidden"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            }
+          },
+          "404": {
+            "description": "The resource was not found",
+            "x-error-codes": [
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -21903,6 +22064,7 @@
                   "data": [
                     {
                       "id": "ss_6Rt2Mw8KqZ4Nc1Hp",
+                      "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                       "messageCount": 4,
                       "lastMessagePreview": "Open Settings, choose Security, and select Reset password.",
                       "userId": "user_42",
@@ -22118,6 +22280,7 @@
               "application/json": {
                 "example": {
                   "id": "ss_6Rt2Mw8KqZ4Nc1Hp",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                   "messageCount": 4,
                   "lastMessagePreview": "Open Settings, choose Security, and select Reset password.",
                   "userId": "user_42",
@@ -23043,6 +23206,7 @@
               "application/json": {
                 "example": {
                   "id": "ss_6Rt2Mw8KqZ4Nc1Hp",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                   "messageCount": 4,
                   "lastMessagePreview": "Open Settings, choose Security, and select Reset password.",
                   "userId": "user_42",
@@ -23099,6 +23263,7 @@
               "application/json": {
                 "example": {
                   "id": "ss_6Rt2Mw8KqZ4Nc1Hp",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                   "messageCount": 4,
                   "lastMessagePreview": "Open Settings, choose Security, and select Reset password.",
                   "userId": "user_42",
@@ -25299,7 +25464,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "data": {
+                  "input": {
                     "requestId": "request_1",
                     "sequence": 1,
                     "message": {
@@ -25326,7 +25491,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "data": {
+                    "input": {
                       "type": "object",
                       "properties": {
                         "requestId": {
@@ -25449,7 +25614,7 @@
                     }
                   },
                   "required": [
-                    "data",
+                    "input",
                     "activity"
                   ]
                 }
@@ -25913,7 +26078,7 @@
           "artifacts"
         ],
         "summary": "List artifacts",
-        "description": "Lists your tenant's artifacts newest first, 50 per page. Filter by the agent or session that published them, and pass `nextCursor` as `cursor` to get the next page.",
+        "description": "Lists your tenant's artifacts newest first, one page at a time. Filter by the agent or session that published them, and pass `nextCursor` as `cursor` to get the next page.",
         "parameters": [
           {
             "schema": {
@@ -25939,15 +26104,26 @@
           },
           {
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "description": "`nextCursor` from the previous page."
+              "type": "string",
+              "minLength": 1,
+              "description": "`nextCursor` from the previous page. Leave it out for the first page."
             },
             "required": false,
-            "description": "`nextCursor` from the previous page.",
+            "description": "`nextCursor` from the previous page. Leave it out for the first page.",
             "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50,
+              "description": "Page size, from 1 to 100. Defaults to 50."
+            },
+            "required": false,
+            "description": "Page size, from 1 to 100. Defaults to 50.",
+            "name": "limit",
             "in": "query"
           },
           {
@@ -25962,7 +26138,7 @@
                 "example": {
                   "data": [
                     {
-                      "artifactId": "at_6Jm2Qx8RtW4nPz1K",
+                      "id": "at_6Jm2Qx8RtW4nPz1K",
                       "agentId": "ag_4kP9sT2vXq7LmN3a",
                       "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                       "sessionId": "ss_9Fh3Lc7VbN2kDs5Y",
@@ -26371,7 +26547,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "artifactId": "at_6Jm2Qx8RtW4nPz1K",
+                  "id": "at_6Jm2Qx8RtW4nPz1K",
                   "agentId": "ag_4kP9sT2vXq7LmN3a",
                   "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                   "sessionId": "ss_9Fh3Lc7VbN2kDs5Y",
@@ -27087,16 +27263,14 @@
             "content": {
               "application/json": {
                 "example": {
-                  "memory": {
-                    "id": "mem_6Jd2Pq8LzR4wYk1C",
-                    "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
-                    "agentId": "ag_4kP9sT2vXq7LmN3a",
-                    "userId": "user_42",
-                    "text": "Prefers concise answers.",
-                    "createdAt": "2026-07-10T10:00:00.000Z",
-                    "updatedAt": "2026-07-10T10:00:00.000Z",
-                    "lastAccessedAt": "2026-07-10T10:00:00.000Z"
-                  }
+                  "id": "mem_6Jd2Pq8LzR4wYk1C",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                  "agentId": "ag_4kP9sT2vXq7LmN3a",
+                  "userId": "user_42",
+                  "text": "Prefers concise answers.",
+                  "createdAt": "2026-07-10T10:00:00.000Z",
+                  "updatedAt": "2026-07-10T10:00:00.000Z",
+                  "lastAccessedAt": "2026-07-10T10:00:00.000Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Memory"
@@ -27309,16 +27483,14 @@
             "content": {
               "application/json": {
                 "example": {
-                  "memory": {
-                    "id": "mem_6Jd2Pq8LzR4wYk1C",
-                    "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
-                    "agentId": "ag_4kP9sT2vXq7LmN3a",
-                    "userId": "user_42",
-                    "text": "Prefers concise answers.",
-                    "createdAt": "2026-07-10T10:00:00.000Z",
-                    "updatedAt": "2026-07-10T10:00:00.000Z",
-                    "lastAccessedAt": "2026-07-10T10:00:00.000Z"
-                  }
+                  "id": "mem_6Jd2Pq8LzR4wYk1C",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                  "agentId": "ag_4kP9sT2vXq7LmN3a",
+                  "userId": "user_42",
+                  "text": "Prefers concise answers.",
+                  "createdAt": "2026-07-10T10:00:00.000Z",
+                  "updatedAt": "2026-07-10T10:00:00.000Z",
+                  "lastAccessedAt": "2026-07-10T10:00:00.000Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Memory"
@@ -27557,16 +27729,14 @@
             "content": {
               "application/json": {
                 "example": {
-                  "memory": {
-                    "id": "mem_6Jd2Pq8LzR4wYk1C",
-                    "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
-                    "agentId": "ag_4kP9sT2vXq7LmN3a",
-                    "userId": "user_42",
-                    "text": "Prefers answers under five lines.",
-                    "createdAt": "2026-07-10T10:00:00.000Z",
-                    "updatedAt": "2026-07-10T10:15:00.000Z",
-                    "lastAccessedAt": "2026-07-10T10:15:00.000Z"
-                  }
+                  "id": "mem_6Jd2Pq8LzR4wYk1C",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                  "agentId": "ag_4kP9sT2vXq7LmN3a",
+                  "userId": "user_42",
+                  "text": "Prefers answers under five lines.",
+                  "createdAt": "2026-07-10T10:00:00.000Z",
+                  "updatedAt": "2026-07-10T10:15:00.000Z",
+                  "lastAccessedAt": "2026-07-10T10:15:00.000Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Memory"
@@ -29166,6 +29336,7 @@
                 "example": {
                   "connection": {
                     "id": "mch_6Wd3Lp8RtY2kVn5Q",
+                    "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                     "provider": "polar",
                     "environment": "sandbox",
                     "merchantAccountId": "8f2c1d9e-4b7a-4f3e-9c21-5a6b7d8e9f01",
@@ -29356,24 +29527,23 @@
             "content": {
               "application/json": {
                 "example": {
-                  "connection": {
-                    "id": "mch_6Wd3Lp8RtY2kVn5Q",
-                    "provider": "polar",
-                    "environment": "sandbox",
-                    "merchantAccountId": "8f2c1d9e-4b7a-4f3e-9c21-5a6b7d8e9f01",
-                    "keyFragment": "x7Qa",
-                    "guard": {
-                      "enabled": false,
-                      "productIds": [],
-                      "meterId": null
-                    },
-                    "configVersion": 1,
-                    "createdAt": "2026-07-10T10:00:00.000Z",
-                    "updatedAt": "2026-07-10T10:00:00.000Z"
-                  }
+                  "id": "mch_6Wd3Lp8RtY2kVn5Q",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                  "provider": "polar",
+                  "environment": "sandbox",
+                  "merchantAccountId": "8f2c1d9e-4b7a-4f3e-9c21-5a6b7d8e9f01",
+                  "keyFragment": "x7Qa",
+                  "guard": {
+                    "enabled": false,
+                    "productIds": [],
+                    "meterId": null
+                  },
+                  "configVersion": 1,
+                  "createdAt": "2026-07-10T10:00:00.000Z",
+                  "updatedAt": "2026-07-10T10:00:00.000Z"
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/MerchantConnectionResponse"
+                  "$ref": "#/components/schemas/MerchantConnection"
                 }
               }
             },
@@ -29591,26 +29761,25 @@
             "content": {
               "application/json": {
                 "example": {
-                  "connection": {
-                    "id": "mch_6Wd3Lp8RtY2kVn5Q",
-                    "provider": "polar",
-                    "environment": "sandbox",
-                    "merchantAccountId": "8f2c1d9e-4b7a-4f3e-9c21-5a6b7d8e9f01",
-                    "keyFragment": "x7Qa",
-                    "guard": {
-                      "enabled": true,
-                      "productIds": [
-                        "prod_4Tq8Wn2Lx6Rv"
-                      ],
-                      "meterId": null
-                    },
-                    "configVersion": 2,
-                    "createdAt": "2026-07-10T10:00:00.000Z",
-                    "updatedAt": "2026-07-10T10:20:00.000Z"
-                  }
+                  "id": "mch_6Wd3Lp8RtY2kVn5Q",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                  "provider": "polar",
+                  "environment": "sandbox",
+                  "merchantAccountId": "8f2c1d9e-4b7a-4f3e-9c21-5a6b7d8e9f01",
+                  "keyFragment": "x7Qa",
+                  "guard": {
+                    "enabled": true,
+                    "productIds": [
+                      "prod_4Tq8Wn2Lx6Rv"
+                    ],
+                    "meterId": null
+                  },
+                  "configVersion": 2,
+                  "createdAt": "2026-07-10T10:00:00.000Z",
+                  "updatedAt": "2026-07-10T10:20:00.000Z"
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/MerchantConnectionResponse"
+                  "$ref": "#/components/schemas/MerchantConnection"
                 }
               }
             },
@@ -29697,7 +29866,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "merchant_connection_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -29906,7 +30075,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "merchant_connection_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -30057,7 +30226,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "bindings": [
+                  "data": [
                     {
                       "userId": "app:user-42",
                       "customerId": "cus_9aB3dE5fG7hJ",
@@ -30155,7 +30324,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "merchant_connection_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -30273,15 +30442,13 @@
             "content": {
               "application/json": {
                 "example": {
-                  "binding": {
-                    "userId": "app:user-42",
-                    "customerId": "cus_9aB3dE5fG7hJ",
-                    "createdAt": "2026-07-10T10:05:00.000Z",
-                    "updatedAt": "2026-07-10T10:05:00.000Z"
-                  }
+                  "userId": "app:user-42",
+                  "customerId": "cus_9aB3dE5fG7hJ",
+                  "createdAt": "2026-07-10T10:05:00.000Z",
+                  "updatedAt": "2026-07-10T10:05:00.000Z"
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/MerchantBindingResponse"
+                  "$ref": "#/components/schemas/MerchantBinding"
                 }
               }
             },
@@ -30368,7 +30535,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "merchant_connection_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -30571,8 +30738,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "merchant_connection_not_found",
-              "merchant_binding_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -30708,9 +30874,10 @@
             "content": {
               "application/json": {
                 "example": {
-                  "events": [
+                  "data": [
                     {
                       "id": "mev_2Hs8Kq4ZpX6cWm1T",
+                      "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                       "turnId": "turn_5Nf7Gb2VcL9xRk3P",
                       "connectionId": "mch_6Wd3Lp8RtY2kVn5Q",
                       "provider": "polar",
@@ -30758,6 +30925,7 @@
                     },
                     {
                       "id": "mev_2Hs8Kq4ZpX6cWm1T",
+                      "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                       "turnId": "turn_5Nf7Gb2VcL9xRk3P",
                       "connectionId": "mch_6Wd3Lp8RtY2kVn5Q",
                       "provider": "polar",
@@ -30962,32 +31130,30 @@
             "content": {
               "application/json": {
                 "example": {
-                  "summary": {
-                    "counts": {
-                      "pending": 2,
-                      "accepted": 318,
-                      "failed": 1,
-                      "incomplete": 0,
-                      "expired": 0,
-                      "discarded": 4
+                  "counts": {
+                    "pending": 2,
+                    "accepted": 318,
+                    "failed": 1,
+                    "incomplete": 0,
+                    "expired": 0,
+                    "discarded": 4
+                  },
+                  "lastAcceptedAt": "2026-07-10T10:12:10.000Z",
+                  "oldestPendingOccurredAt": "2026-07-10T10:14:02.000Z",
+                  "daily": [
+                    {
+                      "day": "2026-07-09",
+                      "acceptedEvents": 41,
+                      "acceptedTokens": 98430,
+                      "pendingEvents": 0
                     },
-                    "lastAcceptedAt": "2026-07-10T10:12:10.000Z",
-                    "oldestPendingOccurredAt": "2026-07-10T10:14:02.000Z",
-                    "daily": [
-                      {
-                        "day": "2026-07-09",
-                        "acceptedEvents": 41,
-                        "acceptedTokens": 98430,
-                        "pendingEvents": 0
-                      },
-                      {
-                        "day": "2026-07-10",
-                        "acceptedEvents": 27,
-                        "acceptedTokens": 61205,
-                        "pendingEvents": 2
-                      }
-                    ]
-                  }
+                    {
+                      "day": "2026-07-10",
+                      "acceptedEvents": 27,
+                      "acceptedTokens": 61205,
+                      "pendingEvents": 2
+                    }
+                  ]
                 },
                 "schema": {
                   "$ref": "#/components/schemas/MerchantUsageSummary"
@@ -31163,56 +31329,55 @@
             "content": {
               "application/json": {
                 "example": {
-                  "event": {
-                    "id": "mev_2Hs8Kq4ZpX6cWm1T",
-                    "turnId": "turn_5Nf7Gb2VcL9xRk3P",
-                    "connectionId": "mch_6Wd3Lp8RtY2kVn5Q",
-                    "provider": "polar",
-                    "userId": "app:user-42",
-                    "customerId": "cus_9aB3dE5fG7hJ",
-                    "agentId": "ag_4kP9sT2vXq7LmN3a",
-                    "sessionId": "ss_7Yt2Mv5QbN8dKs4W",
-                    "model": "openai/gpt-6-luna",
-                    "modelProvider": "openrouter",
-                    "inputTokens": 1840,
-                    "outputTokens": 612,
-                    "totalTokens": 2452,
-                    "turnStatus": "succeeded",
-                    "startedAt": "2026-07-10T10:12:00.000Z",
-                    "occurredAt": "2026-07-10T10:12:09.000Z",
-                    "status": "accepted",
-                    "payload": {
-                      "events": [
-                        {
-                          "customer_id": "cus_9aB3dE5fG7hJ",
-                          "external_id": "mev_2Hs8Kq4ZpX6cWm1T",
-                          "metadata": {
-                            "agent_id": "ag_4kP9sT2vXq7LmN3a",
-                            "ba_event_id": "mev_2Hs8Kq4ZpX6cWm1T",
-                            "input_tokens": 1840,
-                            "model": "openai/gpt-6-luna",
-                            "model_provider": "openrouter",
-                            "output_tokens": 612,
-                            "session_id": "ss_7Yt2Mv5QbN8dKs4W",
-                            "status": "succeeded",
-                            "total_tokens": 2452,
-                            "turn_id": "turn_5Nf7Gb2VcL9xRk3P"
-                          },
-                          "name": "ba.model_tokens.v1",
-                          "timestamp": "2026-07-10T10:12:09.000Z"
-                        }
-                      ]
-                    },
-                    "attemptCount": 1,
-                    "attemptGeneration": 0,
-                    "lastAttemptAt": "2026-07-10T10:12:10.000Z",
-                    "lastErrorCode": null,
-                    "acceptedAt": "2026-07-10T10:12:10.000Z",
-                    "nextAction": "none"
-                  }
+                  "id": "mev_2Hs8Kq4ZpX6cWm1T",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                  "turnId": "turn_5Nf7Gb2VcL9xRk3P",
+                  "connectionId": "mch_6Wd3Lp8RtY2kVn5Q",
+                  "provider": "polar",
+                  "userId": "app:user-42",
+                  "customerId": "cus_9aB3dE5fG7hJ",
+                  "agentId": "ag_4kP9sT2vXq7LmN3a",
+                  "sessionId": "ss_7Yt2Mv5QbN8dKs4W",
+                  "model": "openai/gpt-6-luna",
+                  "modelProvider": "openrouter",
+                  "inputTokens": 1840,
+                  "outputTokens": 612,
+                  "totalTokens": 2452,
+                  "turnStatus": "succeeded",
+                  "startedAt": "2026-07-10T10:12:00.000Z",
+                  "occurredAt": "2026-07-10T10:12:09.000Z",
+                  "status": "accepted",
+                  "payload": {
+                    "events": [
+                      {
+                        "customer_id": "cus_9aB3dE5fG7hJ",
+                        "external_id": "mev_2Hs8Kq4ZpX6cWm1T",
+                        "metadata": {
+                          "agent_id": "ag_4kP9sT2vXq7LmN3a",
+                          "ba_event_id": "mev_2Hs8Kq4ZpX6cWm1T",
+                          "input_tokens": 1840,
+                          "model": "openai/gpt-6-luna",
+                          "model_provider": "openrouter",
+                          "output_tokens": 612,
+                          "session_id": "ss_7Yt2Mv5QbN8dKs4W",
+                          "status": "succeeded",
+                          "total_tokens": 2452,
+                          "turn_id": "turn_5Nf7Gb2VcL9xRk3P"
+                        },
+                        "name": "ba.model_tokens.v1",
+                        "timestamp": "2026-07-10T10:12:09.000Z"
+                      }
+                    ]
+                  },
+                  "attemptCount": 1,
+                  "attemptGeneration": 0,
+                  "lastAttemptAt": "2026-07-10T10:12:10.000Z",
+                  "lastErrorCode": null,
+                  "acceptedAt": "2026-07-10T10:12:10.000Z",
+                  "nextAction": "none"
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/MerchantUsageEventResponse"
+                  "$ref": "#/components/schemas/MerchantUsageEvent"
                 }
               }
             },
@@ -31298,7 +31463,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "merchant_event_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -31403,56 +31568,55 @@
             "content": {
               "application/json": {
                 "example": {
-                  "event": {
-                    "id": "mev_2Hs8Kq4ZpX6cWm1T",
-                    "turnId": "turn_5Nf7Gb2VcL9xRk3P",
-                    "connectionId": "mch_6Wd3Lp8RtY2kVn5Q",
-                    "provider": "polar",
-                    "userId": "app:user-42",
-                    "customerId": "cus_9aB3dE5fG7hJ",
-                    "agentId": "ag_4kP9sT2vXq7LmN3a",
-                    "sessionId": "ss_7Yt2Mv5QbN8dKs4W",
-                    "model": "openai/gpt-6-luna",
-                    "modelProvider": "openrouter",
-                    "inputTokens": 1840,
-                    "outputTokens": 612,
-                    "totalTokens": 2452,
-                    "turnStatus": "succeeded",
-                    "startedAt": "2026-07-10T10:12:00.000Z",
-                    "occurredAt": "2026-07-10T10:12:09.000Z",
-                    "status": "pending",
-                    "payload": {
-                      "events": [
-                        {
-                          "customer_id": "cus_9aB3dE5fG7hJ",
-                          "external_id": "mev_2Hs8Kq4ZpX6cWm1T",
-                          "metadata": {
-                            "agent_id": "ag_4kP9sT2vXq7LmN3a",
-                            "ba_event_id": "mev_2Hs8Kq4ZpX6cWm1T",
-                            "input_tokens": 1840,
-                            "model": "openai/gpt-6-luna",
-                            "model_provider": "openrouter",
-                            "output_tokens": 612,
-                            "session_id": "ss_7Yt2Mv5QbN8dKs4W",
-                            "status": "succeeded",
-                            "total_tokens": 2452,
-                            "turn_id": "turn_5Nf7Gb2VcL9xRk3P"
-                          },
-                          "name": "ba.model_tokens.v1",
-                          "timestamp": "2026-07-10T10:12:09.000Z"
-                        }
-                      ]
-                    },
-                    "attemptCount": 1,
-                    "attemptGeneration": 1,
-                    "lastAttemptAt": "2026-07-10T10:12:10.000Z",
-                    "lastErrorCode": null,
-                    "acceptedAt": null,
-                    "nextAction": "wait"
-                  }
+                  "id": "mev_2Hs8Kq4ZpX6cWm1T",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                  "turnId": "turn_5Nf7Gb2VcL9xRk3P",
+                  "connectionId": "mch_6Wd3Lp8RtY2kVn5Q",
+                  "provider": "polar",
+                  "userId": "app:user-42",
+                  "customerId": "cus_9aB3dE5fG7hJ",
+                  "agentId": "ag_4kP9sT2vXq7LmN3a",
+                  "sessionId": "ss_7Yt2Mv5QbN8dKs4W",
+                  "model": "openai/gpt-6-luna",
+                  "modelProvider": "openrouter",
+                  "inputTokens": 1840,
+                  "outputTokens": 612,
+                  "totalTokens": 2452,
+                  "turnStatus": "succeeded",
+                  "startedAt": "2026-07-10T10:12:00.000Z",
+                  "occurredAt": "2026-07-10T10:12:09.000Z",
+                  "status": "pending",
+                  "payload": {
+                    "events": [
+                      {
+                        "customer_id": "cus_9aB3dE5fG7hJ",
+                        "external_id": "mev_2Hs8Kq4ZpX6cWm1T",
+                        "metadata": {
+                          "agent_id": "ag_4kP9sT2vXq7LmN3a",
+                          "ba_event_id": "mev_2Hs8Kq4ZpX6cWm1T",
+                          "input_tokens": 1840,
+                          "model": "openai/gpt-6-luna",
+                          "model_provider": "openrouter",
+                          "output_tokens": 612,
+                          "session_id": "ss_7Yt2Mv5QbN8dKs4W",
+                          "status": "succeeded",
+                          "total_tokens": 2452,
+                          "turn_id": "turn_5Nf7Gb2VcL9xRk3P"
+                        },
+                        "name": "ba.model_tokens.v1",
+                        "timestamp": "2026-07-10T10:12:09.000Z"
+                      }
+                    ]
+                  },
+                  "attemptCount": 1,
+                  "attemptGeneration": 1,
+                  "lastAttemptAt": "2026-07-10T10:12:10.000Z",
+                  "lastErrorCode": null,
+                  "acceptedAt": null,
+                  "nextAction": "wait"
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/MerchantUsageEventResponse"
+                  "$ref": "#/components/schemas/MerchantUsageEvent"
                 }
               }
             },
@@ -31539,7 +31703,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "merchant_event_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -31662,56 +31826,55 @@
             "content": {
               "application/json": {
                 "example": {
-                  "event": {
-                    "id": "mev_2Hs8Kq4ZpX6cWm1T",
-                    "turnId": "turn_5Nf7Gb2VcL9xRk3P",
-                    "connectionId": "mch_6Wd3Lp8RtY2kVn5Q",
-                    "provider": "polar",
-                    "userId": "app:user-42",
-                    "customerId": "cus_9aB3dE5fG7hJ",
-                    "agentId": "ag_4kP9sT2vXq7LmN3a",
-                    "sessionId": "ss_7Yt2Mv5QbN8dKs4W",
-                    "model": "openai/gpt-6-luna",
-                    "modelProvider": "openrouter",
-                    "inputTokens": 1840,
-                    "outputTokens": 612,
-                    "totalTokens": 2452,
-                    "turnStatus": "succeeded",
-                    "startedAt": "2026-07-10T10:12:00.000Z",
-                    "occurredAt": "2026-07-10T10:12:09.000Z",
-                    "status": "discarded",
-                    "payload": {
-                      "events": [
-                        {
-                          "customer_id": "cus_9aB3dE5fG7hJ",
-                          "external_id": "mev_2Hs8Kq4ZpX6cWm1T",
-                          "metadata": {
-                            "agent_id": "ag_4kP9sT2vXq7LmN3a",
-                            "ba_event_id": "mev_2Hs8Kq4ZpX6cWm1T",
-                            "input_tokens": 1840,
-                            "model": "openai/gpt-6-luna",
-                            "model_provider": "openrouter",
-                            "output_tokens": 612,
-                            "session_id": "ss_7Yt2Mv5QbN8dKs4W",
-                            "status": "succeeded",
-                            "total_tokens": 2452,
-                            "turn_id": "turn_5Nf7Gb2VcL9xRk3P"
-                          },
-                          "name": "ba.model_tokens.v1",
-                          "timestamp": "2026-07-10T10:12:09.000Z"
-                        }
-                      ]
-                    },
-                    "attemptCount": 1,
-                    "attemptGeneration": 0,
-                    "lastAttemptAt": "2026-07-10T10:12:10.000Z",
-                    "lastErrorCode": "MERCHANT_CREDENTIAL_REJECTED",
-                    "acceptedAt": null,
-                    "nextAction": "none"
-                  }
+                  "id": "mev_2Hs8Kq4ZpX6cWm1T",
+                  "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
+                  "turnId": "turn_5Nf7Gb2VcL9xRk3P",
+                  "connectionId": "mch_6Wd3Lp8RtY2kVn5Q",
+                  "provider": "polar",
+                  "userId": "app:user-42",
+                  "customerId": "cus_9aB3dE5fG7hJ",
+                  "agentId": "ag_4kP9sT2vXq7LmN3a",
+                  "sessionId": "ss_7Yt2Mv5QbN8dKs4W",
+                  "model": "openai/gpt-6-luna",
+                  "modelProvider": "openrouter",
+                  "inputTokens": 1840,
+                  "outputTokens": 612,
+                  "totalTokens": 2452,
+                  "turnStatus": "succeeded",
+                  "startedAt": "2026-07-10T10:12:00.000Z",
+                  "occurredAt": "2026-07-10T10:12:09.000Z",
+                  "status": "discarded",
+                  "payload": {
+                    "events": [
+                      {
+                        "customer_id": "cus_9aB3dE5fG7hJ",
+                        "external_id": "mev_2Hs8Kq4ZpX6cWm1T",
+                        "metadata": {
+                          "agent_id": "ag_4kP9sT2vXq7LmN3a",
+                          "ba_event_id": "mev_2Hs8Kq4ZpX6cWm1T",
+                          "input_tokens": 1840,
+                          "model": "openai/gpt-6-luna",
+                          "model_provider": "openrouter",
+                          "output_tokens": 612,
+                          "session_id": "ss_7Yt2Mv5QbN8dKs4W",
+                          "status": "succeeded",
+                          "total_tokens": 2452,
+                          "turn_id": "turn_5Nf7Gb2VcL9xRk3P"
+                        },
+                        "name": "ba.model_tokens.v1",
+                        "timestamp": "2026-07-10T10:12:09.000Z"
+                      }
+                    ]
+                  },
+                  "attemptCount": 1,
+                  "attemptGeneration": 0,
+                  "lastAttemptAt": "2026-07-10T10:12:10.000Z",
+                  "lastErrorCode": "MERCHANT_CREDENTIAL_REJECTED",
+                  "acceptedAt": null,
+                  "nextAction": "none"
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/MerchantUsageEventResponse"
+                  "$ref": "#/components/schemas/MerchantUsageEvent"
                 }
               }
             },
@@ -31798,7 +31961,7 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "merchant_event_not_found"
+              "not_found"
             ],
             "content": {
               "application/json": {
@@ -33231,7 +33394,24 @@
           "tasks"
         ],
         "summary": "Create a task",
-        "description": "Creates a task: a saved prompt your agent runs in the background. With a `schedule`, the task runs by itself; without one, it runs only when you start it. Send `submit: true` to start a run right away, which returns `202 Accepted` with the run's ID in `runId`; otherwise you get `201 Created` and `runId` is `null`. Send an `idempotencyKey` to retry safely. Matching retries return the current task definition and the original initial run ID. Changed requests or a deleted task return 409. Keys are separate for tenant-wide access and each scoped user. Without a key, each request creates another task. The platform-managed agent cannot run tasks.",
+        "description": "Creates a task: a saved prompt your agent runs in the background. With a `schedule`, the task runs by itself; without one, it runs only when you start it. Send `submit: true` to start a run right away, which returns `202 Accepted` with the run's ID in `runId`; otherwise you get `201 Created` and `runId` is `null`. Send an `Idempotency-Key` header to retry safely. Matching retries return the current task definition and the original initial run ID. Changed requests or a deleted task return 409. Keys are separate for tenant-wide access and each scoped user, and are remembered for as long as the task exists. Without a key, each request creates another task. The platform-managed agent cannot run tasks.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Unique key for this creation. Retry with the same key to get the current task and its original initial run back."
+            },
+            "required": false,
+            "description": "Unique key for this creation. Retry with the same key to get the current task and its original initial run back.",
+            "name": "idempotency-key",
+            "in": "header"
+          },
+          {
+            "$ref": "#/components/parameters/X-Client-Request-Id"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -33254,11 +33434,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "idempotencyKey": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Retry the same creation with this key to return the current task and its original initial run. Changed requests or deleted tasks return a conflict."
-                  },
                   "agentId": {
                     "type": "string",
                     "pattern": "^ag_[0-9A-Za-z]{16}$",
@@ -33574,7 +33749,8 @@
           "404": {
             "description": "The resource was not found",
             "x-error-codes": [
-              "not_found"
+              "not_found",
+              "workspace_not_found"
             ],
             "content": {
               "application/json": {
@@ -33703,11 +33879,6 @@
           },
           {
             "DashboardJwt": []
-          }
-        ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/X-Client-Request-Id"
           }
         ]
       }
@@ -34816,7 +34987,7 @@
           "task-runs"
         ],
         "summary": "Start a task run",
-        "description": "Queues a run of the task now, whether or not it has a schedule. The run starts as `queued`; poll it to follow its progress. A task runs one run at a time, so this returns `409` while another run is queued or running. Send an `idempotencyKey` to make retries safe: repeating the request with the same key returns the same run. Send `{}` when you do not need a key.",
+        "description": "Queues a run of the task now, whether or not it has a schedule. The run starts as `queued`; poll it to follow its progress. A task runs one run at a time, so this returns `409` while another run is queued or running. Send an `Idempotency-Key` header to make retries safe: repeating the request with the same key returns the same run. The key is remembered for as long as the task exists.",
         "parameters": [
           {
             "schema": {
@@ -34830,30 +35001,21 @@
             "in": "path"
           },
           {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Unique key for this run. Retry with the same key to get the same run back instead of starting another."
+            },
+            "required": false,
+            "description": "Unique key for this run. Retry with the same key to get the same run back instead of starting another.",
+            "name": "idempotency-key",
+            "in": "header"
+          },
+          {
             "$ref": "#/components/parameters/X-Client-Request-Id"
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "example": {
-                "idempotencyKey": "daily-support-summary-2026-07-10"
-              },
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "idempotencyKey": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Your own key for this run. Retrying with the same key returns the same run instead of starting another."
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
-          }
-        },
         "responses": {
           "202": {
             "description": "The ID of the queued run",

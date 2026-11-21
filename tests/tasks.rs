@@ -10,6 +10,13 @@ use support::{json, json_body, mock, requests};
 use wiremock::matchers::{method, path, query_param, query_param_is_missing};
 use wiremock::{Mock, ResponseTemplate};
 
+fn idempotency_key(request: &wiremock::Request) -> Option<&str> {
+    request
+        .headers
+        .get("idempotency-key")
+        .map(|value| value.to_str().unwrap())
+}
+
 fn task(id: &str) -> serde_json::Value {
     json!({
         "id": id,
@@ -129,7 +136,6 @@ async fn create_sends_the_body_and_decodes_the_task() {
             "agentId": "ag_4kP9sT2vXq7LmN3a",
             "name": "Daily support summary",
             "prompt": "Summarize yesterday's open support cases and flag any that are overdue.",
-            "idempotencyKey": "daily-summary:2026-10-01",
             "schedule": {
                 "kind": "cron",
                 "config": {
@@ -143,6 +149,7 @@ async fn create_sends_the_body_and_decodes_the_task() {
             "metadata": { "team": "support" }
         })
     );
+    assert_eq!(idempotency_key(&sent[0]), Some("daily-summary:2026-10-01"));
     let created_task = created.task;
     assert_eq!(created_task.id, TaskId::from("tk_6Wq3Hn8ZpL2vRt5C"));
     assert_eq!(
@@ -208,6 +215,7 @@ async fn create_with_submit_decodes_the_accepted_response() {
             "submit": true
         })
     );
+    assert_eq!(idempotency_key(&sent[0]), None);
     assert_eq!(created.run_id, Some(TaskRunId::from("tr_9Jd4Ks7NbV2xQm6P")));
     assert_eq!(
         created.task.active_run_id,
@@ -432,7 +440,7 @@ async fn delete_sends_delete_and_returns_unit() {
 }
 
 #[tokio::test]
-async fn submit_sends_an_empty_body_or_the_key() {
+async fn submit_sends_no_body_and_the_key_as_a_header() {
     let (server, client) = mock().await;
     Mock::given(method("POST"))
         .and(path("/v1/tasks/tk_6Wq3Hn8ZpL2vRt5C/runs"))
@@ -450,11 +458,10 @@ async fn submit_sends_an_empty_body_or_the_key() {
 
     assert_eq!(created.run_id, TaskRunId::from("tr_9Jd4Ks7NbV2xQm6P"));
     let sent = requests(&server).await;
-    assert_eq!(json_body(&sent[0]), json!({}));
-    assert_eq!(
-        json_body(&sent[1]),
-        json!({ "idempotencyKey": "daily-summary:2026-10-01" })
-    );
+    assert!(sent[0].body.is_empty());
+    assert_eq!(idempotency_key(&sent[0]), None);
+    assert!(sent[1].body.is_empty());
+    assert_eq!(idempotency_key(&sent[1]), Some("daily-summary:2026-10-01"));
 }
 
 #[tokio::test]

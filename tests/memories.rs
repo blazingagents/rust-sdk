@@ -25,11 +25,11 @@ fn memory(id: &str) -> serde_json::Value {
 }
 
 #[tokio::test]
-async fn create_sends_the_body_and_unwraps_the_envelope() {
+async fn create_sends_the_body_and_returns_the_bare_memory() {
     let (server, client) = mock().await;
     Mock::given(method("POST"))
         .and(path(format!("/v1/agents/{AGENT}/memories")))
-        .respond_with(json(201, json!({ "memory": memory(MEMORY) })))
+        .respond_with(json(201, memory(MEMORY)))
         .mount(&server)
         .await;
 
@@ -130,13 +130,13 @@ async fn list_skips_an_empty_search() {
 }
 
 #[tokio::test]
-async fn get_unwraps_the_envelope_and_ignores_unknown_fields() {
+async fn get_returns_the_bare_memory_and_ignores_unknown_fields() {
     let (server, client) = mock().await;
     let mut body = memory(MEMORY);
     body["addedNextYear"] = json!({ "nested": true });
     Mock::given(method("GET"))
         .and(path(format!("/v1/agents/{AGENT}/memories/{MEMORY}")))
-        .respond_with(json(200, json!({ "memory": body })))
+        .respond_with(json(200, body))
         .mount(&server)
         .await;
 
@@ -151,7 +151,7 @@ async fn update_patches_the_text() {
     let (server, client) = mock().await;
     Mock::given(method("PATCH"))
         .and(path(format!("/v1/agents/{AGENT}/memories/{MEMORY}")))
-        .respond_with(json(200, json!({ "memory": memory(MEMORY) })))
+        .respond_with(json(200, memory(MEMORY)))
         .mount(&server)
         .await;
 

@@ -290,7 +290,7 @@ async fn get_decodes_unknown_values_and_defaults_missing_policies() {
 #[tokio::test]
 async fn update_omits_unset_fields_and_sends_null_to_clear() {
     let (server, client) = mock().await;
-    Mock::given(method("PUT"))
+    Mock::given(method("PATCH"))
         .and(path("/v1/agents/ag_1"))
         .respond_with(json(200, agent("ag_1")))
         .mount(&server)
@@ -358,7 +358,7 @@ async fn update_resends_an_unrecognized_tool_reference_unchanged() {
         .respond_with(json(200, fetched))
         .mount(&server)
         .await;
-    Mock::given(method("PUT"))
+    Mock::given(method("PATCH"))
         .and(path("/v1/agents/ag_1"))
         .respond_with(json(200, agent("ag_1")))
         .mount(&server)
@@ -389,7 +389,7 @@ async fn update_resends_an_unrecognized_tool_reference_unchanged() {
 #[tokio::test]
 async fn update_sends_every_field() {
     let (server, client) = mock().await;
-    Mock::given(method("PUT"))
+    Mock::given(method("PATCH"))
         .and(path("/v1/agents/ag_1"))
         .respond_with(json(200, agent("ag_1")))
         .mount(&server)
@@ -454,17 +454,17 @@ async fn update_sends_every_field() {
 }
 
 #[tokio::test]
-async fn delete_sends_include_artifacts_and_returns_unit() {
+async fn delete_sends_delete_artifacts_and_returns_unit() {
     let (server, client) = mock().await;
     Mock::given(method("DELETE"))
         .and(path("/v1/agents/ag_1"))
-        .and(query_param("includeArtifacts", "true"))
+        .and(query_param("deleteArtifacts", "true"))
         .respond_with(ResponseTemplate::new(204))
         .mount(&server)
         .await;
     Mock::given(method("DELETE"))
         .and(path("/v1/agents/ag_1"))
-        .and(query_param("includeArtifacts", "false"))
+        .and(query_param("deleteArtifacts", "false"))
         .respond_with(ResponseTemplate::new(204))
         .mount(&server)
         .await;
@@ -614,7 +614,7 @@ async fn list_and_update_mcp_attachments() {
     });
     Mock::given(method("GET"))
         .and(path("/v1/agents/ag_1/mcp-attachments"))
-        .respond_with(json(200, json!({ "mcpAttachments": [attachment.clone()] })))
+        .respond_with(json(200, json!({ "data": [attachment.clone()] })))
         .mount(&server)
         .await;
     Mock::given(method("PATCH"))
@@ -637,8 +637,8 @@ async fn list_and_update_mcp_attachments() {
         .await
         .unwrap();
 
-    assert_eq!(list.mcp_attachments.len(), 1);
-    let first = &list.mcp_attachments[0];
+    assert_eq!(list.data.len(), 1);
+    let first = &list.data[0];
     assert_eq!(
         first.mcp_connection_id,
         McpConnectionId::from("mcp_2Qw8Er5Ty9Ui3Ok6")
@@ -761,6 +761,46 @@ async fn agent_errors_carry_the_envelope() {
 
     assert_eq!(error.status(), Some(404));
     assert_eq!(error.code(), Some(&ErrorCode::NotFound));
+}
+
+#[tokio::test]
+async fn an_agent_mcp_connection_and_a_model_that_do_not_exist_have_their_own_codes() {
+    let (server, client) = mock().await;
+    Mock::given(method("PATCH"))
+        .and(path("/v1/agents/ag_1/mcp-attachments/mcp_missing"))
+        .respond_with(support::api_error(
+            404,
+            "mcp_connection_not_found",
+            "MCP connection not found.",
+        ))
+        .mount(&server)
+        .await;
+    Mock::given(method("PATCH"))
+        .and(path("/v1/agents/ag_1"))
+        .respond_with(support::api_error(
+            422,
+            "model_not_found",
+            "The provider does not offer this model.",
+        ))
+        .mount(&server)
+        .await;
+
+    let attachment = client
+        .agents()
+        .update_mcp_attachment("ag_1", "mcp_missing")
+        .await
+        .unwrap_err();
+    let model = client
+        .agents()
+        .update("ag_1")
+        .model_on_current_provider("openai/gpt-nonexistent")
+        .await
+        .unwrap_err();
+
+    assert_eq!(attachment.status(), Some(404));
+    assert_eq!(attachment.code(), Some(&ErrorCode::McpConnectionNotFound));
+    assert_eq!(model.status(), Some(422));
+    assert_eq!(model.code(), Some(&ErrorCode::ModelNotFound));
 }
 
 #[test]

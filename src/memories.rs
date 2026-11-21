@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::call::{Call, Raw, impl_request};
+use crate::call::{Call, impl_request};
 use crate::client::{Client, Scope};
 use crate::ids::{AgentId, MemoryId, TenantId};
 use crate::op::Op;
@@ -173,7 +173,7 @@ pub struct CreateMemory {
     #[serde(skip_serializing_if = "Option::is_none")]
     user_id: Option<String>,
 }
-impl_request!(CreateMemory => Memory; encode = json; decode = (unwrap_memory));
+impl_request!(CreateMemory => Memory; encode = json; decode = json);
 
 impl Call<CreateMemory> {
     /// The end user the memory belongs to. Fixed after creation; an empty or
@@ -187,7 +187,7 @@ impl Call<CreateMemory> {
 /// Request state of [`Memories::get`].
 #[derive(Clone, Debug)]
 pub struct GetMemory;
-impl_request!(GetMemory => Memory; encode = none; decode = (unwrap_memory));
+impl_request!(GetMemory => Memory; encode = none; decode = json);
 
 /// Request state of [`Memories::update`].
 #[derive(Clone, Debug, Serialize)]
@@ -195,7 +195,7 @@ impl_request!(GetMemory => Memory; encode = none; decode = (unwrap_memory));
 pub struct UpdateMemory {
     text: String,
 }
-impl_request!(UpdateMemory => Memory; encode = json; decode = (unwrap_memory));
+impl_request!(UpdateMemory => Memory; encode = json; decode = json);
 
 /// Request state of [`Memories::delete`].
 #[derive(Clone, Debug)]
@@ -225,16 +225,4 @@ pub struct Memory {
     /// When the memory was last used. Reading it with [`Memories::get`] or
     /// [`Memories::list`] does not count.
     pub last_accessed_at: Timestamp,
-}
-
-// Create, get and update wrap the memory in `{"memory": ...}`; list items do not.
-#[derive(Deserialize)]
-struct MemoryEnvelope {
-    memory: Memory,
-}
-
-async fn unwrap_memory(raw: Raw) -> crate::Result<Memory> {
-    raw.json::<MemoryEnvelope>()
-        .await
-        .map(|envelope| envelope.memory)
 }

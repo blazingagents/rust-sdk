@@ -181,8 +181,9 @@ impl<S: Scope> Skills<'_, S> {
 
     /// Copies the skill, with all its files, to each agent in `agent_ids`: 1
     /// to 30 IDs, each listed once. Each copy is a new skill with its own ID.
-    /// The results come back in request order; a failed destination yields a
-    /// [`SkillCopyResult::Failed`] result, not an error.
+    /// The results come back in request order in [`SkillCopyResultList::data`];
+    /// a failed destination yields a [`SkillCopyResult::Failed`] result, not an
+    /// error.
     pub fn copy(
         &self,
         skill_id: impl Into<SkillId>,
@@ -354,7 +355,7 @@ impl CopySkill {
             .json(&self)
     }
 }
-impl_request!(CopySkill => Vec<SkillCopyResult>; encode = (Self::into_payload); decode = json);
+impl_request!(CopySkill => SkillCopyResultList; encode = (Self::into_payload); decode = json);
 
 impl Call<CopySkill> {
     /// Makes retries safe: repeating the request with the same key, 1 to 200
@@ -427,6 +428,14 @@ pub struct SkillFile {
     pub path: String,
     /// The file's size in bytes.
     pub size_bytes: u64,
+}
+
+/// The results of [`Skills::copy`], one per destination agent.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct SkillCopyResultList {
+    /// The results, in request order.
+    pub data: Vec<SkillCopyResult>,
 }
 
 /// The outcome of copying a skill to one destination agent.

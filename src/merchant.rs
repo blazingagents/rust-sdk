@@ -15,9 +15,11 @@ use serde::{Deserialize, Serialize};
 use crate::call::{Call, Raw, impl_request};
 use crate::client::{Client, Tenant};
 use crate::error::Result;
-use crate::ids::{AgentId, MerchantConnectionId, MerchantUsageEventId, SessionId, TurnId};
+use crate::ids::{
+    AgentId, MerchantConnectionId, MerchantUsageEventId, SessionId, TenantId, TurnId,
+};
 use crate::op::TenantOp;
-use crate::pagination::{Cursor, Paginated};
+use crate::pagination::{Cursor, Page};
 use crate::providers::ProviderType;
 use crate::types::Timestamp;
 
@@ -291,8 +293,7 @@ pub struct CreateMerchantConnection {
     #[serde(skip_serializing_if = "Option::is_none")]
     guard: Option<MerchantGuard>,
 }
-impl_request!(CreateMerchantConnection => MerchantConnection; encode = json;
-    decode = (decode_connection);
+impl_request!(CreateMerchantConnection => MerchantConnection; encode = json; decode = json;
     sensitive = (|request: &Self| vec![request.credential.clone()]));
 
 impl Call<CreateMerchantConnection> {
@@ -311,8 +312,7 @@ pub struct UpdateMerchantConnection {
     #[serde(skip_serializing_if = "Option::is_none")]
     guard: Option<MerchantGuard>,
 }
-impl_request!(UpdateMerchantConnection => MerchantConnection; encode = json;
-    decode = (decode_connection);
+impl_request!(UpdateMerchantConnection => MerchantConnection; encode = json; decode = json;
     sensitive = (|request: &Self| request.credential.iter().cloned().collect()));
 
 impl Call<UpdateMerchantConnection> {
@@ -343,7 +343,7 @@ pub struct ListMerchantBindings {
     #[serde(skip_serializing_if = "Option::is_none")]
     limit: Option<u8>,
 }
-impl_request!(ListMerchantBindings => BindingsPage; encode = query; decode = json; paginate);
+impl_request!(ListMerchantBindings => Page<MerchantBinding>; encode = query; decode = json; paginate);
 
 impl Call<ListMerchantBindings> {
     /// Only the binding of this end user.
@@ -363,7 +363,7 @@ impl Call<ListMerchantBindings> {
 pub struct SetMerchantBinding {
     customer_id: String,
 }
-impl_request!(SetMerchantBinding => MerchantBinding; encode = json; decode = (decode_binding));
+impl_request!(SetMerchantBinding => MerchantBinding; encode = json; decode = json);
 
 /// Request state of [`MerchantBindings::delete`].
 #[derive(Clone, Debug)]
@@ -381,7 +381,7 @@ pub struct ListMerchantUsageEvents {
     #[serde(skip_serializing_if = "Option::is_none")]
     limit: Option<u8>,
 }
-impl_request!(ListMerchantUsageEvents => UsageEventsPage; encode = query; decode = json; paginate);
+impl_request!(ListMerchantUsageEvents => Page<MerchantUsageEvent>; encode = query; decode = json; paginate);
 
 impl Call<ListMerchantUsageEvents> {
     /// Only events with this delivery status.
@@ -398,17 +398,17 @@ impl Call<ListMerchantUsageEvents> {
 /// Request state of [`MerchantUsageEvents::get`].
 #[derive(Clone, Debug)]
 pub struct GetMerchantUsageEvent;
-impl_request!(GetMerchantUsageEvent => MerchantUsageEvent; encode = none; decode = (decode_event));
+impl_request!(GetMerchantUsageEvent => MerchantUsageEvent; encode = none; decode = json);
 
 /// Request state of [`MerchantUsageEvents::discard`].
 #[derive(Clone, Debug)]
 pub struct DiscardMerchantUsageEvent;
-impl_request!(DiscardMerchantUsageEvent => MerchantUsageEvent; encode = none; decode = (decode_event));
+impl_request!(DiscardMerchantUsageEvent => MerchantUsageEvent; encode = none; decode = json);
 
 /// Request state of [`MerchantUsageEvents::retry`].
 #[derive(Clone, Debug)]
 pub struct RetryMerchantUsageEvent;
-impl_request!(RetryMerchantUsageEvent => MerchantUsageEvent; encode = none; decode = (decode_event));
+impl_request!(RetryMerchantUsageEvent => MerchantUsageEvent; encode = none; decode = json);
 
 /// Request state of [`MerchantUsageEvents::summary`].
 #[derive(Clone, Debug, Default, Serialize)]
@@ -417,7 +417,7 @@ pub struct GetMerchantUsageSummary {
     #[serde(skip_serializing_if = "Option::is_none")]
     days: Option<u8>,
 }
-impl_request!(GetMerchantUsageSummary => MerchantUsageSummary; encode = query; decode = (decode_summary));
+impl_request!(GetMerchantUsageSummary => MerchantUsageSummary; encode = query; decode = json);
 
 impl Call<GetMerchantUsageSummary> {
     /// UTC days in the `daily` series, ending today, 1 to 90. Defaults to 14.
@@ -427,54 +427,12 @@ impl Call<GetMerchantUsageSummary> {
 }
 
 #[derive(Deserialize)]
-struct ConnectionEnvelope {
-    connection: MerchantConnection,
-}
-
-#[derive(Deserialize)]
 struct OptionalConnectionEnvelope {
     connection: Option<MerchantConnection>,
 }
 
-#[derive(Deserialize)]
-struct BindingEnvelope {
-    binding: MerchantBinding,
-}
-
-#[derive(Deserialize)]
-struct EventEnvelope {
-    event: MerchantUsageEvent,
-}
-
-#[derive(Deserialize)]
-struct SummaryEnvelope {
-    summary: MerchantUsageSummary,
-}
-
-async fn decode_connection(raw: Raw) -> Result<MerchantConnection> {
-    Ok(raw.json::<ConnectionEnvelope>().await?.connection)
-}
-
 async fn decode_optional_connection(raw: Raw) -> Result<Option<MerchantConnection>> {
     Ok(raw.json::<OptionalConnectionEnvelope>().await?.connection)
-}
-
-async fn decode_binding(raw: Raw) -> Result<MerchantBinding> {
-    raw.json::<BindingEnvelope>()
-        .await
-        .map(|envelope| envelope.binding)
-}
-
-async fn decode_event(raw: Raw) -> Result<MerchantUsageEvent> {
-    raw.json::<EventEnvelope>()
-        .await
-        .map(|envelope| envelope.event)
-}
-
-async fn decode_summary(raw: Raw) -> Result<MerchantUsageSummary> {
-    raw.json::<SummaryEnvelope>()
-        .await
-        .map(|envelope| envelope.summary)
 }
 
 /// The merchant connection. Its credential is never returned.
@@ -484,6 +442,8 @@ async fn decode_summary(raw: Raw) -> Result<MerchantUsageSummary> {
 pub struct MerchantConnection {
     /// The connection's ID (`mch_…`).
     pub id: MerchantConnectionId,
+    /// The tenant that owns the connection.
+    pub tenant_id: TenantId,
     /// The merchant of record platform.
     pub provider: MerchantProvider,
     /// The provider environment.
@@ -554,29 +514,6 @@ pub struct MerchantBinding {
     pub updated_at: Timestamp,
 }
 
-/// A page of merchant bindings.
-#[derive(Clone, Debug, Deserialize)]
-#[non_exhaustive]
-#[serde(rename_all = "camelCase")]
-pub struct BindingsPage {
-    /// The bindings on this page.
-    pub bindings: Vec<MerchantBinding>,
-    /// The cursor of the next page, or `None` on the last page.
-    pub next_cursor: Option<Cursor>,
-}
-
-impl Paginated for BindingsPage {
-    type Item = MerchantBinding;
-
-    fn next_cursor(&self) -> Option<&Cursor> {
-        self.next_cursor.as_ref()
-    }
-
-    fn into_items(self) -> Vec<MerchantBinding> {
-        self.bindings
-    }
-}
-
 /// A merchant usage event.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[non_exhaustive]
@@ -584,6 +521,8 @@ impl Paginated for BindingsPage {
 pub struct MerchantUsageEvent {
     /// The event's ID (`mev_…`).
     pub id: MerchantUsageEventId,
+    /// The tenant that owns the event.
+    pub tenant_id: TenantId,
     /// The turn the event bills.
     pub turn_id: TurnId,
     /// The merchant connection the event goes through (`mch_…`).
@@ -630,29 +569,6 @@ pub struct MerchantUsageEvent {
     pub accepted_at: Option<Timestamp>,
     /// What the tenant should do next about the event.
     pub next_action: MerchantNextAction,
-}
-
-/// A page of merchant usage events.
-#[derive(Clone, Debug, Deserialize)]
-#[non_exhaustive]
-#[serde(rename_all = "camelCase")]
-pub struct UsageEventsPage {
-    /// The events on this page.
-    pub events: Vec<MerchantUsageEvent>,
-    /// The cursor of the next page, or `None` on the last page.
-    pub next_cursor: Option<Cursor>,
-}
-
-impl Paginated for UsageEventsPage {
-    type Item = MerchantUsageEvent;
-
-    fn next_cursor(&self) -> Option<&Cursor> {
-        self.next_cursor.as_ref()
-    }
-
-    fn into_items(self) -> Vec<MerchantUsageEvent> {
-        self.events
-    }
 }
 
 /// A summary of merchant usage events.
