@@ -15,7 +15,7 @@
   "tags": [
     {
       "name": "agents",
-      "description": "Create and configure agents, read their versions, manage avatars and MCP attachments, and run stateless generation."
+      "description": "Create, configure, enable, disable and delete agents, set their model spending limit, manage avatars and MCP attachments, and run stateless generation."
     },
     {
       "name": "apikeys",
