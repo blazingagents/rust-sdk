@@ -22170,7 +22170,7 @@
           "sessions"
         ],
         "summary": "Claim a function call",
-        "description": "Claims one caller-local function call announced by a `data-ba-function-call` event, before running its handler. Retrying with the same `claimRequestId` returns the same grant; a different `claimRequestId` never takes the call over. Returns `409 function_call_conflict` when another claimant holds the call, its Turn or continuation is no longer active, or its deadline has passed.",
+        "description": "Claims one caller-local function call announced by a `data-ba-function-call` event, before running its handler. Retrying with the same `claimRequestId` returns the same grant; a different `claimRequestId` never takes the call over. Returns `409 function_call_conflict` when another claimant holds the call, its Turn is no longer active, or its deadline has passed.",
         "parameters": [
           {
             "schema": {
@@ -22399,7 +22399,7 @@
           "sessions"
         ],
         "summary": "Submit a function call result",
-        "description": "Submits the outcome of a claimed function call: its JSON output or a sanitized error. Use the `claimRequestId` that won the claim. Retrying an accepted outcome unchanged succeeds even after the Turn ends; a different outcome does not. Returns `409 function_call_conflict` when another claimant holds the call, its Turn or continuation is no longer active, or its deadline has passed.",
+        "description": "Submits the outcome of a claimed function call: its JSON output or a sanitized error. Use the `claimRequestId` that won the claim. Retrying an accepted outcome unchanged succeeds even after the Turn ends; a different outcome does not. Returns `409 function_call_conflict` when another claimant holds the call, its Turn is no longer active, or its deadline has passed.",
         "parameters": [
           {
             "schema": {
