@@ -59,7 +59,6 @@ fn task_run(id: &str) -> serde_json::Value {
             "memoryInjectionEnabled": false,
             "tools": ["read", "grep", "glob", "write_todos"],
             "instructions": "Answer billing questions clearly and briefly.",
-            "metadata": { "team": "support" },
             "mcpConnectionIds": []
         },
         "sessionId": "ss_5Ty8Lr2GhW4nZc7F",
