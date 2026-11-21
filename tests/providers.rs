@@ -1,7 +1,7 @@
 mod support;
 
 use blazing_agents::Error;
-use blazing_agents::ids::ProviderId;
+use blazing_agents::ids::{ProviderId, TenantId};
 use blazing_agents::providers::ProviderType;
 use serde_json::json;
 use support::{api_error, json, json_body, mock, requests};
@@ -11,6 +11,7 @@ use wiremock::{Mock, ResponseTemplate};
 fn provider(id: &str) -> serde_json::Value {
     json!({
         "id": id,
+        "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
         "name": "Production OpenRouter",
         "providerType": "openrouter",
         "baseUrl": null,
@@ -64,6 +65,7 @@ async fn create_sends_the_body_and_decodes_the_provider() {
         })
     );
     assert_eq!(created.id, ProviderId::from("prv_7Tn4Kd9QwE2sLx5R"));
+    assert_eq!(created.tenant_id, TenantId::from("ten_8Hq2Zr5WcY1bJt6D"));
     assert_eq!(created.provider_type, ProviderType::OpenRouter);
     assert_eq!(created.base_url, None);
     assert_eq!(created.key_fragment, "9f2c");
@@ -78,9 +80,10 @@ async fn list_decodes_summaries_and_ignores_unknown_fields() {
         .respond_with(json(
             200,
             json!({
-                "providers": [
+                "data": [
                     {
                         "id": "prv_7Tn4Kd9QwE2sLx5R",
+                        "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
                         "name": "Production OpenRouter",
                         "providerType": "openrouter",
                         "createdAt": "2026-07-10T10:00:00.000Z",
@@ -96,12 +99,13 @@ async fn list_decodes_summaries_and_ignores_unknown_fields() {
 
     let list = client.providers().list().await.unwrap();
 
-    assert_eq!(list.providers.len(), 1);
+    assert_eq!(list.data.len(), 1);
+    assert_eq!(list.data[0].id, ProviderId::from("prv_7Tn4Kd9QwE2sLx5R"));
     assert_eq!(
-        list.providers[0].id,
-        ProviderId::from("prv_7Tn4Kd9QwE2sLx5R")
+        list.data[0].tenant_id,
+        TenantId::from("ten_8Hq2Zr5WcY1bJt6D")
     );
-    assert_eq!(list.providers[0].provider_type, ProviderType::OpenRouter);
+    assert_eq!(list.data[0].provider_type, ProviderType::OpenRouter);
 }
 
 #[tokio::test]
@@ -195,7 +199,7 @@ async fn list_models_decodes_the_model_ids() {
         .and(path("/v1/providers/prv_7Tn4Kd9QwE2sLx5R/models"))
         .respond_with(json(
             200,
-            json!({ "models": [{ "id": "openai/gpt-6-luna" }, { "id": "openai/gpt-6-nova" }] }),
+            json!({ "data": [{ "id": "openai/gpt-6-luna" }, { "id": "openai/gpt-6-nova" }] }),
         ))
         .mount(&server)
         .await;
@@ -208,7 +212,7 @@ async fn list_models_decodes_the_model_ids() {
 
     assert_eq!(
         models
-            .models
+            .data
             .iter()
             .map(|model| model.id.as_str())
             .collect::<Vec<_>>(),

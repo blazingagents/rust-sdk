@@ -48,17 +48,14 @@ async fn list_returns_the_connections() {
     let (server, client) = mock().await;
     Mock::given(method("GET"))
         .and(path("/v1/chat-connections"))
-        .respond_with(json(
-            200,
-            json!({ "chatConnections": [chat_connection("cc_1")] }),
-        ))
+        .respond_with(json(200, json!({ "data": [chat_connection("cc_1")] })))
         .mount(&server)
         .await;
 
     let list = client.chat_connections().list().await.unwrap();
 
-    assert_eq!(list.chat_connections.len(), 1);
-    let connection = &list.chat_connections[0];
+    assert_eq!(list.data.len(), 1);
+    let connection = &list.data[0];
     assert_eq!(connection.id, ChatConnectionId::from("cc_1"));
     assert_eq!(connection.platform, ChatPlatform::Slack);
     assert_eq!(connection.credential_fragment, "yzab");

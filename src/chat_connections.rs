@@ -59,7 +59,7 @@ impl ChatConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::GetChatConnection {
-                id: chat_connection_id.as_str(),
+                chat_connection_id: chat_connection_id.as_str(),
             },
             GetChatConnection,
         )
@@ -75,7 +75,7 @@ impl ChatConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::RenameChatConnection {
-                id: chat_connection_id.as_str(),
+                chat_connection_id: chat_connection_id.as_str(),
             },
             RenameChatConnection::default(),
         )
@@ -90,7 +90,7 @@ impl ChatConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::DeleteChatConnection {
-                id: chat_connection_id.as_str(),
+                chat_connection_id: chat_connection_id.as_str(),
             },
             DeleteChatConnection,
         )
@@ -106,7 +106,7 @@ impl ChatConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::EnableChatConnection {
-                id: chat_connection_id.as_str(),
+                chat_connection_id: chat_connection_id.as_str(),
             },
             EnableChatConnection,
         )
@@ -122,7 +122,7 @@ impl ChatConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::DisableChatConnection {
-                id: chat_connection_id.as_str(),
+                chat_connection_id: chat_connection_id.as_str(),
             },
             DisableChatConnection,
         )
@@ -137,7 +137,7 @@ impl ChatConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::CheckChatHealth {
-                id: chat_connection_id.as_str(),
+                chat_connection_id: chat_connection_id.as_str(),
             },
             CheckChatHealth,
         )
@@ -153,7 +153,7 @@ impl ChatConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::RotateChatCredentials {
-                id: chat_connection_id.as_str(),
+                chat_connection_id: chat_connection_id.as_str(),
             },
             RotateChatCredentials { credentials },
         )
@@ -704,5 +704,5 @@ pub struct ChatHealthCheck {
 #[serde(rename_all = "camelCase")]
 pub struct ChatConnectionList {
     /// The connections.
-    pub chat_connections: Vec<ChatConnection>,
+    pub data: Vec<ChatConnection>,
 }

@@ -56,6 +56,7 @@ fn prompt(id: &str) -> serde_json::Value {
 fn provider(id: &str) -> serde_json::Value {
     json!({
         "id": id,
+        "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
         "name": "Production OpenRouter",
         "providerType": "openrouter",
         "baseUrl": null,

@@ -292,10 +292,10 @@ struct Instance {
 /// show whether a field reads them; the test checks this list instead.
 const FREE_FORM: &[&str] = &[
     "SessionMessageList.data[].metadata",
-    "SkillCopyResultList[].error.details",
+    "SkillCopyResultList.data[].error.details",
     "TaskRunMessageList.data[].metadata",
     "listSessionInputs:response.data[].message.metadata",
-    "submitSessionInput:response.data.message.metadata",
+    "submitSessionInput:response.input.message.metadata",
 ];
 
 struct Spec<'a> {

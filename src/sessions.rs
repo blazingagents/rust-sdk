@@ -9,7 +9,7 @@ use crate::agents::{AgentStatus, ToolReference};
 use crate::call::{Call, Paginate, Payload, impl_request};
 use crate::client::{Client, Scope};
 use crate::error::Result;
-use crate::ids::{AgentId, ApprovalId, SessionId, TurnId};
+use crate::ids::{AgentId, ApprovalId, SessionId, TenantId, TurnId};
 use crate::messages::UserMessage;
 use crate::op::Op;
 use crate::pagination::{Cursor, Page, Paginated};
@@ -31,7 +31,7 @@ impl<S: Scope> Client<S> {
 
 impl<S: Scope> Sessions<'_, S> {
     /// Lists an agent's sessions, most recently updated first. An unknown
-    /// agent returns an empty page.
+    /// agent fails with `404 not_found`.
     pub fn list(&self, agent_id: impl Into<AgentId>) -> Call<ListSessions> {
         let agent_id = agent_id.into();
         Call::new(
@@ -478,6 +478,8 @@ impl_request!(StopSessionTurn => StoppedTurn; encode = json; decode = json);
 pub struct Session {
     /// The session's ID.
     pub id: SessionId,
+    /// The tenant that owns the session.
+    pub tenant_id: TenantId,
     /// The number of stored messages.
     pub message_count: u64,
     /// A short preview of the last message, or `None` when there is none.
@@ -500,6 +502,8 @@ pub struct Session {
 pub struct SessionDetail {
     /// The session's ID.
     pub id: SessionId,
+    /// The tenant that owns the session.
+    pub tenant_id: TenantId,
     /// The number of stored messages.
     pub message_count: u64,
     /// A short preview of the last message, or `None` when there is none.
@@ -538,6 +542,8 @@ pub struct ForkedFrom {
 pub struct LatestSession {
     /// The session's ID.
     pub id: SessionId,
+    /// The tenant that owns the session.
+    pub tenant_id: TenantId,
     /// The number of stored messages.
     pub message_count: u64,
     /// A short preview of the last message, or `None` when there is none.
@@ -751,7 +757,6 @@ crate::open_enum! {
 #[serde(rename_all = "camelCase")]
 pub struct SubmittedInput {
     /// The steer receipt.
-    #[serde(rename = "data")]
     pub input: SessionInput,
     /// The session's current activity.
     pub activity: SessionActivity,

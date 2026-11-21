@@ -28,7 +28,7 @@ impl<S: Scope> Client<S> {
 }
 
 impl<S: Scope> Artifacts<'_, S> {
-    /// Lists artifacts, newest first, 50 per page.
+    /// Lists artifacts, newest first, 50 per page unless you set a `limit`.
     pub fn list(&self) -> Call<ListArtifacts> {
         Call::new(self.client, Op::ListArtifacts, ListArtifacts::default())
     }
@@ -87,6 +87,8 @@ pub struct ListArtifacts {
     session_id: Option<SessionId>,
     #[serde(skip_serializing_if = "Option::is_none")]
     cursor: Option<Cursor>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<u8>,
 }
 impl_request!(ListArtifacts => Page<Artifact>; encode = query; decode = json; paginate);
 
@@ -99,6 +101,11 @@ impl Call<ListArtifacts> {
     /// Only artifacts published in this session.
     pub fn session_id(self, session_id: impl Into<SessionId>) -> Self {
         self.map(|request| request.session_id = Some(session_id.into()))
+    }
+
+    /// Artifacts per page, 1 to 100. Defaults to 50.
+    pub fn limit(self, limit: u8) -> Self {
+        self.map(|request| request.limit = Some(limit))
     }
 }
 
@@ -123,7 +130,7 @@ impl_request!(DeleteArtifact => (); encode = none; decode = none);
 #[serde(rename_all = "camelCase")]
 pub struct Artifact {
     /// The artifact's ID.
-    pub artifact_id: ArtifactId,
+    pub id: ArtifactId,
     /// The agent that published the artifact.
     pub agent_id: AgentId,
     /// The tenant that owns the artifact.

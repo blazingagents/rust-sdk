@@ -19,7 +19,7 @@ pub(crate) enum Op<'a> {
     DeleteAgent { agent_id: &'a str },
     /// `GET /v1/agents/{agentId}` (`getAgent`)
     GetAgent { agent_id: &'a str },
-    /// `PUT /v1/agents/{agentId}` (`updateAgent`)
+    /// `PATCH /v1/agents/{agentId}` (`updateAgent`)
     UpdateAgent { agent_id: &'a str },
     /// `DELETE /v1/agents/{agentId}/avatar` (`deleteAgentAvatar`)
     DeleteAgentAvatar { agent_id: &'a str },
@@ -213,7 +213,7 @@ pub(crate) enum Op<'a> {
     DeleteWorkspace { workspace_id: &'a str },
     /// `GET /v1/workspaces/{workspaceId}` (`getWorkspace`)
     GetWorkspace { workspace_id: &'a str },
-    /// `PUT /v1/workspaces/{workspaceId}` (`updateWorkspace`)
+    /// `PATCH /v1/workspaces/{workspaceId}` (`updateWorkspace`)
     UpdateWorkspace { workspace_id: &'a str },
 }
 
@@ -297,7 +297,7 @@ impl Operation for Op<'_> {
             Op::CreateAgent => "POST",
             Op::DeleteAgent { .. } => "DELETE",
             Op::GetAgent { .. } => "GET",
-            Op::UpdateAgent { .. } => "PUT",
+            Op::UpdateAgent { .. } => "PATCH",
             Op::DeleteAgentAvatar { .. } => "DELETE",
             Op::UploadAgentAvatar { .. } => "POST",
             Op::DisableAgent { .. } => "POST",
@@ -360,7 +360,7 @@ impl Operation for Op<'_> {
             Op::CreateWorkspace => "POST",
             Op::DeleteWorkspace { .. } => "DELETE",
             Op::GetWorkspace { .. } => "GET",
-            Op::UpdateWorkspace { .. } => "PUT",
+            Op::UpdateWorkspace { .. } => "PATCH",
         }
     }
 
@@ -684,34 +684,34 @@ pub(crate) enum TenantOp<'a> {
     ListChatConnections,
     /// `POST /v1/chat-connections` (`createChatConnection`)
     CreateChatConnection,
-    /// `DELETE /v1/chat-connections/{id}` (`deleteChatConnection`)
-    DeleteChatConnection { id: &'a str },
-    /// `GET /v1/chat-connections/{id}` (`getChatConnection`)
-    GetChatConnection { id: &'a str },
-    /// `PATCH /v1/chat-connections/{id}` (`renameChatConnection`)
-    RenameChatConnection { id: &'a str },
-    /// `POST /v1/chat-connections/{id}/credentials` (`rotateChatCredentials`)
-    RotateChatCredentials { id: &'a str },
-    /// `POST /v1/chat-connections/{id}/disable` (`disableChatConnection`)
-    DisableChatConnection { id: &'a str },
-    /// `POST /v1/chat-connections/{id}/enable` (`enableChatConnection`)
-    EnableChatConnection { id: &'a str },
-    /// `POST /v1/chat-connections/{id}/health` (`checkChatHealth`)
-    CheckChatHealth { id: &'a str },
+    /// `DELETE /v1/chat-connections/{chatConnectionId}` (`deleteChatConnection`)
+    DeleteChatConnection { chat_connection_id: &'a str },
+    /// `GET /v1/chat-connections/{chatConnectionId}` (`getChatConnection`)
+    GetChatConnection { chat_connection_id: &'a str },
+    /// `PATCH /v1/chat-connections/{chatConnectionId}` (`renameChatConnection`)
+    RenameChatConnection { chat_connection_id: &'a str },
+    /// `POST /v1/chat-connections/{chatConnectionId}/credentials` (`rotateChatCredentials`)
+    RotateChatCredentials { chat_connection_id: &'a str },
+    /// `POST /v1/chat-connections/{chatConnectionId}/disable` (`disableChatConnection`)
+    DisableChatConnection { chat_connection_id: &'a str },
+    /// `POST /v1/chat-connections/{chatConnectionId}/enable` (`enableChatConnection`)
+    EnableChatConnection { chat_connection_id: &'a str },
+    /// `POST /v1/chat-connections/{chatConnectionId}/health` (`checkChatHealth`)
+    CheckChatHealth { chat_connection_id: &'a str },
     /// `GET /v1/mcp-connections` (`listMcpConnections`)
     ListMcpConnections,
     /// `POST /v1/mcp-connections` (`createMcpConnection`)
     CreateMcpConnection,
-    /// `DELETE /v1/mcp-connections/{id}` (`deleteMcpConnection`)
-    DeleteMcpConnection { id: &'a str },
-    /// `GET /v1/mcp-connections/{id}` (`getMcpConnection`)
-    GetMcpConnection { id: &'a str },
-    /// `PATCH /v1/mcp-connections/{id}` (`updateMcpConnection`)
-    UpdateMcpConnection { id: &'a str },
-    /// `POST /v1/mcp-connections/{id}/reconnect` (`reconnectMcpConnection`)
-    ReconnectMcpConnection { id: &'a str },
-    /// `POST /v1/mcp-connections/{id}/test` (`testMcpConnection`)
-    TestMcpConnection { id: &'a str },
+    /// `DELETE /v1/mcp-connections/{mcpConnectionId}` (`deleteMcpConnection`)
+    DeleteMcpConnection { mcp_connection_id: &'a str },
+    /// `GET /v1/mcp-connections/{mcpConnectionId}` (`getMcpConnection`)
+    GetMcpConnection { mcp_connection_id: &'a str },
+    /// `PATCH /v1/mcp-connections/{mcpConnectionId}` (`updateMcpConnection`)
+    UpdateMcpConnection { mcp_connection_id: &'a str },
+    /// `POST /v1/mcp-connections/{mcpConnectionId}/reconnect` (`reconnectMcpConnection`)
+    ReconnectMcpConnection { mcp_connection_id: &'a str },
+    /// `POST /v1/mcp-connections/{mcpConnectionId}/test` (`testMcpConnection`)
+    TestMcpConnection { mcp_connection_id: &'a str },
     /// `DELETE /v1/merchant-connection` (`retireMerchantConnection`)
     RetireMerchantConnection,
     /// `GET /v1/merchant-connection` (`getMerchantConnection`)
@@ -740,16 +740,16 @@ pub(crate) enum TenantOp<'a> {
     ListProviders,
     /// `POST /v1/providers` (`createProvider`)
     CreateProvider,
-    /// `DELETE /v1/providers/{id}` (`deleteProvider`)
-    DeleteProvider { id: &'a str },
-    /// `GET /v1/providers/{id}` (`getProvider`)
-    GetProvider { id: &'a str },
-    /// `PATCH /v1/providers/{id}` (`updateProvider`)
-    UpdateProvider { id: &'a str },
-    /// `GET /v1/providers/{id}/models` (`listProviderModels`)
-    ListProviderModels { id: &'a str },
-    /// `GET /v1/providers/{id}/thinking-levels` (`listThinkingLevels`)
-    ListThinkingLevels { id: &'a str },
+    /// `DELETE /v1/providers/{providerId}` (`deleteProvider`)
+    DeleteProvider { provider_id: &'a str },
+    /// `GET /v1/providers/{providerId}` (`getProvider`)
+    GetProvider { provider_id: &'a str },
+    /// `PATCH /v1/providers/{providerId}` (`updateProvider`)
+    UpdateProvider { provider_id: &'a str },
+    /// `GET /v1/providers/{providerId}/models` (`listProviderModels`)
+    ListProviderModels { provider_id: &'a str },
+    /// `GET /v1/providers/{providerId}/thinking-levels` (`listThinkingLevels`)
+    ListThinkingLevels { provider_id: &'a str },
     /// `GET /v1/tenant` (`getTenantSettings`)
     GetTenantSettings,
     /// `PATCH /v1/tenant` (`updateTenantSettings`)
@@ -902,49 +902,56 @@ impl Operation for TenantOp<'_> {
             )),
             TenantOp::ListChatConnections => Ok(String::from("/v1/chat-connections")),
             TenantOp::CreateChatConnection => Ok(String::from("/v1/chat-connections")),
-            TenantOp::DeleteChatConnection { id } => {
-                Ok(format!("/v1/chat-connections/{}", segment(id, "id")?))
-            }
-            TenantOp::GetChatConnection { id } => {
-                Ok(format!("/v1/chat-connections/{}", segment(id, "id")?))
-            }
-            TenantOp::RenameChatConnection { id } => {
-                Ok(format!("/v1/chat-connections/{}", segment(id, "id")?))
-            }
-            TenantOp::RotateChatCredentials { id } => Ok(format!(
+            TenantOp::DeleteChatConnection { chat_connection_id } => Ok(format!(
+                "/v1/chat-connections/{}",
+                segment(chat_connection_id, "chatConnectionId")?
+            )),
+            TenantOp::GetChatConnection { chat_connection_id } => Ok(format!(
+                "/v1/chat-connections/{}",
+                segment(chat_connection_id, "chatConnectionId")?
+            )),
+            TenantOp::RenameChatConnection { chat_connection_id } => Ok(format!(
+                "/v1/chat-connections/{}",
+                segment(chat_connection_id, "chatConnectionId")?
+            )),
+            TenantOp::RotateChatCredentials { chat_connection_id } => Ok(format!(
                 "/v1/chat-connections/{}/credentials",
-                segment(id, "id")?
+                segment(chat_connection_id, "chatConnectionId")?
             )),
-            TenantOp::DisableChatConnection { id } => Ok(format!(
+            TenantOp::DisableChatConnection { chat_connection_id } => Ok(format!(
                 "/v1/chat-connections/{}/disable",
-                segment(id, "id")?
+                segment(chat_connection_id, "chatConnectionId")?
             )),
-            TenantOp::EnableChatConnection { id } => Ok(format!(
+            TenantOp::EnableChatConnection { chat_connection_id } => Ok(format!(
                 "/v1/chat-connections/{}/enable",
-                segment(id, "id")?
+                segment(chat_connection_id, "chatConnectionId")?
             )),
-            TenantOp::CheckChatHealth { id } => Ok(format!(
+            TenantOp::CheckChatHealth { chat_connection_id } => Ok(format!(
                 "/v1/chat-connections/{}/health",
-                segment(id, "id")?
+                segment(chat_connection_id, "chatConnectionId")?
             )),
             TenantOp::ListMcpConnections => Ok(String::from("/v1/mcp-connections")),
             TenantOp::CreateMcpConnection => Ok(String::from("/v1/mcp-connections")),
-            TenantOp::DeleteMcpConnection { id } => {
-                Ok(format!("/v1/mcp-connections/{}", segment(id, "id")?))
-            }
-            TenantOp::GetMcpConnection { id } => {
-                Ok(format!("/v1/mcp-connections/{}", segment(id, "id")?))
-            }
-            TenantOp::UpdateMcpConnection { id } => {
-                Ok(format!("/v1/mcp-connections/{}", segment(id, "id")?))
-            }
-            TenantOp::ReconnectMcpConnection { id } => Ok(format!(
-                "/v1/mcp-connections/{}/reconnect",
-                segment(id, "id")?
+            TenantOp::DeleteMcpConnection { mcp_connection_id } => Ok(format!(
+                "/v1/mcp-connections/{}",
+                segment(mcp_connection_id, "mcpConnectionId")?
             )),
-            TenantOp::TestMcpConnection { id } => {
-                Ok(format!("/v1/mcp-connections/{}/test", segment(id, "id")?))
-            }
+            TenantOp::GetMcpConnection { mcp_connection_id } => Ok(format!(
+                "/v1/mcp-connections/{}",
+                segment(mcp_connection_id, "mcpConnectionId")?
+            )),
+            TenantOp::UpdateMcpConnection { mcp_connection_id } => Ok(format!(
+                "/v1/mcp-connections/{}",
+                segment(mcp_connection_id, "mcpConnectionId")?
+            )),
+            TenantOp::ReconnectMcpConnection { mcp_connection_id } => Ok(format!(
+                "/v1/mcp-connections/{}/reconnect",
+                segment(mcp_connection_id, "mcpConnectionId")?
+            )),
+            TenantOp::TestMcpConnection { mcp_connection_id } => Ok(format!(
+                "/v1/mcp-connections/{}/test",
+                segment(mcp_connection_id, "mcpConnectionId")?
+            )),
             TenantOp::RetireMerchantConnection => Ok(String::from("/v1/merchant-connection")),
             TenantOp::GetMerchantConnection => Ok(String::from("/v1/merchant-connection")),
             TenantOp::UpdateMerchantConnection => Ok(String::from("/v1/merchant-connection")),
@@ -976,15 +983,25 @@ impl Operation for TenantOp<'_> {
             )),
             TenantOp::ListProviders => Ok(String::from("/v1/providers")),
             TenantOp::CreateProvider => Ok(String::from("/v1/providers")),
-            TenantOp::DeleteProvider { id } => Ok(format!("/v1/providers/{}", segment(id, "id")?)),
-            TenantOp::GetProvider { id } => Ok(format!("/v1/providers/{}", segment(id, "id")?)),
-            TenantOp::UpdateProvider { id } => Ok(format!("/v1/providers/{}", segment(id, "id")?)),
-            TenantOp::ListProviderModels { id } => {
-                Ok(format!("/v1/providers/{}/models", segment(id, "id")?))
-            }
-            TenantOp::ListThinkingLevels { id } => Ok(format!(
+            TenantOp::DeleteProvider { provider_id } => Ok(format!(
+                "/v1/providers/{}",
+                segment(provider_id, "providerId")?
+            )),
+            TenantOp::GetProvider { provider_id } => Ok(format!(
+                "/v1/providers/{}",
+                segment(provider_id, "providerId")?
+            )),
+            TenantOp::UpdateProvider { provider_id } => Ok(format!(
+                "/v1/providers/{}",
+                segment(provider_id, "providerId")?
+            )),
+            TenantOp::ListProviderModels { provider_id } => Ok(format!(
+                "/v1/providers/{}/models",
+                segment(provider_id, "providerId")?
+            )),
+            TenantOp::ListThinkingLevels { provider_id } => Ok(format!(
                 "/v1/providers/{}/thinking-levels",
-                segment(id, "id")?
+                segment(provider_id, "providerId")?
             )),
             TenantOp::GetTenantSettings => Ok(String::from("/v1/tenant")),
             TenantOp::UpdateTenantSettings => Ok(String::from("/v1/tenant")),

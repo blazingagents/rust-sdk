@@ -9,7 +9,7 @@ use wiremock::{Mock, ResponseTemplate};
 
 fn artifact(id: &str) -> serde_json::Value {
     json!({
-        "artifactId": id,
+        "id": id,
         "agentId": "ag_4kP9sT2vXq7LmN3a",
         "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
         "sessionId": "ss_9Fh3Lc7VbN2kDs5Y",
@@ -30,6 +30,7 @@ async fn list_sends_filters_as_query_parameters() {
         .and(path("/v1/artifacts"))
         .and(query_param("agentId", "ag_4kP9sT2vXq7LmN3a"))
         .and(query_param("sessionId", "ss_9Fh3Lc7VbN2kDs5Y"))
+        .and(query_param("limit", "100"))
         .and(query_param_is_missing("cursor"))
         .respond_with(json(
             200,
@@ -43,10 +44,12 @@ async fn list_sends_filters_as_query_parameters() {
         .list()
         .agent_id("ag_4kP9sT2vXq7LmN3a")
         .session_id("ss_9Fh3Lc7VbN2kDs5Y")
+        .limit(100)
         .await
         .unwrap();
 
     assert_eq!(page.data.len(), 1);
+    assert_eq!(page.data[0].id, ArtifactId::from("at_6Jm2Qx8RtW4nPz1K"));
     assert_eq!(
         page.next_cursor.map(|cursor| cursor.to_string()),
         Some("c2".to_owned())
@@ -66,7 +69,7 @@ async fn get_decodes_every_field_and_ignores_unknown_ones() {
 
     let fetched = client.artifacts().get("at_6Jm2Qx8RtW4nPz1K").await.unwrap();
 
-    assert_eq!(fetched.artifact_id, ArtifactId::from("at_6Jm2Qx8RtW4nPz1K"));
+    assert_eq!(fetched.id, ArtifactId::from("at_6Jm2Qx8RtW4nPz1K"));
     assert_eq!(fetched.agent_id, AgentId::from("ag_4kP9sT2vXq7LmN3a"));
     assert_eq!(fetched.tenant_id, TenantId::from("ten_8Hq2Zr5WcY1bJt6D"));
     assert_eq!(fetched.session_id, SessionId::from("ss_9Fh3Lc7VbN2kDs5Y"));
@@ -155,7 +158,7 @@ async fn items_walks_every_page_lazily() {
     let items = client.artifacts().list().items();
     assert!(requests(&server).await.is_empty());
     let ids: Vec<String> = items
-        .map_ok(|artifact| artifact.artifact_id.to_string())
+        .map_ok(|artifact| artifact.id.to_string())
         .try_collect()
         .await
         .unwrap();

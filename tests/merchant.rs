@@ -1,7 +1,7 @@
 mod support;
 
 use blazing_agents::Error;
-use blazing_agents::ids::{MerchantConnectionId, MerchantUsageEventId};
+use blazing_agents::ids::{MerchantConnectionId, MerchantUsageEventId, TenantId};
 use blazing_agents::merchant::{
     MerchantEnvironment, MerchantGuard, MerchantNextAction, MerchantProvider, MerchantTurnStatus,
     MerchantUsageEventStatus,
@@ -16,6 +16,7 @@ use wiremock::{Mock, ResponseTemplate};
 fn merchant_connection() -> serde_json::Value {
     json!({
         "id": "mch_2Kd8QwE5sLx7Rm9T",
+        "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
         "provider": "polar",
         "environment": "sandbox",
         "merchantAccountId": "acct_123",
@@ -39,6 +40,7 @@ fn binding(user_id: &str) -> serde_json::Value {
 fn event(id: &str) -> serde_json::Value {
     json!({
         "id": id,
+        "tenantId": "ten_8Hq2Zr5WcY1bJt6D",
         "turnId": "turn_7Tn4Kd9QwE2sLx5R",
         "connectionId": "mch_2Kd8QwE5sLx7Rm9T",
         "provider": "polar",
@@ -67,6 +69,7 @@ fn event(id: &str) -> serde_json::Value {
 
 fn assert_event(event: &blazing_agents::merchant::MerchantUsageEvent, id: &str) {
     assert_eq!(event.id, MerchantUsageEventId::from(id));
+    assert_eq!(event.tenant_id, TenantId::from("ten_8Hq2Zr5WcY1bJt6D"));
     assert_eq!(event.turn_id.as_str(), "turn_7Tn4Kd9QwE2sLx5R");
     assert_eq!(
         event.connection_id,
@@ -110,6 +113,7 @@ async fn get_returns_the_connection() {
         connection.id,
         MerchantConnectionId::from("mch_2Kd8QwE5sLx7Rm9T")
     );
+    assert_eq!(connection.tenant_id, TenantId::from("ten_8Hq2Zr5WcY1bJt6D"));
     assert_eq!(connection.provider, MerchantProvider::Polar);
     assert_eq!(connection.environment, MerchantEnvironment::Sandbox);
     assert_eq!(connection.merchant_account_id, "acct_123");
@@ -140,7 +144,7 @@ async fn create_sends_only_the_set_fields() {
     let (server, client) = mock().await;
     Mock::given(method("POST"))
         .and(path("/v1/merchant-connection"))
-        .respond_with(json(201, json!({ "connection": merchant_connection() })))
+        .respond_with(json(201, merchant_connection()))
         .mount(&server)
         .await;
 
@@ -207,7 +211,7 @@ async fn update_sends_only_the_set_fields() {
     let (server, client) = mock().await;
     Mock::given(method("PATCH"))
         .and(path("/v1/merchant-connection"))
-        .respond_with(json(200, json!({ "connection": merchant_connection() })))
+        .respond_with(json(200, merchant_connection()))
         .mount(&server)
         .await;
 
@@ -262,7 +266,7 @@ async fn bindings_list_sends_the_filters() {
         .and(query_param_is_missing("cursor"))
         .respond_with(json(
             200,
-            json!({ "bindings": [binding("user_1")], "nextCursor": "c2" }),
+            json!({ "data": [binding("user_1")], "nextCursor": "c2" }),
         ))
         .mount(&server)
         .await;
@@ -275,9 +279,9 @@ async fn bindings_list_sends_the_filters() {
         .await
         .unwrap();
 
-    assert_eq!(page.bindings.len(), 1);
-    assert_eq!(page.bindings[0].user_id, "user_1");
-    assert_eq!(page.bindings[0].customer_id, "cus_456");
+    assert_eq!(page.data.len(), 1);
+    assert_eq!(page.data[0].user_id, "user_1");
+    assert_eq!(page.data[0].customer_id, "cus_456");
     assert_eq!(
         page.next_cursor.map(|cursor| cursor.to_string()),
         Some("c2".to_owned())
@@ -292,7 +296,7 @@ async fn binding_items_walk_every_page() {
         .and(query_param_is_missing("cursor"))
         .respond_with(json(
             200,
-            json!({ "bindings": [binding("user_1"), binding("user_2")], "nextCursor": "c2" }),
+            json!({ "data": [binding("user_1"), binding("user_2")], "nextCursor": "c2" }),
         ))
         .mount(&server)
         .await;
@@ -301,7 +305,7 @@ async fn binding_items_walk_every_page() {
         .and(query_param("cursor", "c2"))
         .respond_with(json(
             200,
-            json!({ "bindings": [binding("user_3")], "nextCursor": null }),
+            json!({ "data": [binding("user_3")], "nextCursor": null }),
         ))
         .mount(&server)
         .await;
@@ -328,10 +332,7 @@ async fn set_binding_puts_the_customer() {
     binding["addedNextYear"] = json!(true);
     Mock::given(method("PUT"))
         .and(path("/v1/merchant-connection/bindings/user_1"))
-        .respond_with(json(
-            200,
-            json!({ "binding": binding, "envelopeAddedNextYear": "yes" }),
-        ))
+        .respond_with(json(200, binding))
         .mount(&server)
         .await;
 
@@ -352,7 +353,7 @@ async fn binding_paths_encode_the_user_id_as_one_segment() {
     let (server, client) = mock().await;
     Mock::given(method("PUT"))
         .and(path("/v1/merchant-connection/bindings/user%2F1"))
-        .respond_with(json(200, json!({ "binding": binding("user/1") })))
+        .respond_with(json(200, binding("user/1")))
         .mount(&server)
         .await;
     Mock::given(method("DELETE"))
@@ -404,7 +405,7 @@ async fn usage_events_list_sends_the_filters_and_decodes() {
         .and(query_param("status", "failed"))
         .and(query_param("limit", "10"))
         .and(query_param_is_missing("cursor"))
-        .respond_with(json(200, json!({ "events": [body], "nextCursor": null })))
+        .respond_with(json(200, json!({ "data": [body], "nextCursor": null })))
         .mount(&server)
         .await;
 
@@ -416,8 +417,8 @@ async fn usage_events_list_sends_the_filters_and_decodes() {
         .await
         .unwrap();
 
-    assert_eq!(page.events.len(), 1);
-    let event = &page.events[0];
+    assert_eq!(page.data.len(), 1);
+    let event = &page.data[0];
     assert!(matches!(
         event.next_action,
         MerchantNextAction::Unrecognized(_)
@@ -434,7 +435,7 @@ async fn usage_event_items_walk_every_page() {
         .and(query_param_is_missing("cursor"))
         .respond_with(json(
             200,
-            json!({ "events": [event("mev_1"), event("mev_2")], "nextCursor": "c2" }),
+            json!({ "data": [event("mev_1"), event("mev_2")], "nextCursor": "c2" }),
         ))
         .mount(&server)
         .await;
@@ -443,7 +444,7 @@ async fn usage_event_items_walk_every_page() {
         .and(query_param("cursor", "c2"))
         .respond_with(json(
             200,
-            json!({ "events": [event("mev_3")], "nextCursor": null }),
+            json!({ "data": [event("mev_3")], "nextCursor": null }),
         ))
         .mount(&server)
         .await;
@@ -464,11 +465,11 @@ async fn usage_event_items_walk_every_page() {
 }
 
 #[tokio::test]
-async fn get_event_unwraps_the_envelope() {
+async fn get_event_returns_the_bare_event() {
     let (server, client) = mock().await;
     Mock::given(method("GET"))
         .and(path("/v1/merchant-usage-events/mev_1"))
-        .respond_with(json(200, json!({ "event": event("mev_1") })))
+        .respond_with(json(200, event("mev_1")))
         .mount(&server)
         .await;
 
@@ -484,7 +485,7 @@ async fn get_event_ignores_the_removed_workflow_issue() {
     body["workflowIssue"] = json!("recovery_exhausted");
     Mock::given(method("GET"))
         .and(path("/v1/merchant-usage-events/mev_1"))
-        .respond_with(json(200, json!({ "event": body })))
+        .respond_with(json(200, body))
         .mount(&server)
         .await;
 
@@ -499,7 +500,7 @@ async fn discard_and_retry_post_to_their_paths() {
     for action in ["discard", "retry"] {
         Mock::given(method("POST"))
             .and(path(format!("/v1/merchant-usage-events/mev_1/{action}")))
-            .respond_with(json(200, json!({ "event": event("mev_1") })))
+            .respond_with(json(200, event("mev_1")))
             .expect(1)
             .mount(&server)
             .await;
@@ -525,28 +526,25 @@ async fn summary_sends_days_and_decodes() {
         .respond_with(json(
             200,
             json!({
-                "envelopeAddedNextYear": [1],
-                "summary": {
-                    "addedNextYear": { "nested": true },
-                    "counts": {
-                        "pending": 3,
-                        "accepted": 90,
-                        "failed": 4,
-                        "incomplete": 0,
-                        "expired": 0,
-                        "discarded": 1
-                    },
-                    "lastAcceptedAt": "2026-07-10T10:05:00.000Z",
-                    "oldestPendingOccurredAt": "2026-07-09T10:00:00.000Z",
-                    "daily": [
-                        {
-                            "day": "2026-07-10",
-                            "acceptedEvents": 12,
-                            "acceptedTokens": 3400,
-                            "pendingEvents": 2
-                        }
-                    ]
-                }
+                "addedNextYear": { "nested": true },
+                "counts": {
+                    "pending": 3,
+                    "accepted": 90,
+                    "failed": 4,
+                    "incomplete": 0,
+                    "expired": 0,
+                    "discarded": 1
+                },
+                "lastAcceptedAt": "2026-07-10T10:05:00.000Z",
+                "oldestPendingOccurredAt": "2026-07-09T10:00:00.000Z",
+                "daily": [
+                    {
+                        "day": "2026-07-10",
+                        "acceptedEvents": 12,
+                        "acceptedTokens": 3400,
+                        "pendingEvents": 2
+                    }
+                ]
             }),
         ))
         .mount(&server)
@@ -654,7 +652,7 @@ async fn a_create_response_that_echoes_the_credential_fails_the_call() {
     connection["merchantAccountId"] = json!("polar_at_secret_value");
     Mock::given(method("POST"))
         .and(path("/v1/merchant-connection"))
-        .respond_with(json(201, json!({ "connection": connection })))
+        .respond_with(json(201, connection))
         .mount(&server)
         .await;
 
@@ -687,7 +685,7 @@ async fn an_update_response_that_echoes_the_credential_fails_the_call() {
     connection["merchantAccountId"] = json!("polar_at_rotated_secret");
     Mock::given(method("PATCH"))
         .and(path("/v1/merchant-connection"))
-        .respond_with(json(200, json!({ "connection": connection })))
+        .respond_with(json(200, connection))
         .mount(&server)
         .await;
 

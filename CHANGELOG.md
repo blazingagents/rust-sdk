@@ -1,5 +1,58 @@
 # Changelog
 
+## Unreleased
+
+The API's shapes follow one rule per subject, so a list, a record, a retry and a missing record read the same on every resource. Each change below breaks the call it names, and ships in one release without a deprecation step because the platform has no production users yet.
+
+### Changed
+
+- Every list returns its records in `data`. `ProviderList`, `ProviderModelList`, `McpConnectionList`, `ChatConnectionList` and `McpAttachmentList` name the field `data` where they named it `providers`, `models`, `mcp_connections`, `chat_connections` and `mcp_attachments`. `merchant_bindings().list()` and `merchant_usage_events().list()` return the common `Page`, with `data` and `next_cursor`, where they returned `bindings` and `events`. `skills().copy(..)` returns a `SkillCopyResultList` whose `data` holds the results, in place of a bare `Vec`. `BindingsPage` and `UsageEventsPage` are gone.
+
+  ```rust
+  // Before
+  let providers = client.providers().list().await?.providers;
+  let bindings = client.merchant_bindings().list().await?.bindings;
+  let results = client.agent(agent_id).skills().copy(skill_id, [to]).await?;
+  // After
+  let providers = client.providers().list().await?.data;
+  let bindings = client.merchant_bindings().list().await?.data;
+  let results = client.agent(agent_id).skills().copy(skill_id, [to]).await?.data;
+  ```
+
+- A single record comes back bare in the response: memories, merchant bindings, merchant usage events and their summary, and the merchant connection from `create` and `update`. These methods already returned the record itself, so no call changes. `merchant_connection().get()` still returns an `Option`, `None` while you have no connection.
+- `sessions().submit_input(..)` returns a `SubmittedInput` whose `input` is the receipt, where the API sent it as `data`.
+- `Artifact::id` is the artifact's ID, where it was `artifact_id`. Methods still take an `artifact_id`.
+
+  ```rust
+  // Before
+  let id = artifact.artifact_id;
+  // After
+  let id = artifact.id;
+  ```
+
+- `Provider`, `ProviderSummary`, `McpConnection`, `Session`, `SessionDetail`, `LatestSession`, `MerchantConnection` and `MerchantUsageEvent` carry `tenant_id`, like every other record.
+- `agents().update(..)` and `workspaces().update(..)` send `PATCH`, since they change only the fields you send.
+- `agents().delete(agent_id, delete_artifacts)` names its flag `delete_artifacts`, as `sessions().delete(..)` does, and sends it as `deleteArtifacts`. It was `include_artifacts`.
+- `tasks().create(..)` and `tasks().submit(..)` send `.idempotency_key(key)` as the `Idempotency-Key` header, as skills and forks do; `submit` sends no body. The option keeps its name.
+- A record the path names answers `404 not_found` when it is missing: a provider, a workspace, a skill, the merchant connection, a merchant binding or a merchant usage event. A record a request reaches through another keeps its own code, such as `provider_not_found` for an agent's provider on a turn. An MCP connection an agent lists answers `404 mcp_connection_not_found`, and a model its provider does not offer answers `422 model_not_found`, where it answered `400`. `sessions().list(agent_id)` answers `404 not_found` for an agent that does not exist, where it returned an empty page.
+
+  ```rust
+  match client.agent(agent_id).skills().get(skill_id).await {
+      // Before: Err(error) if error.code() == Some(&ErrorCode::SkillNotFound)
+      Err(error) if error.code() == Some(&ErrorCode::NotFound) => { /* ... */ }
+      other => { other?; }
+  }
+  ```
+
+### Added
+
+- `artifacts().list().limit(n)` sets the page size, from 1 to 100. It stays 50 by default.
+- `ErrorCode::McpConnectionNotFound` (`mcp_connection_not_found`).
+
+### Removed
+
+- `ErrorCode::SkillNotFound`, `MerchantConnectionNotFound`, `MerchantBindingNotFound`, `MerchantEventNotFound` and `AgentMcpConnectionNotFound`. Match `ErrorCode::NotFound`, or `ErrorCode::McpConnectionNotFound` for an agent's MCP connection.
+
 ## 0.12.0 (2026-11-21)
 
 ### Removed

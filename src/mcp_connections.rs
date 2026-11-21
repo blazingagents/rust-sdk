@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::call::{Call, impl_request};
 use crate::client::{Client, Tenant};
-use crate::ids::McpConnectionId;
+use crate::ids::{McpConnectionId, TenantId};
 use crate::op::TenantOp;
 use crate::types::Timestamp;
 
@@ -62,7 +62,7 @@ impl McpConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::GetMcpConnection {
-                id: mcp_connection_id.as_str(),
+                mcp_connection_id: mcp_connection_id.as_str(),
             },
             GetMcpConnection,
         )
@@ -78,7 +78,7 @@ impl McpConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::UpdateMcpConnection {
-                id: mcp_connection_id.as_str(),
+                mcp_connection_id: mcp_connection_id.as_str(),
             },
             UpdateMcpConnection { name: name.into() },
         )
@@ -93,7 +93,7 @@ impl McpConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::DeleteMcpConnection {
-                id: mcp_connection_id.as_str(),
+                mcp_connection_id: mcp_connection_id.as_str(),
             },
             DeleteMcpConnection,
         )
@@ -105,7 +105,7 @@ impl McpConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::TestMcpConnection {
-                id: mcp_connection_id.as_str(),
+                mcp_connection_id: mcp_connection_id.as_str(),
             },
             TestMcpConnection,
         )
@@ -122,7 +122,7 @@ impl McpConnections<'_> {
         Call::tenant(
             self.client,
             TenantOp::ReconnectMcpConnection {
-                id: mcp_connection_id.as_str(),
+                mcp_connection_id: mcp_connection_id.as_str(),
             },
             ReconnectMcpConnection { auth },
         )
@@ -410,6 +410,8 @@ impl_request!(ReconnectMcpConnection => McpConnectionReconnectResult; encode = j
 pub struct McpConnection {
     /// The connection's ID.
     pub id: McpConnectionId,
+    /// The tenant that owns the connection.
+    pub tenant_id: TenantId,
     /// The display name.
     pub name: String,
     /// The MCP server URL.
@@ -440,7 +442,7 @@ pub struct McpConnection {
 #[serde(rename_all = "camelCase")]
 pub struct McpConnectionList {
     /// Every MCP connection.
-    pub mcp_connections: Vec<McpConnection>,
+    pub data: Vec<McpConnection>,
 }
 
 /// The outcome of testing an MCP connection.

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::call::{Call, impl_request};
 use crate::client::{Client, Tenant};
-use crate::ids::ProviderId;
+use crate::ids::{ProviderId, TenantId};
 use crate::op::TenantOp;
 use crate::types::Timestamp;
 
@@ -66,7 +66,7 @@ impl Providers<'_> {
         Call::tenant(
             self.client,
             TenantOp::GetProvider {
-                id: provider_id.as_str(),
+                provider_id: provider_id.as_str(),
             },
             GetProvider,
         )
@@ -82,7 +82,7 @@ impl Providers<'_> {
         Call::tenant(
             self.client,
             TenantOp::UpdateProvider {
-                id: provider_id.as_str(),
+                provider_id: provider_id.as_str(),
             },
             UpdateProvider { name: name.into() },
         )
@@ -94,7 +94,7 @@ impl Providers<'_> {
         Call::tenant(
             self.client,
             TenantOp::DeleteProvider {
-                id: provider_id.as_str(),
+                provider_id: provider_id.as_str(),
             },
             DeleteProvider::default(),
         )
@@ -106,7 +106,7 @@ impl Providers<'_> {
         Call::tenant(
             self.client,
             TenantOp::ListProviderModels {
-                id: provider_id.as_str(),
+                provider_id: provider_id.as_str(),
             },
             ListProviderModels,
         )
@@ -122,7 +122,7 @@ impl Providers<'_> {
         Call::tenant(
             self.client,
             TenantOp::ListThinkingLevels {
-                id: provider_id.as_str(),
+                provider_id: provider_id.as_str(),
             },
             ListThinkingLevels {
                 model: model.into(),
@@ -225,6 +225,8 @@ impl_request!(ListThinkingLevels => ProviderThinkingLevels; encode = query; deco
 pub struct Provider {
     /// The provider's ID.
     pub id: ProviderId,
+    /// The tenant that owns the provider.
+    pub tenant_id: TenantId,
     /// The display name.
     pub name: String,
     /// The model vendor.
@@ -245,7 +247,7 @@ pub struct Provider {
 #[serde(rename_all = "camelCase")]
 pub struct ProviderList {
     /// Every provider, without endpoint or key details.
-    pub providers: Vec<ProviderSummary>,
+    pub data: Vec<ProviderSummary>,
 }
 
 /// A provider in a [`ProviderList`].
@@ -255,6 +257,8 @@ pub struct ProviderList {
 pub struct ProviderSummary {
     /// The provider's ID.
     pub id: ProviderId,
+    /// The tenant that owns the provider.
+    pub tenant_id: TenantId,
     /// The display name.
     pub name: String,
     /// The model vendor.
@@ -271,7 +275,7 @@ pub struct ProviderSummary {
 #[serde(rename_all = "camelCase")]
 pub struct ProviderModelList {
     /// Every advertised model.
-    pub models: Vec<ProviderModel>,
+    pub data: Vec<ProviderModel>,
 }
 
 /// A model a provider offers.

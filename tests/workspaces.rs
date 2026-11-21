@@ -200,7 +200,7 @@ async fn update_sends_back_an_unknown_policy_unchanged() {
         .respond_with(json(200, body))
         .mount(&server)
         .await;
-    Mock::given(method("PUT"))
+    Mock::given(method("PATCH"))
         .and(path("/v1/workspaces/ws_3Vb8Ny6HpU1cGf4M"))
         .respond_with(json(200, workspace("ws_3Vb8Ny6HpU1cGf4M")))
         .mount(&server)
@@ -228,7 +228,7 @@ async fn update_sends_back_an_unknown_policy_unchanged() {
 #[tokio::test]
 async fn update_omits_unset_fields_and_sends_null_to_clear() {
     let (server, client) = mock().await;
-    Mock::given(method("PUT"))
+    Mock::given(method("PATCH"))
         .and(path("/v1/workspaces/ws_3Vb8Ny6HpU1cGf4M"))
         .respond_with(json(200, workspace("ws_3Vb8Ny6HpU1cGf4M")))
         .mount(&server)

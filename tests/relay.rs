@@ -413,7 +413,7 @@ async fn the_last_history_page_has_no_next_cursor() {
 
 fn receipt(state: &str) -> Value {
     json!({
-        "data": {
+        "input": {
             "requestId": "steer-1",
             "sequence": 1,
             "message": user_message(),

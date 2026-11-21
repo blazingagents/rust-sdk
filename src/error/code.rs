@@ -42,8 +42,6 @@ crate::open_enum! {
         AgentDeleting = "agent_deleting",
         /// `admin_agent_managed`
         AdminAgentManaged = "admin_agent_managed",
-        /// `agent_mcp_connection_not_found`
-        AgentMcpConnectionNotFound = "agent_mcp_connection_not_found",
         /// `agent_mcp_connections_invalid`
         AgentMcpConnectionsInvalid = "agent_mcp_connections_invalid",
         /// `provider_required`
@@ -76,6 +74,8 @@ crate::open_enum! {
         ModelNotFound = "model_not_found",
         /// `model_validation_unavailable`
         ModelValidationUnavailable = "model_validation_unavailable",
+        /// `mcp_connection_not_found`
+        McpConnectionNotFound = "mcp_connection_not_found",
         /// `mcp_connection_limit_reached`
         McpConnectionLimitReached = "mcp_connection_limit_reached",
         /// `mcp_connection_name_conflict`
@@ -128,8 +128,6 @@ crate::open_enum! {
         SkillLimitReached = "skill_limit_reached",
         /// `skill_name_conflict`
         SkillNameConflict = "skill_name_conflict",
-        /// `skill_not_found`
-        SkillNotFound = "skill_not_found",
         /// `skill_too_many_files`
         SkillTooManyFiles = "skill_too_many_files",
         /// `skill_uncompressed_too_large`
@@ -140,8 +138,6 @@ crate::open_enum! {
         ChatWebhookConflict = "chat_webhook_conflict",
         /// `chat_webhook_registration_failed`
         ChatWebhookRegistrationFailed = "chat_webhook_registration_failed",
-        /// `merchant_connection_not_found`
-        MerchantConnectionNotFound = "merchant_connection_not_found",
         /// `merchant_connection_in_use`
         MerchantConnectionInUse = "merchant_connection_in_use",
         /// `merchant_credential_invalid`
@@ -150,12 +146,8 @@ crate::open_enum! {
         MerchantProviderUnavailable = "merchant_provider_unavailable",
         /// `merchant_customer_not_found`
         MerchantCustomerNotFound = "merchant_customer_not_found",
-        /// `merchant_binding_not_found`
-        MerchantBindingNotFound = "merchant_binding_not_found",
         /// `merchant_account_mismatch`
         MerchantAccountMismatch = "merchant_account_mismatch",
-        /// `merchant_event_not_found`
-        MerchantEventNotFound = "merchant_event_not_found",
         /// `merchant_event_state_conflict`
         MerchantEventStateConflict = "merchant_event_state_conflict",
         /// `merchant_customer_unmapped`
