@@ -1027,8 +1027,6 @@ pub struct AgentConfig {
     pub approval_in_tasks: ApprovalPolicy,
     /// The instructions the agent followed on every turn.
     pub instructions: String,
-    /// Your own data.
-    pub metadata: Metadata,
     /// The MCP connections attached to the agent.
     pub mcp_connection_ids: Vec<McpConnectionId>,
 }

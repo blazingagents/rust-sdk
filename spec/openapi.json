@@ -2948,10 +2948,6 @@
                 "type": "string",
                 "maxLength": 3000
               },
-              "metadata": {
-                "type": "object",
-                "additionalProperties": {}
-              },
               "mcpConnectionIds": {
                 "type": "array",
                 "items": {
@@ -2972,7 +2968,6 @@
               "memoryInjectionEnabled",
               "tools",
               "instructions",
-              "metadata",
               "mcpConnectionIds"
             ]
           },
@@ -6916,10 +6911,6 @@
                 "type": "string",
                 "maxLength": 3000
               },
-              "metadata": {
-                "type": "object",
-                "additionalProperties": {}
-              },
               "mcpConnectionIds": {
                 "type": "array",
                 "items": {
@@ -6940,7 +6931,6 @@
               "memoryInjectionEnabled",
               "tools",
               "instructions",
-              "metadata",
               "mcpConnectionIds"
             ]
           },
@@ -12041,7 +12031,7 @@
                     "type": "object",
                     "additionalProperties": {},
                     "default": {},
-                    "description": "Your own key-value data, returned as sent."
+                    "description": "Your own key-value data, returned as sent. At most 128 KiB as JSON."
                   },
                   "networkPolicy": {
                     "oneOf": [
@@ -12679,7 +12669,7 @@
                   "metadata": {
                     "type": "object",
                     "additionalProperties": {},
-                    "description": "Replaces the workspace's metadata."
+                    "description": "Replaces the workspace's metadata. At most 128 KiB as JSON."
                   },
                   "networkPolicy": {
                     "oneOf": [
@@ -14883,7 +14873,7 @@
                     "type": "object",
                     "additionalProperties": {},
                     "default": {},
-                    "description": "Your own key-value data, returned unchanged."
+                    "description": "Your own key-value data, returned unchanged. At most 128 KiB as JSON."
                   },
                   "mcpConnectionIds": {
                     "type": "array",
@@ -16246,7 +16236,7 @@
                   "metadata": {
                     "type": "object",
                     "additionalProperties": {},
-                    "description": "Your own key-value data, returned unchanged."
+                    "description": "Your own key-value data, returned unchanged. At most 128 KiB as JSON."
                   },
                   "mcpConnectionIds": {
                     "type": "array",
@@ -19496,7 +19486,7 @@
                     "type": "object",
                     "additionalProperties": {},
                     "default": {},
-                    "description": "Your own key-value data, recorded with the usage."
+                    "description": "Your own key-value data, recorded with the usage. At most 128 KiB as JSON."
                   }
                 },
                 "required": [
@@ -19971,7 +19961,7 @@
                   "metadata": {
                     "type": "object",
                     "additionalProperties": {},
-                    "description": "Your own key-value data. Recorded on a new session and on the turn's usage. An omitted value records the session's metadata on the turn's usage."
+                    "description": "Your own key-value data. Recorded on a new session and on the turn's usage. An omitted value records the session's metadata on the turn's usage. At most 128 KiB as JSON."
                   },
                   "functions": {
                     "type": "object",
@@ -20481,9 +20471,6 @@
                       "write_todos"
                     ],
                     "instructions": "Answer billing questions clearly and briefly.",
-                    "metadata": {
-                      "team": "support"
-                    },
                     "mcpConnectionIds": []
                   },
                   "forkedFrom": null
@@ -20907,7 +20894,7 @@
                   "metadata": {
                     "type": "object",
                     "additionalProperties": {},
-                    "description": "Your own key-value data. Recorded on a new session and on the turn's usage. An omitted value records the session's metadata on the turn's usage."
+                    "description": "Your own key-value data. Recorded on a new session and on the turn's usage. An omitted value records the session's metadata on the turn's usage. At most 128 KiB as JSON."
                   },
                   "functions": {
                     "type": "object",
@@ -21258,9 +21245,6 @@
                       "write_todos"
                     ],
                     "instructions": "Answer billing questions clearly and briefly.",
-                    "metadata": {
-                      "team": "support"
-                    },
                     "mcpConnectionIds": []
                   },
                   "forkedFrom": {
@@ -21312,9 +21296,6 @@
                       "write_todos"
                     ],
                     "instructions": "Answer billing questions clearly and briefly.",
-                    "metadata": {
-                      "team": "support"
-                    },
                     "mcpConnectionIds": []
                   },
                   "forkedFrom": {
@@ -25307,7 +25288,7 @@
                     "type": "object",
                     "additionalProperties": {},
                     "default": {},
-                    "description": "Your own key-value data, returned unchanged."
+                    "description": "Your own key-value data, returned unchanged. At most 128 KiB as JSON."
                   }
                 },
                 "required": [
@@ -25905,7 +25886,7 @@
                   "metadata": {
                     "type": "object",
                     "additionalProperties": {},
-                    "description": "Your own key-value data, returned unchanged. Replaces the current value."
+                    "description": "Your own key-value data, returned unchanged. At most 128 KiB as JSON. Replaces the current value."
                   }
                 },
                 "additionalProperties": false
@@ -29429,7 +29410,7 @@
                     "type": "object",
                     "additionalProperties": {},
                     "default": {},
-                    "description": "Your own key-value data, returned unchanged and copied to each run."
+                    "description": "Your own key-value data, returned unchanged and copied to each run. At most 128 KiB as JSON."
                   }
                 },
                 "required": [
@@ -30228,7 +30209,7 @@
                   "metadata": {
                     "type": "object",
                     "additionalProperties": {},
-                    "description": "Your own key-value data. Replaces the current metadata."
+                    "description": "Your own key-value data. Replaces the current metadata. At most 128 KiB as JSON."
                   }
                 },
                 "additionalProperties": false
@@ -30831,9 +30812,6 @@
                           "write_todos"
                         ],
                         "instructions": "Answer billing questions clearly and briefly.",
-                        "metadata": {
-                          "team": "support"
-                        },
                         "mcpConnectionIds": []
                       },
                       "sessionId": "ss_5Ty8Lr2GhW4nZc7F",
@@ -31051,9 +31029,6 @@
                       "write_todos"
                     ],
                     "instructions": "Answer billing questions clearly and briefly.",
-                    "metadata": {
-                      "team": "support"
-                    },
                     "mcpConnectionIds": []
                   },
                   "sessionId": "ss_5Ty8Lr2GhW4nZc7F",
