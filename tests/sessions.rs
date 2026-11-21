@@ -59,7 +59,6 @@ fn agent_config() -> serde_json::Value {
         "memoryInjectionEnabled": false,
         "tools": ["read", "grep", "glob", "write_todos"],
         "instructions": "Answer billing questions clearly and briefly.",
-        "metadata": { "team": "support" },
         "mcpConnectionIds": ["mcp_1Aa2Bb3Cc4Dd5Ee6"]
     })
 }
