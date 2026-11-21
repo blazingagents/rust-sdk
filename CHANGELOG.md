@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+
+- `AgentConfig`, the configuration a session or task run saved, no longer has `metadata`: the API stopped saving the agent's metadata with it. The session and the task run keep their own `metadata`. For the agent's, read the agent with the task run's `agent_id`, or the agent ID you read the session with.
+
+### Changed
+
+- `metadata` sent to the API is at most 128 KiB as JSON on every resource that takes it. The API answers a larger value with `validation_failed`.
+
 ## 0.11.0 (2026-11-18)
 
 ### Added

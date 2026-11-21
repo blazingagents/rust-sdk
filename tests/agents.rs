@@ -840,7 +840,6 @@ fn agent_config_decodes_a_saved_snapshot() {
     assert_eq!(config.approval_in_tasks.default, ApprovalDecision::Full);
     assert!(config.approval_in_tasks.overrides.is_empty());
     assert_eq!(config.instructions, "Answer clearly and briefly.");
-    assert_eq!(config.metadata.get("team"), Some(&json!("support")));
     assert_eq!(
         config.mcp_connection_ids,
         [McpConnectionId::from("mcp_2Qw8Er5Ty9Ui3Ok6")]
