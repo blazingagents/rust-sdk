@@ -162,6 +162,7 @@
                   "session_busy",
                   "session_turn_unresponsive",
                   "session_fork_unavailable",
+                  "session_history_too_large",
                   "session_fork_deleted",
                   "message_id_conflict",
                   "session_version_mismatch",
@@ -3752,6 +3753,7 @@
                   "session_busy",
                   "session_turn_unresponsive",
                   "session_fork_unavailable",
+                  "session_history_too_large",
                   "session_fork_deleted",
                   "message_id_conflict",
                   "session_version_mismatch",
@@ -6696,6 +6698,7 @@
               "session_busy",
               "session_turn_unresponsive",
               "session_fork_unavailable",
+              "session_history_too_large",
               "session_fork_deleted",
               "message_id_conflict",
               "session_version_mismatch",
@@ -22496,7 +22499,7 @@
           "sessions"
         ],
         "summary": "Resume a session with the next turn",
-        "description": "Continues a session with a new turn. A session that does not exist or was deleted returns `404`; it is never created. The session keeps its saved agent configuration. To generate an answer again, set `trigger: \"regenerate-message\"` and optionally `messageId`; the conversation is cut back to that message (by default, the last answer) and the answer is generated again, and a failed regeneration keeps the previous answer. An ordinary submission containing any message ID already in accepted history returns `409 message_id_conflict` before model or tool work, including when its text changes or its batch also contains new IDs. Regeneration can reuse existing IDs. Returns `409 session_busy` while another turn is running or a tool approval is waiting for a decision. A turn that stopped responding keeps the session busy for up to a minute. Once it is clear that the turn stopped, the request returns `409 session_turn_unresponsive` with a `Retry-After` header that says when to send it again. Send exactly one of `messages` or `promptId`; `variables` is allowed only with `promptId`. The answer streams back as an AI SDK UI message stream. A failure before the stream starts returns a JSON error. Once the stream has started, a failure arrives as an error chunk; the turn still counts toward usage, and the conversation is left as it was.",
+        "description": "Continues a session with a new turn. A session that does not exist or was deleted returns `404`; it is never created. The session keeps its saved agent configuration. To generate an answer again, set `trigger: \"regenerate-message\"` and optionally `messageId`; the conversation is cut back to that message (by default, the last answer) and the answer is generated again, and a failed regeneration keeps the previous answer. An ordinary submission containing any message ID already in accepted history returns `409 message_id_conflict` before model or tool work, including when its text changes or its batch also contains new IDs. Regeneration can reuse existing IDs. Returns `409 session_busy` while another turn is running or a tool approval is waiting for a decision. A turn that stopped responding keeps the session busy for up to a minute. Once it is clear that the turn stopped, the request returns `409 session_turn_unresponsive` with a `Retry-After` header that says when to send it again. A session with no saved history state whose messages pass 4 MiB outside image attachments, or 8 MiB in all, returns `409 session_history_too_large`; continue in a new session. Send exactly one of `messages` or `promptId`; `variables` is allowed only with `promptId`. The answer streams back as an AI SDK UI message stream. A failure before the stream starts returns a JSON error. Once the stream has started, a failure arrives as an error chunk; the turn still counts toward usage, and the conversation is left as it was.",
         "parameters": [
           {
             "schema": {
@@ -22748,6 +22751,7 @@
               "agent_deleting",
               "session_busy",
               "session_turn_unresponsive",
+              "session_history_too_large",
               "message_id_conflict",
               "tenant_deleting",
               "mcp_connection_needs_auth"
