@@ -106,6 +106,8 @@ crate::open_enum! {
         SessionTurnUnresponsive = "session_turn_unresponsive",
         /// `session_fork_unavailable`
         SessionForkUnavailable = "session_fork_unavailable",
+        /// `session_history_too_large`
+        SessionHistoryTooLarge = "session_history_too_large",
         /// `session_fork_deleted`
         SessionForkDeleted = "session_fork_deleted",
         /// `message_id_conflict`
