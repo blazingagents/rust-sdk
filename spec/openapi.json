@@ -5124,6 +5124,16 @@
                 "durationMs": {
                   "type": "integer",
                   "minimum": 0
+                },
+                "costUsd": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Estimated US-dollar model cost of the priced Turns: the amount the provider billed when it reported one, else the model catalogue's price for the token counts. Excludes platform compute, storage, Workspace and network charges. Turns counted in `unpricedTurnCount` add nothing to it."
+                },
+                "unpricedTurnCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Turns that used tokens but have no model cost, such as a model the catalogue does not price; `costUsd` leaves them out, so a nonzero count means `costUsd` is a lower bound."
                 }
               },
               "required": [
@@ -5136,7 +5146,9 @@
                 "inputTokens",
                 "outputTokens",
                 "requestCount",
-                "durationMs"
+                "durationMs",
+                "costUsd",
+                "unpricedTurnCount"
               ]
             }
           },
@@ -5158,13 +5170,25 @@
               "durationMs": {
                 "type": "integer",
                 "minimum": 0
+              },
+              "costUsd": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Estimated US-dollar model cost of the priced Turns: the amount the provider billed when it reported one, else the model catalogue's price for the token counts. Excludes platform compute, storage, Workspace and network charges. Turns counted in `unpricedTurnCount` add nothing to it."
+              },
+              "unpricedTurnCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Turns that used tokens but have no model cost, such as a model the catalogue does not price; `costUsd` leaves them out, so a nonzero count means `costUsd` is a lower bound."
               }
             },
             "required": [
               "inputTokens",
               "outputTokens",
               "requestCount",
-              "durationMs"
+              "durationMs",
+              "costUsd",
+              "unpricedTurnCount"
             ]
           }
         },
@@ -5194,13 +5218,25 @@
               "durationMs": {
                 "type": "integer",
                 "minimum": 0
+              },
+              "costUsd": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Estimated US-dollar model cost of the priced Turns: the amount the provider billed when it reported one, else the model catalogue's price for the token counts. Excludes platform compute, storage, Workspace and network charges. Turns counted in `unpricedTurnCount` add nothing to it."
+              },
+              "unpricedTurnCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Turns that used tokens but have no model cost, such as a model the catalogue does not price; `costUsd` leaves them out, so a nonzero count means `costUsd` is a lower bound."
               }
             },
             "required": [
               "inputTokens",
               "outputTokens",
               "requestCount",
-              "durationMs"
+              "durationMs",
+              "costUsd",
+              "unpricedTurnCount"
             ]
           },
           "daily": {
@@ -5261,6 +5297,16 @@
                 "durationMs": {
                   "type": "integer",
                   "minimum": 0
+                },
+                "costUsd": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Estimated US-dollar model cost of the priced Turns: the amount the provider billed when it reported one, else the model catalogue's price for the token counts. Excludes platform compute, storage, Workspace and network charges. Turns counted in `unpricedTurnCount` add nothing to it."
+                },
+                "unpricedTurnCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Turns that used tokens but have no model cost, such as a model the catalogue does not price; `costUsd` leaves them out, so a nonzero count means `costUsd` is a lower bound."
                 }
               },
               "required": [
@@ -5273,7 +5319,9 @@
                 "inputTokens",
                 "outputTokens",
                 "requestCount",
-                "durationMs"
+                "durationMs",
+                "costUsd",
+                "unpricedTurnCount"
               ]
             },
             "maxItems": 32
@@ -5336,6 +5384,16 @@
                 "durationMs": {
                   "type": "integer",
                   "minimum": 0
+                },
+                "costUsd": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Estimated US-dollar model cost of the priced Turns: the amount the provider billed when it reported one, else the model catalogue's price for the token counts. Excludes platform compute, storage, Workspace and network charges. Turns counted in `unpricedTurnCount` add nothing to it."
+                },
+                "unpricedTurnCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Turns that used tokens but have no model cost, such as a model the catalogue does not price; `costUsd` leaves them out, so a nonzero count means `costUsd` is a lower bound."
                 }
               },
               "required": [
@@ -5348,7 +5406,9 @@
                 "inputTokens",
                 "outputTokens",
                 "requestCount",
-                "durationMs"
+                "durationMs",
+                "costUsd",
+                "unpricedTurnCount"
               ]
             },
             "maxItems": 20
@@ -5411,6 +5471,16 @@
                 "durationMs": {
                   "type": "integer",
                   "minimum": 0
+                },
+                "costUsd": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Estimated US-dollar model cost of the priced Turns: the amount the provider billed when it reported one, else the model catalogue's price for the token counts. Excludes platform compute, storage, Workspace and network charges. Turns counted in `unpricedTurnCount` add nothing to it."
+                },
+                "unpricedTurnCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Turns that used tokens but have no model cost, such as a model the catalogue does not price; `costUsd` leaves them out, so a nonzero count means `costUsd` is a lower bound."
                 }
               },
               "required": [
@@ -5423,7 +5493,9 @@
                 "inputTokens",
                 "outputTokens",
                 "requestCount",
-                "durationMs"
+                "durationMs",
+                "costUsd",
+                "unpricedTurnCount"
               ]
             },
             "maxItems": 20
@@ -5486,6 +5558,16 @@
                 "durationMs": {
                   "type": "integer",
                   "minimum": 0
+                },
+                "costUsd": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Estimated US-dollar model cost of the priced Turns: the amount the provider billed when it reported one, else the model catalogue's price for the token counts. Excludes platform compute, storage, Workspace and network charges. Turns counted in `unpricedTurnCount` add nothing to it."
+                },
+                "unpricedTurnCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Turns that used tokens but have no model cost, such as a model the catalogue does not price; `costUsd` leaves them out, so a nonzero count means `costUsd` is a lower bound."
                 }
               },
               "required": [
@@ -5498,7 +5580,9 @@
                 "inputTokens",
                 "outputTokens",
                 "requestCount",
-                "durationMs"
+                "durationMs",
+                "costUsd",
+                "unpricedTurnCount"
               ]
             },
             "maxItems": 21
@@ -5547,13 +5631,25 @@
                     "durationMs": {
                       "type": "integer",
                       "minimum": 0
+                    },
+                    "costUsd": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Estimated US-dollar model cost of the priced Turns: the amount the provider billed when it reported one, else the model catalogue's price for the token counts. Excludes platform compute, storage, Workspace and network charges. Turns counted in `unpricedTurnCount` add nothing to it."
+                    },
+                    "unpricedTurnCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Turns that used tokens but have no model cost, such as a model the catalogue does not price; `costUsd` leaves them out, so a nonzero count means `costUsd` is a lower bound."
                     }
                   },
                   "required": [
                     "inputTokens",
                     "outputTokens",
                     "requestCount",
-                    "durationMs"
+                    "durationMs",
+                    "costUsd",
+                    "unpricedTurnCount"
                   ]
                 }
               },
@@ -32172,7 +32268,9 @@
                       "inputTokens": 18240,
                       "outputTokens": 6120,
                       "requestCount": 14,
-                      "durationMs": 41300
+                      "durationMs": 41300,
+                      "costUsd": 0.3125,
+                      "unpricedTurnCount": 0
                     },
                     {
                       "day": "2026-07-10",
@@ -32184,14 +32282,18 @@
                       "inputTokens": 9600,
                       "outputTokens": 3050,
                       "requestCount": 8,
-                      "durationMs": 22750
+                      "durationMs": 22750,
+                      "costUsd": 0.1875,
+                      "unpricedTurnCount": 1
                     }
                   ],
                   "totals": {
                     "inputTokens": 27840,
                     "outputTokens": 9170,
                     "requestCount": 22,
-                    "durationMs": 64050
+                    "durationMs": 64050,
+                    "costUsd": 0.5,
+                    "unpricedTurnCount": 1
                   }
                 },
                 "schema": {
@@ -32408,7 +32510,9 @@
                     "inputTokens": 27840,
                     "outputTokens": 9170,
                     "requestCount": 22,
-                    "durationMs": 64050
+                    "durationMs": 64050,
+                    "costUsd": 0.5,
+                    "unpricedTurnCount": 1
                   },
                   "daily": [
                     {
@@ -32421,7 +32525,9 @@
                       "inputTokens": 18240,
                       "outputTokens": 6120,
                       "requestCount": 14,
-                      "durationMs": 41300
+                      "durationMs": 41300,
+                      "costUsd": 0.3125,
+                      "unpricedTurnCount": 0
                     },
                     {
                       "day": "2026-07-10",
@@ -32433,7 +32539,9 @@
                       "inputTokens": 9600,
                       "outputTokens": 3050,
                       "requestCount": 8,
-                      "durationMs": 22750
+                      "durationMs": 22750,
+                      "costUsd": 0.1875,
+                      "unpricedTurnCount": 1
                     }
                   ],
                   "byAgent": [
@@ -32447,7 +32555,9 @@
                       "inputTokens": 27840,
                       "outputTokens": 9170,
                       "requestCount": 22,
-                      "durationMs": 64050
+                      "durationMs": 64050,
+                      "costUsd": 0.5,
+                      "unpricedTurnCount": 1
                     }
                   ],
                   "byUser": [
@@ -32461,7 +32571,9 @@
                       "inputTokens": 20100,
                       "outputTokens": 6800,
                       "requestCount": 15,
-                      "durationMs": 45200
+                      "durationMs": 45200,
+                      "costUsd": 0.3125,
+                      "unpricedTurnCount": 0
                     },
                     {
                       "day": null,
@@ -32473,7 +32585,9 @@
                       "inputTokens": 7740,
                       "outputTokens": 2370,
                       "requestCount": 7,
-                      "durationMs": 18850
+                      "durationMs": 18850,
+                      "costUsd": 0.1875,
+                      "unpricedTurnCount": 1
                     }
                   ],
                   "byModel": [
@@ -32487,7 +32601,9 @@
                       "inputTokens": 27840,
                       "outputTokens": 9170,
                       "requestCount": 22,
-                      "durationMs": 64050
+                      "durationMs": 64050,
+                      "costUsd": 0.5,
+                      "unpricedTurnCount": 1
                     }
                   ],
                   "activeAgentCount": 1
@@ -32750,14 +32866,18 @@
                       "inputTokens": 27840,
                       "outputTokens": 9170,
                       "requestCount": 22,
-                      "durationMs": 64050
+                      "durationMs": 64050,
+                      "costUsd": 0.5,
+                      "unpricedTurnCount": 1
                     }
                   ],
                   "totals": {
                     "inputTokens": 27840,
                     "outputTokens": 9170,
                     "requestCount": 22,
-                    "durationMs": 64050
+                    "durationMs": 64050,
+                    "costUsd": 0.5,
+                    "unpricedTurnCount": 1
                   }
                 },
                 "schema": {
@@ -32952,7 +33072,9 @@
                         "inputTokens": 12,
                         "outputTokens": 6,
                         "requestCount": 1,
-                        "durationMs": 450
+                        "durationMs": 450,
+                        "costUsd": 0.0004,
+                        "unpricedTurnCount": 0
                       }
                     }
                   ]
