@@ -311,6 +311,16 @@ pub struct UsageBucket {
     pub request_count: u64,
     /// Milliseconds spent in calls.
     pub duration_ms: u64,
+    /// Estimated US-dollar model cost of the priced turns: the amount the
+    /// provider billed when it reported one, else the model catalogue's price
+    /// for the token counts. Excludes platform compute, storage, workspace and
+    /// network charges. Turns counted in `unpriced_turn_count` add nothing to
+    /// it.
+    pub cost_usd: f64,
+    /// Turns that used tokens but have no model cost, such as a model the
+    /// catalogue does not price; `cost_usd` leaves them out, so a nonzero
+    /// count means `cost_usd` is a lower bound.
+    pub unpriced_turn_count: u64,
 }
 
 /// Usage across all buckets.
@@ -326,6 +336,16 @@ pub struct UsageTotals {
     pub request_count: u64,
     /// Milliseconds spent in calls.
     pub duration_ms: u64,
+    /// Estimated US-dollar model cost of the priced turns: the amount the
+    /// provider billed when it reported one, else the model catalogue's price
+    /// for the token counts. Excludes platform compute, storage, workspace and
+    /// network charges. Turns counted in `unpriced_turn_count` add nothing to
+    /// it.
+    pub cost_usd: f64,
+    /// Turns that used tokens but have no model cost, such as a model the
+    /// catalogue does not price; `cost_usd` leaves them out, so a nonzero
+    /// count means `cost_usd` is a lower bound.
+    pub unpriced_turn_count: u64,
 }
 
 /// The tenant's usage overview.
