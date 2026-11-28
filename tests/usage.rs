@@ -19,6 +19,8 @@ fn bucket() -> serde_json::Value {
         "outputTokens": 6120,
         "requestCount": 14,
         "durationMs": 41300,
+        "costUsd": 0.25,
+        "unpricedTurnCount": 2,
         "addedNextYear": true
     })
 }
@@ -30,7 +32,9 @@ fn usage() -> serde_json::Value {
             "inputTokens": 18240,
             "outputTokens": 6120,
             "requestCount": 14,
-            "durationMs": 41300
+            "durationMs": 41300,
+            "costUsd": 0.25,
+            "unpricedTurnCount": 2
         },
         "addedNextYear": { "nested": true }
     })
@@ -79,6 +83,10 @@ async fn get_sends_the_query_and_the_user_header() {
     assert_eq!(report.buckets[0].input_tokens, 18240);
     assert_eq!(report.totals.request_count, 14);
     assert_eq!(report.totals.duration_ms, 41300);
+    assert_eq!(report.totals.cost_usd, 0.25);
+    assert_eq!(report.totals.unpriced_turn_count, 2);
+    assert_eq!(report.buckets[0].cost_usd, 0.25);
+    assert_eq!(report.buckets[0].unpriced_turn_count, 2);
 }
 
 #[tokio::test]
@@ -169,7 +177,9 @@ async fn overview_decodes_the_breakdowns() {
                     "inputTokens": 27840,
                     "outputTokens": 9170,
                     "requestCount": 22,
-                    "durationMs": 64050
+                    "durationMs": 64050,
+                    "costUsd": 1.5,
+                    "unpricedTurnCount": 3
                 },
                 "daily": [bucket()],
                 "byAgent": [{
@@ -182,7 +192,9 @@ async fn overview_decodes_the_breakdowns() {
                     "inputTokens": 27840,
                     "outputTokens": 9170,
                     "requestCount": 22,
-                    "durationMs": 64050
+                    "durationMs": 64050,
+                    "costUsd": 1.5,
+                    "unpricedTurnCount": 3
                 }],
                 "byUser": [{
                     "day": null,
@@ -195,6 +207,8 @@ async fn overview_decodes_the_breakdowns() {
                     "outputTokens": 2370,
                     "requestCount": 7,
                     "durationMs": 18850,
+                    "costUsd": 0.5,
+                    "unpricedTurnCount": 1,
                     "addedNextYear": true
                 }],
                 "byModel": [{
@@ -207,7 +221,9 @@ async fn overview_decodes_the_breakdowns() {
                     "inputTokens": 27840,
                     "outputTokens": 9170,
                     "requestCount": 22,
-                    "durationMs": 64050
+                    "durationMs": 64050,
+                    "costUsd": 1.5,
+                    "unpricedTurnCount": 0
                 }],
                 "activeAgentCount": 1,
                 "addedNextYear": { "nested": true }
@@ -225,6 +241,12 @@ async fn overview_decodes_the_breakdowns() {
         .unwrap();
 
     assert_eq!(overview.totals.input_tokens, 27840);
+    assert_eq!(overview.totals.cost_usd, 1.5);
+    assert_eq!(overview.totals.unpriced_turn_count, 3);
+    assert_eq!(overview.daily[0].cost_usd, 0.25);
+    assert_eq!(overview.by_agent[0].unpriced_turn_count, 3);
+    assert_eq!(overview.by_user[0].cost_usd, 0.5);
+    assert_eq!(overview.by_model[0].cost_usd, 1.5);
     assert_eq!(overview.daily.len(), 1);
     assert_eq!(
         overview.by_agent[0].agent_id,
@@ -254,6 +276,8 @@ async fn sessions_posts_the_ids_and_decodes_the_entries() {
                         "outputTokens": 6,
                         "requestCount": 1,
                         "durationMs": 450,
+                        "costUsd": 0.125,
+                        "unpricedTurnCount": 0,
                         "addedNextYear": true
                     },
                     "addedNextYear": true
@@ -295,4 +319,6 @@ async fn sessions_posts_the_ids_and_decodes_the_entries() {
         SessionId::from("ss_0123456789abcdef")
     );
     assert_eq!(report.data[0].totals.input_tokens, 12);
+    assert_eq!(report.data[0].totals.cost_usd, 0.125);
+    assert_eq!(report.data[0].totals.unpriced_turn_count, 0);
 }

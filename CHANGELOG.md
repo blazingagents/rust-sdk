@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Usage buckets and totals now carry `costUsd` and `unpricedTurnCount`, as `cost_usd` and `unpriced_turn_count` on `UsageBucket` and `UsageTotals`.
+
 ## 0.13.0 (2026-11-21)
 
 The API's shapes follow one rule per subject, so a list, a record, a retry and a missing record read the same on every resource. Each change below breaks the call it names, and ships in one release without a deprecation step because the platform has no production users yet.
