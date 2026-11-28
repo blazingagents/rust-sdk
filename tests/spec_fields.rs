@@ -298,28 +298,6 @@ const FREE_FORM: &[&str] = &[
     "submitSessionInput:response.input.message.metadata",
 ];
 
-/// Response properties the SDK models before `spec/openapi.json` declares
-/// them, keyed by the owner path the walk reports. The generated response sets
-/// them so the SDK's required fields decode; the walk fails once the spec
-/// declares one, so delete its entry then.
-fn ahead_of_spec(owner: &str) -> Vec<(&'static str, Value)> {
-    const USAGE_COST_OWNERS: &[&str] = &[
-        "Usage.buckets[]",
-        "Usage.totals",
-        "UsageOverview.totals",
-        "UsageOverview.daily[]",
-        "UsageOverview.byAgent[]",
-        "UsageOverview.byUser[]",
-        "UsageOverview.byModel[]",
-        "SessionUsage.data[].totals",
-    ];
-    if USAGE_COST_OWNERS.contains(&owner) {
-        vec![("costUsd", json!(0.5)), ("unpricedTurnCount", json!(1))]
-    } else {
-        Vec::new()
-    }
-}
-
 struct Spec<'a> {
     schemas: &'a serde_json::Map<String, Value>,
     free_form: RefCell<BTreeSet<String>>,
@@ -530,13 +508,6 @@ impl<'a> Spec<'a> {
                 (name, self.instances(property, &key, stack), poison)
             })
             .collect();
-        let ahead = ahead_of_spec(owner);
-        for (name, _) in &ahead {
-            assert!(
-                !fields.iter().any(|(field, ..)| field == name),
-                "{owner}.{name} is in the spec; remove it from ahead_of_spec"
-            );
-        }
         let count = fields
             .iter()
             .map(|(_, choices, _)| choices.len())
@@ -560,11 +531,6 @@ impl<'a> Spec<'a> {
                         sites.extend(prefixed(&format!("/{name}"), clone_sites(&choice.sites)));
                     }
                 }
-                value.extend(
-                    ahead
-                        .iter()
-                        .map(|(name, extra)| ((*name).to_owned(), extra.clone())),
-                );
                 Instance {
                     value: Value::Object(value),
                     sites,
